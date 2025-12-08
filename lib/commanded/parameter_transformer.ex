@@ -65,7 +65,9 @@ defmodule AshCommanded.Commanded.ParameterTransformer do
   end
   ```
   """
-  
+
+  defstruct __spark_metadata__: nil
+
   # Module for transforming command parameters
   
   @doc """
@@ -112,7 +114,7 @@ defmodule AshCommanded.Commanded.ParameterTransformer do
   # Apply a specific transformation to the params
   defp apply_transform({:map, from_field, opts}, params) when is_list(opts) do
     to_field = Keyword.get(opts, :to) || from_field
-    
+
     if Map.has_key?(params, from_field) do
       value = Map.get(params, from_field)
       params
@@ -122,7 +124,19 @@ defmodule AshCommanded.Commanded.ParameterTransformer do
       params
     end
   end
-  
+
+  # Handle direct tuple format {:map, :from, :to} for convenience
+  defp apply_transform({:map, from_field, to_field}, params) when is_atom(to_field) do
+    if Map.has_key?(params, from_field) do
+      value = Map.get(params, from_field)
+      params
+      |> Map.delete(from_field)
+      |> Map.put(to_field, value)
+    else
+      params
+    end
+  end
+
   # Handle direct tuple format for convenience in tests
   defp apply_transform({:map, [from_field, to: to_field]}, params) do
     if Map.has_key?(params, from_field) do
@@ -154,37 +168,62 @@ defmodule AshCommanded.Commanded.ParameterTransformer do
   end
   
   defp apply_transform({:compute, field, opts}, params) do
-    compute_fn = Keyword.get(opts, :using) || Keyword.get(opts, :fn)
-    
-    if is_function(compute_fn, 1) do
-      computed_value = compute_fn.(params)
-      Map.put(params, field, computed_value)
-    else
-      params
+    try do
+      compute_fn = if is_function(opts, 1) do
+        opts
+      else
+        Keyword.get(opts, :using) || Keyword.get(opts, :fn)
+      end
+
+      if is_function(compute_fn, 1) do
+        computed_value = compute_fn.(params)
+        Map.put(params, field, computed_value)
+      else
+        params
+      end
+    rescue
+      _ -> params
     end
   end
   
   defp apply_transform({:transform, field, transform_fn}, params) when is_function(transform_fn, 1) do
-    if Map.has_key?(params, field) do
-      value = Map.get(params, field)
-      transformed_value = transform_fn.(value)
-      Map.put(params, field, transformed_value)
-    else
-      params
+    try do
+      if Map.has_key?(params, field) do
+        value = Map.get(params, field)
+        transformed_value = transform_fn.(value)
+        Map.put(params, field, transformed_value)
+      else
+        params
+      end
+    rescue
+      _ -> params
     end
   end
   
   defp apply_transform({:default, field, opts}, params) do
-    if is_nil(Map.get(params, field)) do
-      default_value = get_default_value(opts)
-      Map.put(params, field, default_value)
-    else
-      params
+    try do
+      if is_nil(Map.get(params, field)) do
+        default_value = if is_list(opts) do
+          get_default_value(opts)
+        else
+          # opts is a direct value
+          opts
+        end
+        Map.put(params, field, default_value)
+      else
+        params
+      end
+    rescue
+      _ -> params
     end
   end
   
   defp apply_transform({:custom, transform_fn}, params) when is_function(transform_fn, 1) do
-    transform_fn.(params)
+    try do
+      transform_fn.(params)
+    rescue
+      _ -> params
+    end
   end
   
   defp apply_transform(_invalid_transform, params) do

@@ -27,17 +27,16 @@ You must consider the Event Sourcing (ES) pattern.
 You will be using version 1.4.8 of the Commanded library (https://hexdocs.pm/commanded/1.4.8/Commanded.html).
 
 You will be writing code for the Ash 3.5.9 framework (https://hexdocs.pm/ash/3.5.9/readme.html).
-You will be using the Spark 2.2.54 library (https://hexdocs.pm/spark/2.2.54/get-started-with-spark.html)
+You will be using the Spark 2.3.5 library (https://hexdocs.pm/spark/2.3.5/get-started-with-spark.html)
 You understand how to write well organized DSL with the Spark (https://hexdocs.pm/spark/get-started-with-spark.html).
 
 
-Your goal is to create an Ash framework extension using the Spark DSL library that will allow for declaratively using Commanded as an Extension inside the ash framewor.
+Your goal is to create an Ash framework extension using the Spark DSL library that will allow for declaratively using Commanded as an Extension inside the ash framework.
 
-You will be using the [Spark 2.2.54 library](https://hexdocs.pm/spark/2.2.54/get-started-with-spark.html)
+You will be using the [Spark 2.3.5 library](https://hexdocs.pm/spark/2.3.5/get-started-with-spark.html)
 
 
-Your goal is to create an Ash framework extension using the Spark DSL library that will allow for declaratively using Commanded as an Extension inside the ash framewor.
-
+Your goal is to create an Ash framework extension using the Spark DSL library that will allow for declaratively using Commanded as an Extension inside the ash framework.
 
 ## Overview
 

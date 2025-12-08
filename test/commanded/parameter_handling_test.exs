@@ -147,7 +147,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
       ]
       
       assert {:error, errors} = ParameterValidator.validate_params(params, validations)
-      assert Enum.any?(errors, &String.contains?(&1, "age must be of type integer"))
+      assert Enum.any?(errors, &String.contains?(&1.message, "must be of type integer"))
     end
     
     test "validate_params with format validation" do
@@ -166,7 +166,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
       ]
       
       assert {:error, errors} = ParameterValidator.validate_params(params, validations)
-      assert Enum.any?(errors, &String.contains?(&1, "does not match required format"))
+      assert Enum.any?(errors, &String.contains?(&1.message, "does not match required format"))
     end
     
     test "validate_params with range validation" do
@@ -185,7 +185,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
       ]
       
       assert {:error, errors} = ParameterValidator.validate_params(params, validations)
-      assert Enum.any?(errors, &String.contains?(&1, "must be at least 18"))
+      assert Enum.any?(errors, &String.contains?(&1.message, "must be at least 18"))
     end
     
     test "validate_params with custom validation function" do
@@ -226,7 +226,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
       ]
       
       assert {:error, errors} = ParameterValidator.validate_params(params, validations)
-      assert Enum.any?(errors, &String.contains?(&1, "must contain an uppercase letter"))
+      assert Enum.any?(errors, &String.contains?(&1.message, "must contain an uppercase letter"))
     end
     
     test "validate_params with domain validation" do
@@ -245,7 +245,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
       ]
       
       assert {:error, errors} = ParameterValidator.validate_params(params, validations)
-      assert Enum.any?(errors, &String.contains?(&1, "must be one of"))
+      assert Enum.any?(errors, &String.contains?(&1.message, "must be one of"))
     end
     
     test "validate_params with list validation" do
@@ -264,7 +264,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
       ]
       
       assert {:error, errors} = ParameterValidator.validate_params(params, validations)
-      assert Enum.any?(errors, &String.contains?(&1, "must contain at most 5 items"))
+      assert Enum.any?(errors, &String.contains?(&1.message, "must contain at most 5 items"))
     end
     
     test "validate_params with multiple validations" do

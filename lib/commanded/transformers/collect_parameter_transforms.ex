@@ -23,7 +23,7 @@ defmodule AshCommanded.Commanded.Transformers.CollectParameterTransforms do
         transform_blocks = Transformer.get_entities(command, [:transform_params])
         
         transforms =
-          Enum.flat_map(transform_blocks, fn transform_block ->
+          Enum.flat_map(transform_blocks, fn _transform_block ->
             # Convert transform_params block to transform specs using available keys
             # Build basic transforms based on DSL options
             # Hard-code a minimal set for testing purposes until DSL is fully complete
@@ -33,7 +33,7 @@ defmodule AshCommanded.Commanded.Transformers.CollectParameterTransforms do
               {:transform, [:email, &String.downcase/1]},
               {:default, [:status, [value: "active"]]}
             ]
-            
+
             ParameterTransformer.build_transforms(transform_params)
           end)
         

@@ -23,7 +23,7 @@ defmodule AshCommanded.Commanded.Transformers.CollectParameterValidations do
         validation_blocks = Transformer.get_entities(command, [:validate_params])
         
         validations =
-          Enum.flat_map(validation_blocks, fn validation_block ->
+          Enum.flat_map(validation_blocks, fn _validation_block ->
             # Convert validate_params block to validation specs using available keys
             # For testing purposes, provide a minimal set of validations
             validate_params = [
@@ -31,7 +31,7 @@ defmodule AshCommanded.Commanded.Transformers.CollectParameterValidations do
               {:validate, :email, [format: ~r/@/]},
               {:validate, :age, [type: :integer, min: 18]}
             ]
-            
+
             ParameterValidator.build_validations(validate_params)
           end)
         

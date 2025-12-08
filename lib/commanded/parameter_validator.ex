@@ -69,7 +69,9 @@ defmodule AshCommanded.Commanded.ParameterValidator do
   end
   ```
   """
-  
+
+  defstruct __spark_metadata__: nil
+
   alias AshCommanded.Commanded.Error
 
   @doc """

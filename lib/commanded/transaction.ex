@@ -17,6 +17,8 @@ defmodule AshCommanded.Commanded.Transaction do
   - Provides transaction options (timeout, isolation level)
   """
 
+  defstruct __spark_metadata__: nil
+
   alias AshCommanded.Commanded.Error
   alias Ecto.Multi
 

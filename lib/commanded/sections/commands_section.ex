@@ -1,129 +1,13 @@
 defmodule AshCommanded.Commanded.Sections.CommandsSection do
   @moduledoc """
   Defines the schema and entities for the `commands` section of the Commanded DSL.
-  
+
   Commands define the actions that can be performed on a resource and correspond to commands
   in the Commanded CQRS/ES library.
   """
-  
-  @transform_params_entity %Spark.Dsl.Entity{
-    name: :transform_params,
-    target: AshCommanded.Commanded.ParameterTransformer,
-    schema: [
-      map: [
-        type: {:list, :any},
-        doc: "Maps a field from one name to another"
-      ],
-      cast: [
-        type: {:list, :any},
-        doc: "Casts a field to a specific type"
-      ],
-      compute: [
-        type: {:list, :any},
-        doc: "Computes a field value using a function"
-      ],
-      transform: [
-        type: {:list, :any},
-        doc: "Transforms a field value using a function"
-      ],
-      default: [
-        type: {:list, :any},
-        doc: "Sets a default value for a field"
-      ],
-      custom: [
-        type: {:list, :any},
-        doc: "Applies a custom transformation function to the entire params map"
-      ]
-    ],
-    imports: [],
-    recursive_as: nil,
-    transform: nil,
-    examples: [],
-    entities: [],
-    singleton_entity_keys: [],
-    deprecations: [],
-    describe: "",
-    snippet: "",
-    args: [],
-    links: nil,
-    hide: [],
-    identifier: nil,
-    modules: [],
-    no_depend_modules: [],
-    auto_set_fields: [],
-    docs: ""
-  }
-  
-  @validate_params_entity %Spark.Dsl.Entity{
-    name: :validate_params,
-    target: AshCommanded.Commanded.ParameterValidator,
-    schema: [
-      validate: [
-        type: {:list, :any},
-        doc: "Validates a field against rules or using a function"
-      ]
-    ],
-    imports: [],
-    recursive_as: nil,
-    transform: nil,
-    examples: [],
-    entities: [],
-    singleton_entity_keys: [],
-    deprecations: [],
-    describe: "",
-    snippet: "",
-    args: [],
-    links: nil,
-    hide: [],
-    identifier: nil,
-    modules: [],
-    no_depend_modules: [],
-    auto_set_fields: [],
-    docs: ""
-  }
-  
-  @transaction_entity %Spark.Dsl.Entity{
-    name: :transaction,
-    target: AshCommanded.Commanded.Transaction,
-    schema: [
-      enabled?: [
-        type: :boolean,
-        default: true,
-        doc: "Whether transactions are enabled for this command"
-      ],
-      repo: [
-        type: :atom,
-        doc: "The repository to use for transactions (required if enabled)"
-      ],
-      timeout: [
-        type: :integer,
-        doc: "Transaction timeout in milliseconds"
-      ],
-      isolation_level: [
-        type: {:in, [:read_committed, :repeatable_read, :serializable]},
-        doc: "Transaction isolation level"
-      ]
-    ],
-    imports: [],
-    recursive_as: nil,
-    transform: nil,
-    examples: [],
-    entities: [],
-    singleton_entity_keys: [],
-    deprecations: [],
-    describe: "",
-    snippet: "",
-    args: [],
-    links: nil,
-    hide: [],
-    identifier: nil,
-    modules: [],
-    no_depend_modules: [],
-    auto_set_fields: [],
-    docs: ""
-  }
-  
-  @command_entity %Spark.Dsl.Entity{
+
+  defp command_entity do
+    %Spark.Dsl.Entity{
     name: :command,
     target: AshCommanded.Commanded.Command,
     args: [:name],
@@ -221,8 +105,9 @@ defmodule AshCommanded.Commanded.Sections.CommandsSection do
         doc: "Static context values to include in every action execution"
       ]
     ],
-    imports: [@transform_params_entity, @validate_params_entity, @transaction_entity]
-  }
+    entities: []
+    }
+  end
   
   def schema do
     [
@@ -253,6 +138,6 @@ defmodule AshCommanded.Commanded.Sections.CommandsSection do
   end
   
   def entities do
-    [@command_entity, @transform_params_entity, @validate_params_entity, @transaction_entity]
+    [command_entity()]
   end
 end

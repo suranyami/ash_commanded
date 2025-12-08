@@ -63,13 +63,16 @@ defmodule AshCommanded.Commanded.Transformers.CollectTransactionOptions do
       end)
     
     # Replace the original commands with the updated ones
-    updated_dsl_state = 
-      Transformer.replace_entities(
-        dsl_state,
-        [:commanded, :commands],
-        commands
-      )
-    
+    updated_dsl_state =
+      Enum.reduce(commands, dsl_state, fn command, acc_dsl_state ->
+        Transformer.replace_entity(
+          acc_dsl_state,
+          [:commanded, :commands],
+          command,
+          fn existing_command -> existing_command.name == command.name end
+        )
+      end)
+
     {:ok, updated_dsl_state}
   end
 end

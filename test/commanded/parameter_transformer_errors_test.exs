@@ -2,7 +2,6 @@ defmodule AshCommanded.ParameterTransformerErrorsTest do
   use ExUnit.Case
 
   alias AshCommanded.Commanded.ParameterTransformer
-  alias AshCommanded.Commanded.Error
 
   describe "Parameter transformer error handling" do
     test "safely handles errors in map transforms" do

@@ -18,6 +18,7 @@ defmodule AshCommanded.Commanded.Command do
     middleware: list(module() | {module(), map()}),
     transforms: list(tuple()),
     validations: list(tuple()),
+    __spark_metadata__: any(),
     # Transaction options
     in_transaction?: boolean(),
     repo: atom() | nil,
@@ -40,6 +41,7 @@ defmodule AshCommanded.Commanded.Command do
     :param_mapping,
     :command_name,
     :handler_name,
+    :__spark_metadata__,
     autogenerate_handler?: true,
     middleware: [],
     transforms: [],

@@ -8,12 +8,14 @@ defmodule AshCommanded.Commanded.Event do
   @type t :: %__MODULE__{
     name: atom(),
     fields: [atom()],
-    event_name: atom() | nil
+    event_name: atom() | nil,
+    __spark_metadata__: any()
   }
-  
+
   defstruct [
     :name,
     :fields,
-    :event_name
+    :event_name,
+    :__spark_metadata__
   ]
 end

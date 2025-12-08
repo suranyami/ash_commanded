@@ -122,7 +122,8 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
       ast_string = Macro.to_string(ast)
       
       # Check that it includes warning about not implemented command
-      assert String.contains?(ast_string, ":not_implemented")
+      assert String.contains?(ast_string, "Command not implemented")
+      assert String.contains?(ast_string, "Error.aggregate_error")
       assert String.contains?(ast_string, "Logger.warning")
     end
   end

@@ -15,9 +15,11 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
   but can also be used directly in custom implementations.
   """
   
-  alias Ash.{Resource, Changeset, Query}
+  alias Ash.Resource
   alias AshCommanded.Commanded.Error
   alias AshCommanded.Commanded.Transaction
+
+  require Ash.Query
 
   @doc """
   Maps a command to an Ash action and executes it.
@@ -183,10 +185,21 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
                       {:ok, _record} = success ->
                         # Apply post-processor if available
                         safely_apply_postprocessor(success, command, after_action)
-                      
+
                       {:error, error} ->
                         # Standardize the error format
-                        {:error, Error.normalize_error(error)}
+                        # If it's already a single Error struct, keep it as is
+                        # Otherwise normalize it (which may return a list)
+                        if Error.is_error?(error) do
+                          {:error, error}
+                        else
+                          normalized = Error.normalize_error(error)
+                          # If normalization returns a single-element list, unwrap it
+                          case normalized do
+                            [single_error] -> {:error, single_error}
+                            multiple_errors -> {:error, multiple_errors}
+                          end
+                        end
                     end
                     
                   {:error, validation_errors} ->
@@ -425,7 +438,7 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
         {:ok, %{action: action_name, params: params, identity: identity_value, context: context}}
       else
         query = resource |> Ash.Query.for_read(:by_id) |> Ash.Query.set_context(context)
-        query = Ash.Query.filter(query, [{identity_field, :==, identity_value}])
+        query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
         
         case Ash.read_one(query) do
           {:ok, record} ->
@@ -463,7 +476,7 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
         {:ok, %{action: action_name, identity: identity_value, context: context}}
       else
         query = resource |> Ash.Query.for_read(:by_id) |> Ash.Query.set_context(context)
-        query = Ash.Query.filter(query, [{identity_field, :==, identity_value}])
+        query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
         
         case Ash.read_one(query) do
           {:ok, record} ->
@@ -501,7 +514,7 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
         {:ok, %{action: action_name, identity: identity_value, context: context}}
       else
         query = resource |> Ash.Query.for_read(action_name) |> Ash.Query.set_context(context)
-        query = Ash.Query.filter(query, [{identity_field, :==, identity_value}])
+        query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
         
         case Ash.read_one(query) do
           {:ok, record} ->
@@ -531,13 +544,18 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     if Mix.env() == :test do
       {:ok, %{action: action_name, params: params, context: context}}
     else
-      # For custom actions, we'll use Ash.run_action which allows any type of action
+      # For custom actions, we'll use Ash.ActionInput to run generic actions
       try do
-        params_with_context = Map.put(params, :context, context)
-        Ash.run_action(resource, action_name, params_with_context)
+        action_input = Ash.ActionInput.for_action(resource, action_name, params)
+        action_input = Ash.ActionInput.set_context(action_input, context)
+
+        case Ash.run_action(action_input) do
+          {:ok, _} = success -> success
+          {:error, error} -> {:error, error}
+        end
       rescue
         e in _ ->
-          {:error, Error.action_error("Error running custom action: #{Exception.message(e)}", 
+          {:error, Error.action_error("Error running custom action: #{Exception.message(e)}",
             context: %{
               resource: resource,
               action: action_name,

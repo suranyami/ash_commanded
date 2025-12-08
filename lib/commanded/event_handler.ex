@@ -13,6 +13,7 @@ defmodule AshCommanded.Commanded.EventHandler do
     :handler_name,
     :action,
     :publish_to,
+    :__spark_metadata__,
     idempotent: false,
     autogenerate?: true
   ]
@@ -23,6 +24,7 @@ defmodule AshCommanded.Commanded.EventHandler do
     handler_name: atom() | nil,
     action: atom() | Macro.t() | nil,
     publish_to: atom() | String.t() | [atom() | String.t()] | nil,
+    __spark_metadata__: any(),
     idempotent: boolean(),
     autogenerate?: boolean()
   }

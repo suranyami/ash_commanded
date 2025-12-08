@@ -270,11 +270,19 @@ defmodule AshCommanded.Commanded.Error do
   @spec format(t()) :: String.t()
   def format(%__MODULE__{} = error) do
     type_string = error.type |> Atom.to_string() |> String.replace("_", " ")
-    
-    field_info = if error.field, do: " (field: #{error.field})", else: ""
-    value_info = if error.value !== nil, do: ", value: #{inspect(error.value)}", else: ""
-    
-    "#{String.capitalize(type_string)}: #{error.message}#{field_info}#{value_info}"
+
+    details = cond do
+      error.field && error.value !== nil ->
+        " (field: #{error.field}, value: #{inspect(error.value)})"
+      error.field ->
+        " (field: #{error.field})"
+      error.value !== nil ->
+        " (value: #{inspect(error.value)})"
+      true ->
+        ""
+    end
+
+    "#{String.capitalize(type_string)}: #{error.message}#{details}"
   end
 
   @doc """

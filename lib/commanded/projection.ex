@@ -10,14 +10,16 @@ defmodule AshCommanded.Commanded.Projection do
     event_name: atom(),
     action: atom(),
     changes: map() | function(),
+    __spark_metadata__: any(),
     autogenerate?: boolean()
   }
-  
+
   defstruct [
     :name,
     :event_name,
     :action,
     :changes,
+    :__spark_metadata__,
     autogenerate?: true
   ]
 end
