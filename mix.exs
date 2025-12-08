@@ -1,7 +1,7 @@
 defmodule AshCommanded.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
   @description "CQRS pattern implementation for Ash Framework resources using Commanded"
   @source_url "https://github.com/accountex-org/ash_commanded"
 
@@ -13,15 +13,15 @@ defmodule AshCommanded.MixProject do
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() == :prod,
       deps: deps(),
-      
+
       # Hex
       description: @description,
       package: package(),
-      
+
       # Docs
       name: "AshCommanded",
       docs: docs(),
-      
+
       # Testing
       aliases: aliases()
     ]
@@ -42,14 +42,14 @@ defmodule AshCommanded.MixProject do
       {:spark, "~> 2.0"},
       {:igniter, "~> 0.5", only: [:dev, :test]},
       {:mock, "~> 0.3.0", only: [:test]},
-      
+
       # Documentation
       {:ex_doc, "~> 0.30", only: [:dev, :test], runtime: false}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
-  
+
   defp package do
     [
       maintainers: ["Accountex"],
@@ -60,7 +60,7 @@ defmodule AshCommanded.MixProject do
       files: ~w(lib mix.exs README.md LICENSE .formatter.exs)
     ]
   end
-  
+
   defp docs do
     [
       main: "readme",
@@ -84,7 +84,7 @@ defmodule AshCommanded.MixProject do
         "cheatsheets/AshCommanded.Commanded.Dsl.cheatmd"
       ],
       groups_for_extras: [
-        "Guides": [
+        Guides: [
           "documentation/commands.md",
           "documentation/events.md",
           "documentation/projections.md",
@@ -100,22 +100,22 @@ defmodule AshCommanded.MixProject do
           "documentation/context_propagation.md",
           "documentation/error_handling.md"
         ],
-        "Cheatsheets": [
+        Cheatsheets: [
           "cheatsheets/AshCommanded.Commanded.Dsl.cheatmd"
         ]
       ],
       groups_for_modules: [
-        "DSL": [
+        DSL: [
           AshCommanded.Commanded.Dsl,
           ~r/AshCommanded.Commanded.Sections/
         ],
-        "Transformers": [
+        Transformers: [
           ~r/AshCommanded.Commanded.Transformers/
         ],
-        "Verifiers": [
+        Verifiers: [
           ~r/AshCommanded.Commanded.Verifiers/
         ],
-        "Info": [
+        Info: [
           AshCommanded.Commanded.Info
         ]
       ],
@@ -124,7 +124,7 @@ defmodule AshCommanded.MixProject do
       formatters: ["html"]
     ]
   end
-  
+
   defp before_closing_head_tag(:html) do
     """
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css" integrity="sha384-Um5gpz1odJg5Z4HAmzPtgZKdTBHZdw8S29IecapCSB31ligYPhHQZMIlWLYQGVoc" crossorigin="anonymous">
@@ -132,7 +132,7 @@ defmodule AshCommanded.MixProject do
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js" integrity="sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
     """
   end
-  
+
   defp before_closing_body_tag(:html) do
     """
     <script src="https://cdn.jsdelivr.net/npm/mermaid@8.13.3/dist/mermaid.min.js"></script>
@@ -159,7 +159,7 @@ defmodule AshCommanded.MixProject do
     </script>
     """
   end
-  
+
   defp aliases do
     [
       docs: ["docs", &copy_images/1],
@@ -167,7 +167,7 @@ defmodule AshCommanded.MixProject do
       "spark.cheat_sheets": "spark.cheat_sheets --extensions AshCommanded.Commanded.Dsl"
     ]
   end
-  
+
   # Copy images after docs are generated
   defp copy_images(_) do
     # Add any image copying logic here if needed
