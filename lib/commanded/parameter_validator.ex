@@ -1,10 +1,10 @@
 defmodule AshCommanded.Commanded.ParameterValidator do
   @moduledoc """
   Advanced parameter validation for commands.
-  
+
   This module provides comprehensive validation capabilities for command parameters,
   ensuring they meet specific criteria before being processed by actions.
-  
+
   Validation features include:
 
   1. Type checking - Ensure values match expected types
@@ -13,11 +13,11 @@ defmodule AshCommanded.Commanded.ParameterValidator do
   4. Domain validation - Validate values against lists of allowed values
   5. Custom validation functions - Apply arbitrary validation logic
   6. Nested validation - Validate nested maps and collections
-  
+
   These validations complement the more basic validations in ValidationMiddleware.
-  
+
   ## Example
-  
+
   ```elixir
   defmodule MyApp.User do
     use Ash.Resource,
@@ -76,22 +76,22 @@ defmodule AshCommanded.Commanded.ParameterValidator do
 
   @doc """
   Validates parameters against a validation specification.
-  
+
   Takes a map of parameters and a list of validation rules,
   and returns `:ok` or an error tuple with validation failures.
-  
+
   ## Parameters
-  
+
   * `params` - Map of parameters to validate
   * `validations` - List of validation specifications
-  
+
   ## Returns
-  
+
   * `:ok` - If all validations pass
   * `{:error, errors}` - If any validations fail, with errors being a list of validation error structs
-  
+
   ## Example
-  
+
   ```elixir
   validate_params(
     %{name: "John", email: "john@example", age: 15},
@@ -111,7 +111,7 @@ defmodule AshCommanded.Commanded.ParameterValidator do
       Enum.flat_map(validations, fn validation_spec ->
         apply_validation(validation_spec, params)
       end)
-      
+
     if Enum.empty?(validation_results) do
       :ok
     else
@@ -123,7 +123,7 @@ defmodule AshCommanded.Commanded.ParameterValidator do
   defp apply_validation({:validate, field, rules}, params) when is_list(rules) do
     if Map.has_key?(params, field) do
       value = Map.get(params, field)
-      
+
       # Apply each validation rule to the field
       Enum.flat_map(rules, fn rule ->
         validate_field(field, value, rule)
@@ -137,11 +137,12 @@ defmodule AshCommanded.Commanded.ParameterValidator do
       end
     end
   end
-  
-  defp apply_validation({:validate, field, validation_fn}, params) when is_function(validation_fn, 1) do
+
+  defp apply_validation({:validate, field, validation_fn}, params)
+       when is_function(validation_fn, 1) do
     if Map.has_key?(params, field) do
       value = Map.get(params, field)
-      
+
       case validation_fn.(value) do
         :ok -> []
         {:error, message} -> [Error.validation_error(message, field: field, value: value)]
@@ -151,11 +152,11 @@ defmodule AshCommanded.Commanded.ParameterValidator do
       []
     end
   end
-  
+
   defp apply_validation(_invalid_validation, _params) do
     []
   end
-  
+
   # Validate a field against a specific rule
   defp validate_field(field, value, {:type, expected_type}) do
     if valid_type?(value, expected_type) do
@@ -164,15 +165,21 @@ defmodule AshCommanded.Commanded.ParameterValidator do
       [Error.validation_error("must be of type #{expected_type}", field: field, value: value)]
     end
   end
-  
+
   defp validate_field(field, value, {:format, pattern}) when is_binary(value) do
     if Regex.match?(pattern, value) do
       []
     else
-      [Error.validation_error("does not match required format", field: field, value: value, context: %{pattern: inspect(pattern)})]
+      [
+        Error.validation_error("does not match required format",
+          field: field,
+          value: value,
+          context: %{pattern: inspect(pattern)}
+        )
+      ]
     end
   end
-  
+
   defp validate_field(field, value, {:min, min_value}) when is_number(value) do
     if value >= min_value do
       []
@@ -180,7 +187,7 @@ defmodule AshCommanded.Commanded.ParameterValidator do
       [Error.validation_error("must be at least #{min_value}", field: field, value: value)]
     end
   end
-  
+
   defp validate_field(field, value, {:max, max_value}) when is_number(value) do
     if value <= max_value do
       []
@@ -188,67 +195,99 @@ defmodule AshCommanded.Commanded.ParameterValidator do
       [Error.validation_error("must be at most #{max_value}", field: field, value: value)]
     end
   end
-  
+
   defp validate_field(field, value, {:min_length, min_length}) when is_binary(value) do
     if String.length(value) >= min_length do
       []
     else
-      [Error.validation_error("must be at least #{min_length} characters long", field: field, value: value)]
+      [
+        Error.validation_error("must be at least #{min_length} characters long",
+          field: field,
+          value: value
+        )
+      ]
     end
   end
-  
+
   defp validate_field(field, value, {:max_length, max_length}) when is_binary(value) do
     if String.length(value) <= max_length do
       []
     else
-      [Error.validation_error("must be at most #{max_length} characters long", field: field, value: value)]
+      [
+        Error.validation_error("must be at most #{max_length} characters long",
+          field: field,
+          value: value
+        )
+      ]
     end
   end
-  
+
   defp validate_field(field, value, {:min_items, min_items}) when is_list(value) do
     if length(value) >= min_items do
       []
     else
-      [Error.validation_error("must contain at least #{min_items} items", field: field, value: value)]
+      [
+        Error.validation_error("must contain at least #{min_items} items",
+          field: field,
+          value: value
+        )
+      ]
     end
   end
-  
+
   defp validate_field(field, value, {:max_items, max_items}) when is_list(value) do
     if length(value) <= max_items do
       []
     else
-      [Error.validation_error("must contain at most #{max_items} items", field: field, value: value)]
+      [
+        Error.validation_error("must contain at most #{max_items} items",
+          field: field,
+          value: value
+        )
+      ]
     end
   end
-  
+
   defp validate_field(field, value, {:one_of, allowed_values}) do
     if value in allowed_values do
       []
     else
-      [Error.validation_error("must be one of: #{inspect(allowed_values)}", field: field, value: value)]
+      [
+        Error.validation_error("must be one of: #{inspect(allowed_values)}",
+          field: field,
+          value: value
+        )
+      ]
     end
   end
-  
+
   defp validate_field(field, value, {:subset_of, allowed_values}) when is_list(value) do
     if Enum.all?(value, &(&1 in allowed_values)) do
       []
     else
-      [Error.validation_error("contains values not in the allowed set: #{inspect(allowed_values)}", field: field, value: value)]
+      [
+        Error.validation_error(
+          "contains values not in the allowed set: #{inspect(allowed_values)}",
+          field: field,
+          value: value
+        )
+      ]
     end
   end
-  
-  defp validate_field(field, value, {:custom, validation_fn}) when is_function(validation_fn, 1) do
+
+  defp validate_field(field, value, {:custom, validation_fn})
+       when is_function(validation_fn, 1) do
     case validation_fn.(value) do
       :ok -> []
       {:error, message} -> [Error.validation_error(message, field: field, value: value)]
       _other -> [Error.validation_error("failed custom validation", field: field, value: value)]
     end
   end
-  
+
   defp validate_field(_field, _value, _rule) do
     []
   end
-  
+
   # Type validation helpers
   defp valid_type?(value, :string), do: is_binary(value)
   defp valid_type?(value, :integer), do: is_integer(value)
@@ -259,24 +298,24 @@ defmodule AshCommanded.Commanded.ParameterValidator do
   defp valid_type?(value, :list), do: is_list(value)
   defp valid_type?(value, :map), do: is_map(value) and not is_struct(value)
   defp valid_type?(_value, _type), do: false
-  
+
   @doc """
   Builds a validation specification from a DSL block.
-  
+
   This function is used by the DSL to convert validation declarations
   into a list of validation specifications that can be applied to
   command parameters.
-  
+
   ## Parameters
-  
+
   * `validation_block` - A keyword list of validation declarations
-  
+
   ## Returns
-  
+
   A list of validation specifications.
-  
+
   ## Example
-  
+
   ```elixir
   build_validations([
     validate: [:name, [type: :string, min_length: 2]],

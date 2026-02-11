@@ -1,12 +1,12 @@
 defmodule AshCommanded.Commanded.Dsl do
   @moduledoc """
   The DSL extension for using Commanded with Ash resources.
-  
+
   This extension provides the ability to define commands, events, projections, and event handlers using Ash resources,
   and integrates with Commanded to provide CQRS and Event Sourcing patterns.
-  
+
   ## Usage
-  
+
   ```elixir
   defmodule MyApp.User do
     use Ash.Resource,
@@ -47,9 +47,9 @@ defmodule AshCommanded.Commanded.Dsl do
   """
 
   require Logger
-  
+
   alias AshCommanded.Commanded.Sections.CommandsSection
-  
+
   @commands_section %Spark.Dsl.Section{
     name: :commands,
     describe: "Define commands that trigger state changes in the resource",
@@ -57,9 +57,9 @@ defmodule AshCommanded.Commanded.Dsl do
     entities: CommandsSection.entities(),
     imports: []
   }
-  
+
   alias AshCommanded.Commanded.Sections.EventsSection
-  
+
   @events_section %Spark.Dsl.Section{
     name: :events,
     describe: "Define events that are emitted by commands",
@@ -67,9 +67,9 @@ defmodule AshCommanded.Commanded.Dsl do
     entities: EventsSection.entities(),
     imports: []
   }
-  
+
   alias AshCommanded.Commanded.Sections.ProjectionsSection
-  
+
   @projections_section %Spark.Dsl.Section{
     name: :projections,
     describe: "Define how events affect the resource state",
@@ -77,9 +77,9 @@ defmodule AshCommanded.Commanded.Dsl do
     entities: ProjectionsSection.entities(),
     imports: []
   }
-  
+
   alias AshCommanded.Commanded.Sections.EventHandlersSection
-  
+
   @event_handlers_section %Spark.Dsl.Section{
     name: :event_handlers,
     describe: "Define general purpose handlers that respond to events",
@@ -87,17 +87,18 @@ defmodule AshCommanded.Commanded.Dsl do
     entities: EventHandlersSection.entities(),
     imports: []
   }
-  
+
   alias AshCommanded.Commanded.Sections.ApplicationSection
-  
+
   @application_section %Spark.Dsl.Section{
     name: :application,
-    describe: "Configure the Commanded application",
+    describe:
+      "Configure the Commanded application (use on your Domain via AshCommanded.Commanded.DomainDsl)",
     schema: ApplicationSection.schema(),
     entities: ApplicationSection.entities(),
     imports: []
   }
-  
+
   # Top-level section that contains all other sections
   @commanded_section %Spark.Dsl.Section{
     name: :commanded,
@@ -110,7 +111,7 @@ defmodule AshCommanded.Commanded.Dsl do
       @application_section
     ]
   }
-  
+
   # The main extension
   use Spark.Dsl.Extension,
     sections: [@commanded_section],
@@ -119,7 +120,7 @@ defmodule AshCommanded.Commanded.Dsl do
       AshCommanded.Commanded.Transformers.CollectParameterTransforms,
       AshCommanded.Commanded.Transformers.CollectParameterValidations,
       AshCommanded.Commanded.Transformers.CollectTransactionOptions,
-      
+
       # Generate modules
       AshCommanded.Commanded.Transformers.GenerateCommandModules,
       AshCommanded.Commanded.Transformers.GenerateEventModules,
@@ -128,8 +129,7 @@ defmodule AshCommanded.Commanded.Dsl do
       AshCommanded.Commanded.Transformers.GenerateEventHandlerModules,
       AshCommanded.Commanded.Transformers.GenerateAggregateModule,
       AshCommanded.Commanded.Transformers.GenerateDomainRouterModule,
-      AshCommanded.Commanded.Transformers.GenerateMainRouterModule,
-      AshCommanded.Commanded.Transformers.GenerateCommandedApplication
+      AshCommanded.Commanded.Transformers.GenerateMainRouterModule
     ],
     verifiers: [
       AshCommanded.Commanded.Verifiers.ValidateCommandFields,
@@ -145,9 +145,9 @@ defmodule AshCommanded.Commanded.Dsl do
 
   @doc """
   Determine if a resource uses the `commanded` extension.
-  
+
   ## Examples
-  
+
       iex> AshCommanded.Commanded.Dsl.extension?(SomeResource)
       true
       
@@ -159,10 +159,10 @@ defmodule AshCommanded.Commanded.Dsl do
     extensions = Spark.extensions(resource)
     __MODULE__ in extensions
   end
-  
+
   @doc """
   Return the section definitions for use in custom DSL extensions.
-  
+
   This is used in tests to create custom DSL extensions without verifiers.
   """
   @spec __sections__() :: Spark.Dsl.Section.t()
@@ -192,7 +192,7 @@ defmodule AshCommanded.Commanded.Dsl do
   @spec application(Spark.Dsl.t()) :: keyword() | nil
   def application(dsl) do
     opts = Spark.Dsl.Extension.get_opt(dsl, [:commanded, :application], nil, nil)
-    
+
     case opts do
       nil -> nil
       opts -> opts

@@ -1,6 +1,6 @@
 # Router Generation
 
-AshCommanded automatically generates [Commanded Routers](https://hexdocs.pm/commanded/commands.html) for dispatching commands to the appropriate handlers and aggregates based on your domain structure.
+AshCommanded automatically generates [Commanded Routers](https://hexdocs.pm/commanded/commands.html) for dispatching commands to the appropriate handlers and aggregates based on your domain structure. The Commanded application module that uses these routers (e.g. `MyApp.Domain.Application`) is generated when you add `AshCommanded.Commanded.DomainDsl` to your Domain and define the `application` section.
 
 ## Domain-specific Routers
 

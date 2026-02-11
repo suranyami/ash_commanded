@@ -68,11 +68,9 @@ mix test --cover
 
 AshCommanded is built as a DSL extension for Ash Framework resources. Its main components are:
 
-1. **DSL Extension**: The `AshCommanded.Commanded.Dsl` module defines four main sections:
-   - `commands`: Define commands that trigger state changes
-   - `events`: Define events that are emitted by commands
-   - `projections`: Define how events affect the resource state
-   - `application`: Configure Commanded application settings
+1. **DSL Extensions**:
+   - **Resource extension** (`AshCommanded.Commanded.Dsl`): Used on Ash resources; defines `commands`, `events`, `projections`, and `event_handlers`.
+   - **Domain extension** (`AshCommanded.Commanded.DomainDsl`): Used on Ash domains; defines the `application` section so the Commanded application module is generated.
 
 2. **Code Generation**: The library dynamically generates Elixir modules:
    - Command modules (structs with typespecs)
@@ -367,11 +365,11 @@ AshCommanded.Router.dispatch(command)
 
 ## Commanded Application
 
-The `application` section in the DSL allows configuring a Commanded application at the domain level:
+The `application` section configures a Commanded application at the domain level. Add the **Domain extension** `AshCommanded.Commanded.DomainDsl` to your Domain:
 
 ```elixir
 defmodule MyApp.Domain do
-  use Ash.Domain
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
 
   resources do
     resource MyApp.User

@@ -2,14 +2,14 @@ defmodule AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrati
   @moduledoc false
   use ExUnit.Case
 
-  # Define a test domain with application configuration
+  # Define a test domain with application configuration (DomainDsl adds the application section)
   defmodule TestDomain do
-    use Ash.Domain, 
-      extensions: [AshCommanded.Commanded.Dsl],
+    use Ash.Domain,
+      extensions: [AshCommanded.Commanded.DomainDsl],
       validate_config_inclusion?: false
 
     @doc false
-    def app_path() do 
+    def app_path() do
       :ash_commanded
       |> :code.priv_dir()
       |> Path.join("tmp")
@@ -18,9 +18,9 @@ defmodule AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrati
     @doc false
     def create_app_path() do
       app_path()
-      |> File.mkdir_p!() 
+      |> File.mkdir_p!()
     end
-    
+
     resources do
       resource AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrationTest.TestResource
     end
@@ -29,9 +29,9 @@ defmodule AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrati
       # Only define this if Commanded is available (which it might not be in tests)
       commanded do
         application do
-          otp_app :ash_commanded
-          event_store Commanded.EventStore.Adapters.InMemory
-          include_supervisor? true
+          otp_app(:ash_commanded)
+          event_store(Commanded.EventStore.Adapters.InMemory)
+          include_supervisor?(true)
         end
       end
     end
@@ -42,19 +42,19 @@ defmodule AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrati
     use Ash.Resource,
       domain: TestDomain,
       extensions: [AshCommanded.Commanded.Dsl]
-    
+
     if Code.ensure_loaded?(Commanded.Application) do
       commanded do
         commands do
           command :create_resource do
-            fields [:id, :name]
-            identity_field :id
+            fields([:id, :name])
+            identity_field(:id)
           end
         end
 
         events do
           event :resource_created do
-            fields [:id, :name]
+            fields([:id, :name])
           end
         end
       end
@@ -84,7 +84,7 @@ defmodule AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrati
 
     # Check that the module uses Commanded.Application
     assert function_exported?(app_module, :config, 0)
-    
+
     # Check supervisor-related function if include_supervisor? was true
     assert function_exported?(app_module, :child_spec, 0)
   end
@@ -95,8 +95,10 @@ defmodule AshCommanded.Test.Commanded.Transformers.CommandedApplicationIntegrati
   test "transformer order is correct" do
     # Load the transformer module
     alias AshCommanded.Commanded.Transformers.GenerateCommandedApplication
-    
+
     # Check that it runs after the main router module
-    assert GenerateCommandedApplication.after?(AshCommanded.Commanded.Transformers.GenerateMainRouterModule)
+    assert GenerateCommandedApplication.after?(
+             AshCommanded.Commanded.Transformers.GenerateMainRouterModule
+           )
   end
 end

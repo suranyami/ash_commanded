@@ -92,10 +92,10 @@ defmodule AshCommanded.Commanded.SnapshotTest do
       # Arrange
       aggregate1 = %TestAggregate{id: "test-123", version: 42, status: "version1"}
       aggregate2 = %TestAggregate{id: "test-123", version: 84, status: "version2"}
-      
+
       snapshot1 = Snapshot.new(aggregate1, TestAggregate, 42)
       snapshot2 = Snapshot.new(aggregate2, TestAggregate, 84)
-      
+
       # Act
       :ok = SnapshotStore.save_snapshot(snapshot1)
       :ok = SnapshotStore.save_snapshot(snapshot2)

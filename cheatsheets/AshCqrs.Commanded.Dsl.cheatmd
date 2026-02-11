@@ -415,7 +415,7 @@ end
 ```elixir
 defmodule ECommerce.Store do
   use Ash.Domain,
-    extensions: [AshCommanded.Commanded.Dsl]
+    extensions: [AshCommanded.Commanded.DomainDsl]
 
   resources do
     resource ECommerce.Product
@@ -424,13 +424,6 @@ defmodule ECommerce.Store do
   end
 
   commanded do
-    # Resource-level middleware (applies to all commands in all resources)
-    middleware [
-      AshCommanded.Commanded.Middleware.LoggingMiddleware,
-      {AshCommanded.Commanded.Middleware.ValidationMiddleware, 
-        required: [:id]}
-    ]
-    
     application do
       # Required options
       otp_app :ecommerce

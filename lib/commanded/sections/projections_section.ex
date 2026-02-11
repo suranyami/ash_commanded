@@ -1,10 +1,10 @@
 defmodule AshCommanded.Commanded.Sections.ProjectionsSection do
   @moduledoc """
   Defines the schema and entities for the `projections` section of the Commanded DSL.
-  
+
   Projections define how events affect the resource state, transforming events into resource updates.
   """
-  
+
   @projection_entity %Spark.Dsl.Entity{
     name: :projection,
     target: AshCommanded.Commanded.Projection,
@@ -27,7 +27,8 @@ defmodule AshCommanded.Commanded.Sections.ProjectionsSection do
       changes: [
         type: {:or, [:map, :quoted]},
         required: true,
-        doc: "The changes to apply to the resource when the event is received. Can be a static map or a function (in quoted form) that accepts the event and returns a map."
+        doc:
+          "The changes to apply to the resource when the event is received. Can be a static map or a function (in quoted form) that accepts the event and returns a map."
       ],
       autogenerate?: [
         type: :boolean,
@@ -37,7 +38,7 @@ defmodule AshCommanded.Commanded.Sections.ProjectionsSection do
     ],
     imports: []
   }
-  
+
   def schema do
     [
       projections: [
@@ -47,7 +48,7 @@ defmodule AshCommanded.Commanded.Sections.ProjectionsSection do
       ]
     ]
   end
-  
+
   def entities do
     [@projection_entity]
   end

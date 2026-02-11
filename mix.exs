@@ -107,6 +107,7 @@ defmodule AshCommanded.MixProject do
       groups_for_modules: [
         DSL: [
           AshCommanded.Commanded.Dsl,
+          AshCommanded.Commanded.DomainDsl,
           ~r/AshCommanded.Commanded.Sections/
         ],
         Transformers: [

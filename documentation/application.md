@@ -2,13 +2,15 @@
 
 The `application` section allows you to configure the [Commanded application](https://hexdocs.pm/commanded/application.html) that manages command dispatch, event publishing, and process management for your domain. The Commanded application is the core component that orchestrates the event-sourced domain.
 
+AshCommanded uses two extensions: **resources** use `AshCommanded.Commanded.Dsl` (commands, events, projections, etc.), and **domains** use `AshCommanded.Commanded.DomainDsl` for the `application` section. Only the Domain extension generates the Commanded application module.
+
 ## Basic Usage
 
-The `application` section is defined at the domain level, allowing each domain to have its own Commanded application configuration:
+Add the **Domain extension** `AshCommanded.Commanded.DomainDsl` to your Domain and define the `application` section. The generated module will be named after your Domain (e.g. `MyApp.Domain.Application`):
 
 ```elixir
 defmodule ECommerce.Store do
-  use Ash.Domain, extensions: [AshCommanded.Commanded.Dsl]
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
 
   resources do
     resource ECommerce.Product
@@ -132,7 +134,7 @@ AshCommanded supports defining multiple Commanded applications across different 
 
 ```elixir
 defmodule ECommerce.Customers do
-  use Ash.Domain, extensions: [AshCommanded.Commanded.Dsl]
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
 
   resources do
     resource ECommerce.Customer
@@ -147,7 +149,7 @@ defmodule ECommerce.Customers do
 end
 
 defmodule ECommerce.Orders do
-  use Ash.Domain, extensions: [AshCommanded.Commanded.Dsl]
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
 
   resources do
     resource ECommerce.Order

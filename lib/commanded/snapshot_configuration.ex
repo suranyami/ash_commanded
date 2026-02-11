@@ -1,23 +1,23 @@
 defmodule AshCommanded.Commanded.SnapshotConfiguration do
   @moduledoc """
   Provides configuration options for Commanded to use AshCommanded's snapshot functionality.
-  
+
   This module standardizes snapshot configuration options for Commanded applications.
   """
-  
+
   @doc """
   Returns the snapshot options to use when configuring a Commanded application.
-  
+
   ## Parameters
-  
+
   * `threshold` - The number of events to process before taking a snapshot (default: 100)
-  
+
   ## Returns
-  
+
   A keyword list of snapshot options for Commanded
-  
+
   ## Examples
-  
+
       iex> AshCommanded.Commanded.SnapshotConfiguration.snapshot_options(500)
       [snapshot_every: 500, snapshot_module: AshCommanded.Commanded.SnapshotAdapter]
   """
@@ -28,16 +28,16 @@ defmodule AshCommanded.Commanded.SnapshotConfiguration do
       snapshot_module: AshCommanded.Commanded.SnapshotAdapter
     ]
   end
-  
+
   @doc """
   Returns the snapshot options to use when dispatching a command.
-  
+
   ## Returns
-  
+
   A keyword list of snapshot options for command dispatch
-  
+
   ## Examples
-  
+
       iex> AshCommanded.Commanded.SnapshotConfiguration.dispatch_options()
       [snapshot_module: AshCommanded.Commanded.SnapshotAdapter]
   """

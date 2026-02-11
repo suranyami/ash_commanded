@@ -37,11 +37,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
       true ->
         # Only generate if this is a domain (has resources)
         case get_domain_resources(dsl) do
-          [] -> 
+          [] ->
             {:ok, dsl}
+
           _resources ->
             do_transform(dsl)
         end
+
       false ->
         {:ok, dsl}
     end
@@ -60,9 +62,11 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
         {:ok, dsl}
 
       _config ->
-        app_module = application_module_name(dsl, application_config)
-        router_module = main_router_module_name(dsl)
-        
+        # When running in Domain context, the current module is the Domain (from DomainDsl)
+        domain_module = Transformer.get_persisted(dsl, :module)
+        app_module = application_module_name(domain_module, application_config)
+        router_module = main_router_module_name(domain_module)
+
         code =
           generate_application_module(
             app_module,
@@ -72,10 +76,10 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
 
         # Create the module at compile time
         BaseTransformer.create_module(app_module, code, __ENV__)
-        
+
         # Store a reference to the application module in the DSL state
         updated_dsl = Transformer.persist(dsl, :commanded_application_module, app_module)
-        
+
         {:ok, updated_dsl}
     end
   end
@@ -86,19 +90,22 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
     event_store = Keyword.get(config, :event_store)
     pubsub = Keyword.get(config, :pubsub)
     registry = Keyword.get(config, :registry)
-    
+
     # Extract snapshotting configuration
     snapshotting_enabled = Keyword.get(config, :snapshotting, false)
     snapshot_threshold = Keyword.get(config, :snapshot_threshold, 100)
     snapshot_version = Keyword.get(config, :snapshot_version, 1)
     snapshot_store = Keyword.get(config, :snapshot_store, nil)
-    
-    _snapshot_config = if snapshotting_enabled, do: [
-      threshold: snapshot_threshold,
-      snapshot_version: snapshot_version
-    ], else: []
 
-    supervisor_child_specs = 
+    _snapshot_config =
+      if snapshotting_enabled,
+        do: [
+          threshold: snapshot_threshold,
+          snapshot_version: snapshot_version
+        ],
+        else: []
+
+    supervisor_child_specs =
       if include_supervisor? do
         # Find projector modules that need to be supervised
         # For now, just using a simple supervisor
@@ -107,16 +114,18 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
           def child_spec() do
             # TODO: Add dynamically discovered projectors here
             Supervisor.child_spec(
-              {Supervisor, [
-                strategy: :one_for_one,
-                name: Module.concat(unquote(app_module), Supervisor)
-              ]},
+              {Supervisor,
+               [
+                 strategy: :one_for_one,
+                 name: Module.concat(unquote(app_module), Supervisor)
+               ]},
               id: Module.concat(unquote(app_module), Supervisor)
             )
           end
         end
       else
-        quote do end
+        quote do
+        end
       end
 
     # Generate configuration options
@@ -131,7 +140,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
 
     config_lines = config_lines ++ [{:pubsub, pubsub}]
     config_lines = config_lines ++ [{:registry, registry}]
-    
+
     # Add snapshotting configuration if enabled
     config_lines =
       if snapshotting_enabled do
@@ -139,6 +148,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
           snapshot_every: snapshot_threshold,
           snapshot_module: AshCommanded.Commanded.SnapshotAdapter
         ]
+
         config_lines ++ [{:snapshotting, snapshot_opts}]
       else
         config_lines
@@ -147,38 +157,41 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
     config_lines = config_lines ++ [{:router, router_module}]
 
     # Initialize snapshot store if snapshotting is enabled
-    snapshot_init = 
+    snapshot_init =
       if snapshotting_enabled do
         quote do
           @doc """
           Initializes the snapshot store when the application starts.
-          
+
           This is called automatically by Commanded during application startup.
           """
           @impl true
           def init do
             # Initialize the default snapshot store or a custom one if provided
             snapshot_store = unquote(snapshot_store) || AshCommanded.Commanded.SnapshotStore
-            
+
             # Initialize the snapshot store with application configuration
             case snapshot_store.init(%{
-              threshold: unquote(snapshot_threshold),
-              version: unquote(snapshot_version)
-            }) do
-              :ok -> :ok
+                   threshold: unquote(snapshot_threshold),
+                   version: unquote(snapshot_version)
+                 }) do
+              :ok ->
+                :ok
+
               {:error, reason} ->
                 require Logger
                 Logger.warning("Failed to initialize snapshot store: #{inspect(reason)}")
                 :ok
             end
-            
+
             :ok
           end
         end
       else
-        quote do end
+        quote do
+        end
       end
-      
+
     quote do
       defmodule unquote(app_module) do
         @moduledoc """
@@ -188,47 +201,38 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
         based on the application configuration in the DSL.
         """
 
-        use Commanded.Application, [
-          otp_app: unquote(otp_app)
-        ] ++ unquote(Macro.escape(config_lines))
+        use Commanded.Application,
+            [
+              otp_app: unquote(otp_app)
+            ] ++ unquote(Macro.escape(config_lines))
 
         unquote(supervisor_child_specs)
-        
+
         unquote(snapshot_init)
       end
     end
   end
 
-  defp application_module_name(dsl, config) do
+  defp application_module_name(domain_module, config) do
     prefix = Keyword.get(config, :prefix)
-
-    domain_name =
-      dsl
-      |> Spark.Dsl.Extension.get_persisted(:domain_name)
-      |> Module.split()
-      |> List.last()
+    domain_name = domain_module |> Module.split() |> List.last()
 
     if prefix do
       module_name = Module.concat([prefix, "#{domain_name}Application"])
+
       if String.starts_with?(to_string(prefix), "Elixir.") do
         module_name
       else
         Module.concat(Elixir, module_name)
       end
     else
-      domain_module =
-        dsl
-        |> Spark.Dsl.Extension.get_persisted(:domain_name)
-
       Module.concat(domain_module, "Application")
     end
   end
 
-  defp main_router_module_name(dsl) do
-    domain_name = Spark.Dsl.Extension.get_persisted(dsl, :domain_name)
-    
-    if domain_name do
-      Module.concat(domain_name, "Router")
+  defp main_router_module_name(domain_module) do
+    if domain_module do
+      Module.concat(domain_module, "Router")
     else
       AshCommanded.Router
     end
