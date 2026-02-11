@@ -1,10 +1,10 @@
 defmodule AshCommanded.Commanded.Sections.EventsSection do
   @moduledoc """
   Defines the schema and entities for the `events` section of the Commanded DSL.
-  
+
   Events represent facts that have occurred in the system and are emitted by commands.
   """
-  
+
   @event_entity %Spark.Dsl.Entity{
     name: :event,
     target: AshCommanded.Commanded.Event,
@@ -18,7 +18,8 @@ defmodule AshCommanded.Commanded.Sections.EventsSection do
       fields: [
         type: {:list, :atom},
         required: true,
-        doc: "The fields that the event contains, which should correspond to attributes in the resource"
+        doc:
+          "The fields that the event contains, which should correspond to attributes in the resource"
       ],
       event_name: [
         type: :atom,
@@ -27,7 +28,7 @@ defmodule AshCommanded.Commanded.Sections.EventsSection do
     ],
     imports: []
   }
-  
+
   def schema do
     [
       events: [
@@ -37,7 +38,7 @@ defmodule AshCommanded.Commanded.Sections.EventsSection do
       ]
     ]
   end
-  
+
   def entities do
     [@event_entity]
   end

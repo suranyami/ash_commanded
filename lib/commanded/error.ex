@@ -10,25 +10,25 @@ defmodule AshCommanded.Commanded.Error do
   Standard error structure for AshCommanded
   """
   @type t :: %__MODULE__{
-    type: error_type(),
-    message: String.t(),
-    path: list(String.t() | atom()),
-    field: atom() | nil,
-    value: any(),
-    context: map()
-  }
+          type: error_type(),
+          message: String.t(),
+          path: list(String.t() | atom()),
+          field: atom() | nil,
+          value: any(),
+          context: map()
+        }
 
   @typedoc """
   Types of errors that can occur in AshCommanded
   """
   @type error_type ::
-    :command_error |
-    :validation_error |
-    :transformation_error |
-    :aggregate_error |
-    :dispatch_error |
-    :action_error |
-    :projection_error
+          :command_error
+          | :validation_error
+          | :transformation_error
+          | :aggregate_error
+          | :dispatch_error
+          | :action_error
+          | :projection_error
 
   defstruct [
     :type,
@@ -271,16 +271,20 @@ defmodule AshCommanded.Commanded.Error do
   def format(%__MODULE__{} = error) do
     type_string = error.type |> Atom.to_string() |> String.replace("_", " ")
 
-    details = cond do
-      error.field && error.value !== nil ->
-        " (field: #{error.field}, value: #{inspect(error.value)})"
-      error.field ->
-        " (field: #{error.field})"
-      error.value !== nil ->
-        " (value: #{inspect(error.value)})"
-      true ->
-        ""
-    end
+    details =
+      cond do
+        error.field && error.value !== nil ->
+          " (field: #{error.field}, value: #{inspect(error.value)})"
+
+        error.field ->
+          " (field: #{error.field})"
+
+        error.value !== nil ->
+          " (value: #{inspect(error.value)})"
+
+        true ->
+          ""
+      end
 
     "#{String.capitalize(type_string)}: #{error.message}#{details}"
   end
@@ -348,8 +352,11 @@ defmodule AshCommanded.Commanded.Error do
     case error do
       %{message: message} ->
         aggregate_error(message, context: %{source: :commanded})
+
       _ ->
-        aggregate_error("Unknown Commanded error", context: %{source: :commanded, error: inspect(error)})
+        aggregate_error("Unknown Commanded error",
+          context: %{source: :commanded, error: inspect(error)}
+        )
     end
   end
 
@@ -394,20 +401,39 @@ defmodule AshCommanded.Commanded.Error do
   @spec normalize_error(any()) :: [t()]
   def normalize_error(error) do
     cond do
-      is_struct(error, __MODULE__) -> [error]
-      is_struct(error, Ash.Error.Invalid) -> from_ash_error(error)
-      match?(%Ash.Error.Changes.InvalidAttribute{}, error) -> [from_ash_error(error)]
-      match?(%Ash.Error.Query.InvalidQuery{}, error) -> [from_ash_error(error)]
+      is_struct(error, __MODULE__) ->
+        [error]
+
+      is_struct(error, Ash.Error.Invalid) ->
+        from_ash_error(error)
+
+      match?(%Ash.Error.Changes.InvalidAttribute{}, error) ->
+        [from_ash_error(error)]
+
+      match?(%Ash.Error.Query.InvalidQuery{}, error) ->
+        [from_ash_error(error)]
+
       # Test-friendly version without direct pattern matching against Commanded types
-      commanded_error?(error, "Commanded.Aggregates.ExecutionError") -> [from_commanded_error(error)]
-      commanded_error?(error, "Commanded.Aggregates.AggregateNotFoundError") -> [from_commanded_error(error)]
-      commanded_error?(error, "Commanded.EventStore.EventStoreError") -> [from_commanded_error(error)]
-      is_binary(error) -> [validation_error(error)]
-      is_map(error) and Map.has_key?(error, :message) -> [from_ash_error(error)]
-      true -> [validation_error("Unknown error: #{inspect(error)}")]
+      commanded_error?(error, "Commanded.Aggregates.ExecutionError") ->
+        [from_commanded_error(error)]
+
+      commanded_error?(error, "Commanded.Aggregates.AggregateNotFoundError") ->
+        [from_commanded_error(error)]
+
+      commanded_error?(error, "Commanded.EventStore.EventStoreError") ->
+        [from_commanded_error(error)]
+
+      is_binary(error) ->
+        [validation_error(error)]
+
+      is_map(error) and Map.has_key?(error, :message) ->
+        [from_ash_error(error)]
+
+      true ->
+        [validation_error("Unknown error: #{inspect(error)}")]
     end
   end
-  
+
   # Helper for detecting Commanded errors without direct pattern matching
   defp commanded_error?(error, module_name) do
     try do

@@ -26,9 +26,9 @@ defmodule AshCommanded.Commanded.Transaction do
   Options for transaction execution
   """
   @type transaction_options :: [
-    timeout: pos_integer(),
-    isolation_level: :read_committed | :repeatable_read | :serializable
-  ]
+          timeout: pos_integer(),
+          isolation_level: :read_committed | :repeatable_read | :serializable
+        ]
 
   @typedoc """
   Function that will be executed within a transaction
@@ -59,7 +59,8 @@ defmodule AshCommanded.Commanded.Transaction do
       ...> end)
       {:ok, %MyApp.User{id: "123", name: "John"}}
   """
-  @spec run(module(), transaction_function(), transaction_options()) :: {:ok, any()} | {:error, any()}
+  @spec run(module(), transaction_function(), transaction_options()) ::
+          {:ok, any()} | {:error, any()}
   def run(repo, fun, opts \\ []) when is_function(fun, 0) do
     transaction_opts = Keyword.take(opts, [:timeout, :isolation_level])
 
@@ -67,8 +68,10 @@ defmodule AshCommanded.Commanded.Transaction do
       repo.transaction(fun, transaction_opts)
     rescue
       error ->
-        {:error, Error.dispatch_error("Transaction failed: #{Exception.message(error)}", 
-          context: %{error: inspect(error)})}
+        {:error,
+         Error.dispatch_error("Transaction failed: #{Exception.message(error)}",
+           context: %{error: inspect(error)}
+         )}
     end
   end
 
@@ -99,30 +102,33 @@ defmodule AshCommanded.Commanded.Transaction do
       ...> ])
       {:ok, %{create_user: %MyApp.User{...}, create_profile: %MyApp.Profile{...}}}
   """
-  @spec execute_commands(module(), [map()], transaction_options()) :: 
-    {:ok, map()} | {:error, any(), any(), %{atom() => any()}}
+  @spec execute_commands(module(), [map()], transaction_options()) ::
+          {:ok, map()} | {:error, any(), any(), %{atom() => any()}}
   def execute_commands(repo, commands, opts \\ []) when is_list(commands) do
-    multi = Enum.reduce(commands, Multi.new(), fn command_spec, multi ->
-      operation_name = command_name_to_operation(command_spec)
-      
-      Multi.run(multi, operation_name, fn _repo, _changes ->
-        AshCommanded.Commanded.CommandActionMapper.map_to_action(
-          command_spec.command,
-          command_spec.resource,
-          command_spec.action,
-          command_spec[:opts] || []
-        )
+    multi =
+      Enum.reduce(commands, Multi.new(), fn command_spec, multi ->
+        operation_name = command_name_to_operation(command_spec)
+
+        Multi.run(multi, operation_name, fn _repo, _changes ->
+          AshCommanded.Commanded.CommandActionMapper.map_to_action(
+            command_spec.command,
+            command_spec.resource,
+            command_spec.action,
+            command_spec[:opts] || []
+          )
+        end)
       end)
-    end)
-    
+
     transaction_opts = Keyword.take(opts, [:timeout, :isolation_level])
-    
+
     try do
       repo.transaction(multi, transaction_opts)
     rescue
       error ->
-        {:error, :transaction_error, Error.dispatch_error("Transaction failed: #{Exception.message(error)}", 
-          context: %{error: inspect(error)}), %{}}
+        {:error, :transaction_error,
+         Error.dispatch_error("Transaction failed: #{Exception.message(error)}",
+           context: %{error: inspect(error)}
+         ), %{}}
     end
   end
 
@@ -153,7 +159,7 @@ defmodule AshCommanded.Commanded.Transaction do
   defp command_name_to_operation(command_spec) do
     command = command_spec.command
     command_module = command.__struct__
-    
+
     if command_spec[:name] do
       # Use provided name if available
       command_spec.name

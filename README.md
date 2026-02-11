@@ -31,12 +31,9 @@ mix test --cover:
 
 AshCommanded is built as a DSL extension for [Ash Framework](https://hexdocs.pm/ash/) resources using the [Spark DSL](https://hexdocs.pm/spark/) library for its extensible DSL capabilities. Its main components are:
 
-1. **DSL Extension**: The [`AshCommanded.Commanded.Dsl`](lib/commanded/dsl.ex) module defines five main sections:
-   - [`commands`](lib/commanded/sections/commands_section.ex): Define commands that trigger state changes
-   - [`events`](lib/commanded/sections/events_section.ex): Define events that are emitted by commands
-   - [`projections`](lib/commanded/sections/projections_section.ex): Define how events affect the resource state
-   - [`event_handlers`](lib/commanded/sections/event_handlers_section.ex): Define general purpose handlers for events
-   - [`application`](lib/commanded/sections/application_section.ex): Configure Commanded application settings
+1. **DSL Extensions**:
+   - **Resource extension** ([`AshCommanded.Commanded.Dsl`](lib/commanded/dsl.ex)): Used on Ash resources; defines `commands`, `events`, `projections`, and `event_handlers`.
+   - **Domain extension** ([`AshCommanded.Commanded.DomainDsl`](lib/commanded/domain_dsl.ex)): Used on Ash domains; defines the `application` section so the Commanded application module is generated (e.g. `MyApp.Domain.Application`).
 
 2. **Code Generation**: The library dynamically generates Elixir modules:
    - Command modules (structs with typespecs)
@@ -572,11 +569,11 @@ AshCommanded.Router.dispatch(command)
 
 ## Commanded Application
 
-The `application` section in the DSL allows configuring a Commanded application at the domain level:
+The `application` section configures a Commanded application at the domain level. Add the **Domain extension** `AshCommanded.Commanded.DomainDsl` to your Domain:
 
 ```elixir
 defmodule ECommerce.Store do
-  use Ash.Domain, extensions: [AshCommanded.Commanded.Dsl]
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
 
   resources do
     resource ECommerce.Product

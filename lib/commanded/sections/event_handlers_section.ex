@@ -1,11 +1,11 @@
 defmodule AshCommanded.Commanded.Sections.EventHandlersSection do
   @moduledoc """
   Defines the schema and entities for the `event_handlers` section of the Commanded DSL.
-  
+
   Event handlers are general purpose responders to events that don't necessarily update
   resource state but can perform side effects or other operations.
   """
-  
+
   @event_handler_entity %Spark.Dsl.Entity{
     name: :handler,
     target: AshCommanded.Commanded.EventHandler,
@@ -27,7 +27,8 @@ defmodule AshCommanded.Commanded.Sections.EventHandlersSection do
       ],
       action: [
         type: {:or, [:quoted, :atom]},
-        doc: "Action to perform when handling the event. Can be an Ash action name or a quoted function that receives the event and returns a result."
+        doc:
+          "Action to perform when handling the event. Can be an Ash action name or a quoted function that receives the event and returns a result."
       ],
       publish_to: [
         type: {:or, [:atom, :string, {:list, {:or, [:atom, :string]}}]},
@@ -36,7 +37,8 @@ defmodule AshCommanded.Commanded.Sections.EventHandlersSection do
       idempotent: [
         type: :boolean,
         default: false,
-        doc: "Whether the handler is idempotent and can safely handle the same event multiple times"
+        doc:
+          "Whether the handler is idempotent and can safely handle the same event multiple times"
       ],
       autogenerate?: [
         type: :boolean,
@@ -46,12 +48,12 @@ defmodule AshCommanded.Commanded.Sections.EventHandlersSection do
     ],
     imports: []
   }
-  
+
   @doc """
   Returns the schema for the event_handlers section
-  
+
   ## Examples
-  
+
       iex> AshCommanded.Commanded.Sections.EventHandlersSection.schema()
       [
         event_handlers: [
@@ -70,12 +72,12 @@ defmodule AshCommanded.Commanded.Sections.EventHandlersSection do
       ]
     ]
   end
-  
+
   @doc """
   Returns the entities for the event_handlers section
-  
+
   ## Examples
-  
+
       iex> AshCommanded.Commanded.Sections.EventHandlersSection.entities()
       [%Spark.Dsl.Entity{name: :handler, ...}]
   """

@@ -97,7 +97,7 @@ end
 
 ## Registering Projectors with Commanded
 
-The generated projectors need to be registered with your Commanded application to start processing events. Add them to your application's supervisor tree:
+The generated projectors need to be registered with your Commanded application to start processing events. The Commanded application module (e.g. `MyApp.Domain.Application`) is generated when you add `AshCommanded.Commanded.DomainDsl` to your Domain and define the `application` section. Add the projectors to your application's supervisor tree:
 
 ```elixir
 defmodule ECommerce.Application do

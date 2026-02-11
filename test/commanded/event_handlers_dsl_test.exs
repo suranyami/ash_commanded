@@ -38,7 +38,8 @@ defmodule AshCommanded.Commanded.EventHandlersDslTest do
       event_handlers do
         handler :notification_handler do
           events([:test_registered])
-          action(fn event, _metadata -> 
+
+          action(fn event, _metadata ->
             # Simple function that would send an email
             send(self(), {:notification_sent, event})
             :ok
@@ -58,16 +59,16 @@ defmodule AshCommanded.Commanded.EventHandlersDslTest do
 
   test "can define event handlers in the DSL" do
     handlers = Spark.Dsl.Extension.get_entities(TestResource, [:commanded, :event_handlers])
-    
+
     assert length(handlers) == 2
-    
+
     [notification_handler, integration_handler] = handlers
-    
+
     # Check notification handler
     assert notification_handler.name == :notification_handler
     assert notification_handler.events == [:test_registered]
     assert is_function(extract_function_from_quoted(notification_handler.action), 2)
-    
+
     # Check integration handler
     assert integration_handler.name == :integration_handler
     assert integration_handler.events == [:test_registered, :test_updated]
@@ -80,11 +81,11 @@ defmodule AshCommanded.Commanded.EventHandlersDslTest do
     # Verify that the extension is registered
     extensions = Spark.extensions(TestResource)
     assert AshCommanded.Commanded.Dsl in extensions
-    
+
     # Verify that we get the event handlers we defined
     handlers = Spark.Dsl.Extension.get_entities(TestResource, [:commanded, :event_handlers])
     assert length(handlers) == 2
-    
+
     # Just verify our transformer module exists - we can't directly test if it's run
     assert Code.ensure_loaded?(AshCommanded.Commanded.Transformers.GenerateEventHandlerModules)
   end

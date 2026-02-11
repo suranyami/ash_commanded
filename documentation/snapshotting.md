@@ -16,16 +16,16 @@ This significantly improves performance for aggregates with many events.
 
 ## Enabling Snapshotting
 
-Snapshotting is configured at the application level in your domain:
+Snapshotting is configured at the application level in your domain. Use the **Domain extension** `AshCommanded.Commanded.DomainDsl` so the `application` section is available and the Commanded application module is generated:
 
 ```elixir
 defmodule MyApp.Domain do
-  use Ash.Domain
-  
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
+
   resources do
     resource MyApp.User
   end
-  
+
   commanded do
     application do
       otp_app :my_app
@@ -99,7 +99,7 @@ defmodule MyApp.CustomSnapshotStore do
 end
 ```
 
-Then configure your domain to use it:
+Then configure your domain to use it (in a Domain that has `extensions: [AshCommanded.Commanded.DomainDsl]`):
 
 ```elixir
 commanded do
@@ -128,7 +128,7 @@ The `snapshot_version` setting allows for future schema evolution. If you need t
 defmodule MyApp.User do
   use Ash.Resource,
     extensions: [AshCommanded.Commanded.Dsl]
-  
+
   attributes do
     uuid_primary_key :id
     attribute :email, :string

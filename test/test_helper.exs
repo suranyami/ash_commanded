@@ -4,7 +4,7 @@
 commanded_available? = Code.ensure_loaded?(Commanded.Application)
 
 # Configure ExUnit
-exclude_tags = 
+exclude_tags =
   if commanded_available? do
     [:skip]
   else

@@ -2,14 +2,19 @@ defmodule AshCommanded.Commanded.Sections.ApplicationSection do
   @moduledoc """
   Defines the schema for the `application` section of the Commanded DSL.
 
-  The application section allows configuring a Commanded application for an Ash domain,
-  specifying settings such as the event store adapter, pubsub mechanism, and registry.
+  The application section is used on your **Ash.Domain** via the
+  `AshCommanded.Commanded.DomainDsl` extension. It configures the generated
+  Commanded application (event store, pubsub, registry, etc.).
 
   ## Example
 
   ```elixir
   defmodule MyApp.Domain do
-    use Ash.Domain
+    use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
+
+    resources do
+      resource MyApp.User
+    end
 
     commanded do
       application do
@@ -21,8 +26,6 @@ defmodule AshCommanded.Commanded.Sections.ApplicationSection do
         prefix "MyApp"
       end
     end
-
-    # resources...
   end
   ```
   """

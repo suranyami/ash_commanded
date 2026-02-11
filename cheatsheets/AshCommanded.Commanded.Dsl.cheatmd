@@ -152,14 +152,16 @@ end
 
 ## Application Configuration
 
+The `application` section is configured on your **Domain** using the Domain extension `AshCommanded.Commanded.DomainDsl`. This generates the Commanded application module (e.g. `MyApp.Domain.Application`).
+
 ```elixir
 defmodule MyApp.Domain do
-  use Ash.Domain, extensions: [AshCommanded.Commanded.Dsl]
-  
+  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
+
   resources do
     resource MyApp.User
   end
-  
+
   commanded do
     application do
       otp_app :my_app
