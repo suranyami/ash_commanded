@@ -190,14 +190,10 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
     # Generate apply function for each event
     apply_functions = generate_apply_functions(events, event_modules)
     
-    # Generate snapshot functions - passing application settings from DSL
-    app_config = 
-      if dsl_state do
-        app_sections = Transformer.get_entities(dsl_state, [:commanded, :application])
-        if app_sections && length(app_sections) > 0, do: hd(app_sections), else: nil
-      else
-        nil
-      end
+    # Generate snapshot functions - passing application settings from DSL.
+    # The application section has no entities (only section-level options), so we use
+    # the Dsl.application/1 helper which reads opts via get_opt, not get_entities.
+    app_config = if dsl_state, do: AshCommanded.Commanded.Dsl.application(dsl_state), else: nil
     snapshot_functions = generate_snapshot_functions(app_config)
     
     quote do
@@ -599,12 +595,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
     end)
   end
   
-  # Generate snapshot-related functions for the aggregate
+  # Generate snapshot-related functions for the aggregate.
+  # app_config is a keyword list from AshCommanded.Commanded.Dsl.application/1 (or nil).
   defp generate_snapshot_functions(app_config) do
-    # Extract snapshot configuration from application settings
-    snapshotting_enabled = app_config && Map.get(app_config, :snapshotting, false)
-    snapshot_threshold = app_config && Map.get(app_config, :snapshot_threshold, 100)
-    snapshot_version = app_config && Map.get(app_config, :snapshot_version, 1)
+    # Extract snapshot configuration from application settings (defaults when app_config is nil)
+    snapshotting_enabled = (app_config && Keyword.get(app_config, :snapshotting, false)) || false
+    snapshot_threshold = (app_config && Keyword.get(app_config, :snapshot_threshold, 100)) || 100
+    snapshot_version = (app_config && Keyword.get(app_config, :snapshot_version, 1)) || 1
     
     # Default functions that work with or without snapshotting enabled
     default_functions = quote do
