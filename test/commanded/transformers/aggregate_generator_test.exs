@@ -169,8 +169,9 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
       refute String.contains?(ast_string, "def create_snapshot("),
              "expected no create_snapshot when snapshotting is disabled"
 
-      refute String.contains?(ast_string, "def snapshot_state_if_needed("),
-             "expected no snapshot_state_if_needed when snapshotting is disabled"
+      # No-op snapshot_state_if_needed/1 is always generated so apply/2 compiles in consuming apps
+      assert String.contains?(ast_string, "def snapshot_state_if_needed("),
+             "expected snapshot_state_if_needed/1 to be generated even when snapshotting is disabled"
     end
 
     test "snapshot functions use application config when dsl_state has application section" do
@@ -220,6 +221,55 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
 
       assert String.contains?(ast_string, "snapshot_state_if_needed"),
              "expected snapshot_state_if_needed when snapshotting is enabled"
+    end
+
+    test "always generates snapshot_state_if_needed/1 so apply/2 compiles in consuming apps" do
+      # When snapshotting is disabled (dsl_state nil), apply/2 still calls snapshot_state_if_needed/1.
+      # The aggregate module must define that function (as a no-op) or compilation fails in consuming apps.
+      attribute_names = [:id, :email]
+      command = %Command{name: :register_user, fields: [:id, :email], identity_field: :id}
+      event = %Event{name: :user_registered, fields: [:id, :email]}
+      command_modules = %{register_user: MyApp.Commands.RegisterUser}
+      event_modules = %{user_registered: MyApp.Events.UserRegistered}
+
+      ast_with_nil_dsl =
+        invoke_private(
+          GenerateAggregateModule,
+          :build_aggregate_module_ast,
+          ["User", attribute_names, [command], [event], command_modules, event_modules, nil]
+        )
+
+      ast_string_nil = Macro.to_string(ast_with_nil_dsl)
+
+      assert String.contains?(ast_string_nil, "def snapshot_state_if_needed("),
+             "snapshot_state_if_needed/1 must be generated when dsl_state is nil (snapshotting disabled)"
+
+      # When snapshotting is enabled, the full implementation is generated
+      app_config = [snapshotting: true, snapshot_threshold: 50, snapshot_version: 2]
+      :meck.new(AshCommanded.Commanded.Dsl, [:passthrough])
+      :meck.expect(AshCommanded.Commanded.Dsl, :application, fn _ -> app_config end)
+      dsl_state = %{}
+
+      ast_with_app_config =
+        invoke_private(
+          GenerateAggregateModule,
+          :build_aggregate_module_ast,
+          [
+            "User",
+            attribute_names,
+            [command],
+            [event],
+            command_modules,
+            event_modules,
+            dsl_state
+          ]
+        )
+
+      :meck.unload(AshCommanded.Commanded.Dsl)
+      ast_string_enabled = Macro.to_string(ast_with_app_config)
+
+      assert String.contains?(ast_string_enabled, "def snapshot_state_if_needed("),
+             "snapshot_state_if_needed/1 must be generated when snapshotting is enabled"
     end
   end
 
