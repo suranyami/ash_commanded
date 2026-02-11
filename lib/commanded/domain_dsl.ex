@@ -31,23 +31,13 @@ defmodule AshCommanded.Commanded.DomainDsl do
   This will generate `MyApp.Domain.Application` (or a custom name if you use the `prefix` option).
   """
 
-  alias AshCommanded.Commanded.Sections.ApplicationSection
-
-  @application_section %Spark.Dsl.Section{
-    name: :application,
-    describe: "Configure the Commanded application",
-    schema: ApplicationSection.schema(),
-    entities: ApplicationSection.entities(),
-    imports: []
-  }
-
-  @commanded_section %Spark.Dsl.Section{
-    name: :commanded,
-    describe: "Configure CQRS and Event Sourcing with Commanded for this domain",
-    sections: [@application_section]
-  }
-
+  # Import the Resource DSL so the Domain has the `commanded` macro in scope.
+  # The `commanded do application do ... end` block is processed by Commanded.Dsl,
+  # which stores config at [:commanded, :application] for our transformer to read.
   use Spark.Dsl.Extension,
-    sections: [@commanded_section],
-    transformers: [AshCommanded.Commanded.Transformers.GenerateCommandedApplication]
+    sections: [],
+    imports: [AshCommanded.Commanded.Dsl],
+    transformers: [
+      AshCommanded.Commanded.Transformers.GenerateCommandedApplication
+    ]
 end
