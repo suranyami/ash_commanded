@@ -132,6 +132,14 @@ stated pain.
 - [ ] Decompose `GenerateAggregateModule` (861 lines) and `CommandActionMapper` (640 lines)
 - [ ] Review `Error` (514 lines) for composition opportunities
 
+**Repository and tooling**
+
+- [ ] Add `usage_rules` (dev-only) and generate LLM-facing usage rules for the library — `core` already uses `~> 1.2` as precedent
+- [ ] Add an `AGENTS.md` capturing DSL conventions, transformer ordering and testing expectations for coding agents
+- [ ] Reconcile `CLAUDE.md` with reality and make it and `AGENTS.md` consistent rather than divergent
+- [ ] Bump all dependencies to current versions (Ash, Spark, ExDoc, Sourceror, Igniter, Mock)
+- [ ] Move to current Elixir/OTP while supporting the previous two minor releases, enforced by a CI matrix
+
 **core migration**
 
 - [ ] Migrate `identity` onto AshCommanded
@@ -156,8 +164,10 @@ stated pain.
 
 ## Constraints
 
-- **Tech stack**: Elixir ~> 1.14 (developed on 1.18.4), Erlang/OTP 27.3 — matches `core`'s runtime
-- **Dependencies**: Ash ~> 3.0 (3.5.8), Spark ~> 2.3 (2.3.5), Commanded 1.4.8 — pinned by `core`'s own versions
+- **Tech stack**: Current Elixir/OTP, with the previous two minor Elixir releases supported and CI-tested.
+  Presently declared `~> 1.14`; `core` runs `~> 1.18` on OTP 27. The declared floor tightens as part of this work.
+- **Dependencies**: Ash ~> 3.0 (3.5.8), Spark ~> 2.3 (2.3.5), Commanded 1.4.8 — upper bounds move to current
+  releases, but whatever is chosen must remain installable alongside `core`'s own resolved versions
 - **Compatibility**: Must support every pattern `core` uses today, or `core` cannot migrate
 - **Licence**: MIT, upstream `accountex-org/ash_commanded` — contributions must suit a public library
 - **Genericity**: Examples and tests must be domain-neutral; no Accountex-specific concepts in the published library
@@ -176,6 +186,8 @@ stated pain.
 | Two example adapters (in-memory + Postgres EventStore) | In-memory keeps docs and CI fast; Postgres proves the path `core` actually uses | — Pending |
 | All flagged tech debt in scope | "Production ready" is not compatible with `IO.inspect` in dispatch paths or undeclared dependencies | — Pending |
 | Break the DSL now, cut 1.0 later | 0.2.0 adoption is negligible; freezing the DSL before `core` migrates would lock in the gaps this project exists to fix | — Pending |
+| Support current Elixir/OTP plus the previous two minors | Standard Hex-library practice: broad enough to adopt, narrow enough to CI-test honestly. `~> 1.14` was untested reach | — Pending |
+| Repository tooling (usage_rules, AGENTS.md, dep bumps) is in scope | The library will be worked on largely by coding agents; stale docs and undeclared conventions are the same failure mode as the `CLAUDE.md` drift already found | — Pending |
 | Upstream rather than fork | David holds maintainer rights on `accountex-org/ash_commanded` including hex publishing | ✓ Good |
 
 ## Evolution
