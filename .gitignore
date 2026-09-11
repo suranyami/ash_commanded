@@ -22,7 +22,7 @@ ash_commanded-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
-# Claude analysis files
-Claude.md
+# Claude analysis files (root only — must not swallow .claude/CLAUDE.md)
+/Claude.md
 
 **/.claude/settings.local.json
