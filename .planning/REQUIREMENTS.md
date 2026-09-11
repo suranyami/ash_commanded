@@ -126,7 +126,7 @@ Deferred. Tracked but not in the current roadmap.
 ## Out of Scope
 
 | Feature | Reason |
-|---------|--------|
+| --------- | -------- |
 | Backwards compatibility with the published 0.2.0 DSL | Adoption is negligible; the aggregate and projection redesign cannot be done additively |
 | Non-Commanded event-sourcing backends | The library targets Commanded 1.4.x specifically |
 | Migrating `core` code that is not event-sourced | Only the CQRS/ES surface is in scope |
@@ -140,7 +140,7 @@ Deferred. Tracked but not in the current roadmap.
 Resolved during planning, not now.
 
 | Question | Affects | Decided by |
-|----------|---------|-----------|
+| ---------- | --------- | ----------- |
 | Use `commanded_ecto_projections` or hand-roll idempotency in generated AST? | PROJ-02, PROJ-04 | Integration spike before the projection phase |
 | Does `core` use snapshots at all today? | SNAP-01..03 scope | Capability audit |
 | Aggregate precondition signature — does `(state, command) -> :ok \| {:error, reason}` fit every guard in `core`? | AGG-01 | Sampling `core`'s 13 aggregates during planning |
@@ -149,17 +149,75 @@ Resolved during planning, not now.
 
 ## Traceability
 
-Populated during roadmap creation.
+Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 
 | Requirement | Phase | Status |
-|-------------|-------|--------|
-| _(all v1 requirements)_ | _pending roadmap_ | Pending |
+| ------------- | ------- | -------- |
+| FOUND-01 | Phase 2 | Pending |
+| FOUND-02 | Phase 2 | Pending |
+| FOUND-03 | Phase 2 | Pending |
+| FOUND-04 | Phase 2 | Pending |
+| FOUND-05 | Phase 5 | Pending |
+| TEST-01 | Phase 1 | Pending |
+| TEST-02 | Phase 1 | Pending |
+| TEST-03 | Phase 1 | Pending |
+| TEST-04 | Phase 1 | Pending |
+| TEST-05 | Phase 2 | Pending |
+| TEST-06 | Phase 1 | Pending |
+| TYPE-01 | Phase 3 | Pending |
+| TYPE-02 | Phase 3 | Pending |
+| TYPE-03 | Phase 3 | Pending |
+| TYPE-04 | Phase 3 | Pending |
+| TYPE-05 | Phase 3 | Pending |
+| AGG-01 | Phase 4 | Pending |
+| AGG-02 | Phase 4 | Pending |
+| AGG-03 | Phase 4 | Pending |
+| AGG-04 | Phase 4 | Pending |
+| AGG-05 | Phase 4 | Pending |
+| PROJ-01 | Phase 5 | Pending |
+| PROJ-02 | Phase 5 | Pending |
+| PROJ-03 | Phase 5 | Pending |
+| PROJ-04 | Phase 5 | Pending |
+| HAND-01 | Phase 6 | Pending |
+| HAND-02 | Phase 6 | Pending |
+| SAGA-01 | Phase 6 | Pending |
+| SAGA-02 | Phase 6 | Pending |
+| SAGA-03 | Phase 6 | Pending |
+| SNAP-01 | Phase 4 | Pending |
+| SNAP-02 | Phase 4 | Pending |
+| SNAP-03 | Phase 4 | Pending |
+| QUAL-01 | Phase 1 | Pending |
+| QUAL-02 | Phase 1 | Pending |
+| QUAL-03 | Phase 4 | Pending |
+| QUAL-04 | Phase 6 | Pending |
+| QUAL-05 | Phase 6 | Pending |
+| QUAL-06 | Phase 2 | Pending |
+| DOCS-01 | Phase 7 | Pending |
+| DOCS-02 | Phase 7 | Pending |
+| DOCS-03 | Phase 7 | Pending |
+| DOCS-04 | Phase 7 | Pending |
+| REPO-01 | Phase 7 | Pending |
+| REPO-02 | Phase 7 | Pending |
+| REPO-03 | Phase 1 | Pending |
+| REPO-04 | Phase 1 | Pending |
+| REPO-05 | Phase 1 | Pending |
+| MIG-01 | Phase 8 | Pending |
+| MIG-02 | Phase 8 | Pending |
+| MIG-03 | Phase 8 | Pending |
+| MIG-04 | Phase 9 | Pending |
+| MIG-05 | Phase 10 | Pending |
+| MIG-06 | Phase 11 | Pending |
+| MIG-07 | Phase 12 | Pending |
+| MIG-08 | Phase 13 | Pending |
+| REL-01 | Phase 13 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 57 total
-- Mapped to phases: 0
-- Unmapped: 57 ⚠️
+- Mapped to phases: 57
+- Unmapped: 0
 
 ---
-*Requirements defined: 2026-09-11*
-*Last updated: 2026-09-11 after initial definition*
+
+Requirements defined: 2026-09-11
+Last updated: 2026-09-11 after roadmap creation
