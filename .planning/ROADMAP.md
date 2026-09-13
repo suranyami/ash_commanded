@@ -49,7 +49,35 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A test asserting a specific `Spark.Error.DslError` message for an invalid DSL passes, and fails if the corresponding verifier is deleted.
   4. No test in the suite asserts against a hardcoded mock return from `CommandActionMapper`; create, update and destroy assertions read state back through `Ash`.
   5. `mix test` and `mix test <any single file>` agree on every test's outcome; no test's result depends on event-store or aggregate-process state left behind by another test.
-**Plans**: TBD
+
+**Plans**: 8 plans across 6 waves
+
+Plans:
+**Wave 1**
+
+- [ ] 01-01-PLAN.md — Commit the in-flight branch work as a baseline, then declare the toolchain and make `mix setup` work (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 01-02-PLAN.md — Tracer: one command end-to-end through a really-compiled aggregate into real Ash state, extended to update and destroy (wave 2)
+- [ ] 01-03-PLAN.md — Delete the remaining module-creation knobs, all six load-check stubs, and both console-print sites (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 01-04-PLAN.md — Remove the last two mapper branches and rewrite the three remaining mapper-calling test files (wave 3)
+- [ ] 01-05-PLAN.md — Compile-time DSL rejection tests for all nine verifiers, replacing the mocked ones (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 01-06-PLAN.md — Test isolation, cross-environment generated-module parity, and direct calls into every generated module kind (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 01-07-PLAN.md — Credo, Dialyzer, cleared warning debt, and a single `mix check` alias (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 01-08-PLAN.md — CI matrix across the supported Elixir/OTP pairs, plus synced upstream usage rules (wave 6)
 
 **Note**: This phase is the stated blocker for everything downstream. Four transformers
 (`generate_aggregate_module.ex:141`, `generate_event_handler_modules.ex:99`,
@@ -69,6 +97,7 @@ these land, no test written in any later phase can fail for a real reason.
   3. Declaring `application` on an `Ash.Resource`, or `commands` on an `Ash.Domain`, raises a `Spark.Error.DslError` naming the correct extension.
   4. `mix compile` from clean succeeds with resources, domain and application all present, and no transformer calls `Ash.Domain.Info` or `Ash.Resource.Info` on any module other than self.
   5. Every verifier in `lib/commanded/verifiers/` has both an accepting test and a rejecting test with an asserted error message; `ValidateCommandActions`, `ValidateCommandHandlers` and `ValidateCommandNameConflict` either exist with such tests or are absent from `CLAUDE.md`.
+
 **Plans**: TBD
 
 **Note**: FOUND-03 and FOUND-04 must be planned before FOUND-05 (Phase 5). Domain-reads-Resource is
@@ -87,6 +116,7 @@ safe; Resource-reads-Domain deadlocks the compiler. Work is already in flight on
   3. An event declaring three ordered upcast transforms compiles to a single `upcast/2` implementation that applies them in declared order; reordering the declarations changes the resulting struct.
   4. Upcasting is asserted against a payload captured from `core`'s existing event store in its pre-change shape, not against a struct the test constructed.
   5. Fields that were atoms or `DateTime`s before serialization are handled correctly after a real JSON round trip, where they arrive as strings.
+
 **Plans**: TBD
 
 **Open question to resolve during planning**: How does `core`'s string-vs-atom key divergence
@@ -111,6 +141,7 @@ it replaces will hard-crash replay of `core`'s historical events.
   3. A single command emits two events, both persisted to the stream in declared order.
   4. Aggregate lifespan, `snapshot_every` and `snapshot_version` are set from the DSL and honoured, and a snapshot written before a VM restart is still readable after it through the shipped Postgres adapter.
   5. `GenerateAggregateModule` is under 300 lines, with command execution, event application and snapshot concerns in separate builder modules.
+
 **Plans**: TBD
 
 **Open questions to resolve during planning**:
@@ -135,6 +166,7 @@ adding these capabilities means rewriting `GenerateAggregateModule` regardless; 
   3. A projection write that fails rolls back the Ash action it composed with, proven by an integration test against a Postgres event store rather than the in-memory adapter.
   4. A projection can delegate to a supplied function or module and still participate in the same transaction and idempotency guarantees as the declared form.
   5. Adding a resource with a projection to a domain causes its projector to appear in that domain's Commanded application supervision tree with no manual registration, and `mix compile` from clean still succeeds.
+
 **Plans**: TBD
 
 **Open questions to resolve during planning**:
@@ -161,6 +193,7 @@ closed in Phase 2.
   3. A declared process manager routes two related events to a command, persists its state, and recovers that state after its process is killed.
   4. An example and a test drive a process manager end to end, from first triggering event to final dispatched command.
   5. `CommandActionMapper` is under 250 lines with transaction, transformation and error-handling concerns moved to their existing modules, and `Error` is either under 300 lines or carries a comment naming what would break if it were split.
+
 **Plans**: TBD
 
 **Note**: `core` uses no process managers today, so SAGA-01..03 do not gate any migration — they are
@@ -179,6 +212,7 @@ which is the same surface HAND-01 and HAND-02 configure.
   3. The testing guide's examples are executed by the test suite — an example that stops compiling fails CI, so the guide cannot drift.
   4. Generated docs and cheat sheets cover both the Resource and the Domain extension, and a test asserts that every DSL option named in the documentation exists in the code.
   5. `usage-rules.md` ships with the package, and `AGENTS.md` states the transformer total order and the testing expectations, so a coding agent adding a transformer is told where it goes.
+
 **Plans**: TBD
 
 **Note**: The Postgres example must exist before the first `core` domain migration is validated — a
@@ -196,6 +230,7 @@ in-memory adapter skips the serialization round trip entirely.
   2. The harness replays every event twice and still reports equivalence, catching idempotency the hand-written original had by accident but the generated version does not.
   3. A pre-cutover check enumerates every event type string already persisted for a domain and fails if any generated event would serialize to a different string.
   4. `core`'s cross-domain event-handler dependency graph is written down, naming every handler that pattern-matches another domain's event modules.
+
 **Plans**: TBD
 
 **Note**: This phase gates Phases 9-13. Golden traces must include historical events that predate the
@@ -212,6 +247,7 @@ most recent schema version, or the upcaster's older branches are never exercised
   2. No hand-written `Commanded.Event.Upcaster` implementation remains in `identity` — every upcast is a DSL-declared transform, and the pre-cutover type-string check passes for every `identity` event type.
   3. Every handler in another domain that references an `identity` event module is updated in the same change, and `core`'s full test suite passes against a Postgres event store.
   4. `identity`'s command and event module count drops measurably while every aggregate business rule remains expressed in the aggregate — no rule is dropped, and none is moved into a projection.
+
 **Plans**: TBD
 
 **Note**: `identity` goes first deliberately: it already contains the upcasters and the renames, so it
@@ -227,6 +263,7 @@ exercises the riskiest machinery on the first attempt rather than the fifth.
   1. Golden-trace replay of `integration`'s event history is field-identical to the hand-written implementation, under single and double delivery.
   2. The migration requires no library changes; any capability gap found is fixed in AshCommanded and re-verified, never worked around inside `core`.
   3. The pre-cutover type-string check passes and every cross-domain consumer of `integration` events is updated in the same change.
+
 **Plans**: TBD
 
 ### Phase 11: Migrate data
@@ -239,6 +276,7 @@ exercises the riskiest machinery on the first attempt rather than the fifth.
   1. Golden-trace replay of `data`'s event history, including double delivery of every event, is field-identical to the hand-written implementation.
   2. Every `data` projector that computed a delta (increment, append) is expressed as an absolute set or guarded by an explicit idempotency key — replaying an event does not double-apply it.
   3. The pre-cutover type-string check passes, every cross-domain consumer is updated in the same change, and `core`'s full test suite passes against a Postgres event store.
+
 **Plans**: TBD
 
 ### Phase 12: Migrate schema_definition
@@ -251,6 +289,7 @@ exercises the riskiest machinery on the first attempt rather than the fifth.
   1. All 26 of `schema_definition`'s commands are declared in the DSL, and golden-trace replay of the domain's event history is field-identical to the hand-written implementation.
   2. No hand-written Commanded command, event or aggregate module remains in `schema_definition`.
   3. The pre-cutover type-string check passes for every `schema_definition` event type, every cross-domain consumer is updated in the same change, and `core`'s full test suite passes against a Postgres event store.
+
 **Plans**: TBD
 
 ### Phase 13: Migrate workflow and publish 1.0
@@ -264,6 +303,7 @@ exercises the riskiest machinery on the first attempt rather than the fifth.
   2. No hand-written Commanded aggregate, command or event module remains anywhere in `core`'s five event-sourced domains, and `core` runs in production on AshCommanded.
   3. AshCommanded 1.0 is installable from hex.pm, and a fresh project following the published README reaches a working command → event → projection cycle.
   4. Migration notes from 0.2.0 name every breaking DSL change made over the course of this project.
+
 **Plans**: TBD
 
 ## Progress
