@@ -171,3 +171,12 @@ None - no external service configuration required.
 ---
 *Phase: 01-build-integrity*
 *Completed: 2026-09-14*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/01-build-integrity/01-01-SUMMARY.md`
+- FOUND: `mix.exs`
+- FOUND: `mix.lock`
+- FOUND: commit `f37681f` (Task 3 — toolchain declaration)
+- FOUND: commit `09b84da` (this SUMMARY)
+- FOUND: commit `b481ae1` (Task 1 baseline, pre-existing)
