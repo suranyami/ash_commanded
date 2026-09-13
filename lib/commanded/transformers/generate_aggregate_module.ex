@@ -134,14 +134,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
             dsl_state
           )
 
-        # Skip actual module creation in test environment
-        unless Application.get_env(
-                 :ash_commanded,
-                 :skip_aggregate_module_creation,
-                 Mix.env() == :test
-               ) do
-          BaseTransformer.create_module(aggregate_module, ast, __ENV__)
-        end
+        BaseTransformer.create_module(aggregate_module, ast, __ENV__)
 
         # Store the generated module in DSL state
         updated_dsl_state = Transformer.persist(dsl_state, :aggregate_module, aggregate_module)
@@ -195,7 +188,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
 
     # Generate execute function for each command
     execute_functions =
-      generate_execute_functions(commands, events, command_modules, event_modules)
+      generate_execute_functions(resource_name, commands, events, command_modules, event_modules)
 
     # Generate apply function for each event
     apply_functions = generate_apply_functions(events, event_modules)
@@ -229,9 +222,20 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
   end
 
   # Generate execute/2 function for each command
-  defp generate_execute_functions(commands, events, command_modules, event_modules) do
+  defp generate_execute_functions(resource_name, commands, events, command_modules, event_modules) do
     Enum.map(commands, fn command ->
       command_module = command_modules[command.name]
+
+      # The command module only ever encodes the app_prefix (its own namespace minus
+      # "Commands.<Name>"), never the resource name itself — so it cannot be split back
+      # into the resource module at runtime. Compute the real resource module now, at
+      # macro-generation time, and inline it as a literal instead.
+      resource_module =
+        command_module
+        |> Module.split()
+        |> Enum.drop(-2)
+        |> Kernel.++([resource_name])
+        |> Module.concat()
 
       # Find potential matching event for this command
       # Use explicit event: option if set, otherwise fall back to command name
@@ -305,13 +309,9 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
           - `{:error, error}` - When command execution fails with standardized error
           """
           def execute(%__MODULE__{} = aggregate, %unquote(command_module){} = command) do
-            # Extract resource module from command
-            resource_module =
-              command.__struct__
-              |> Module.split()
-              # Remove "Commands" and command name
-              |> Enum.drop(-2)
-              |> Module.concat()
+            # Resolved at macro-generation time (see generate_execute_functions/5) — the
+            # command module's own namespace cannot be split back into the resource module.
+            resource_module = unquote(resource_module)
 
             # Set up command context
             context = %{
@@ -544,13 +544,9 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
               "No matching event found for command #{unquote(inspect(command.name))}"
             )
 
-            # Extract resource module from command
-            resource_module =
-              command.__struct__
-              |> Module.split()
-              # Remove "Commands" and command name
-              |> Enum.drop(-2)
-              |> Module.concat()
+            # Resolved at macro-generation time (see generate_execute_functions/5) — the
+            # command module's own namespace cannot be split back into the resource module.
+            resource_module = unquote(resource_module)
 
             # Apply middleware even for not implemented commands
             try do

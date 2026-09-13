@@ -469,19 +469,13 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   # Execute a create action
   defp execute_create(resource, action_name, params, context) do
-    # In production, this would use actual Ash.Changeset functions
-    # For now, return mock success for testing
-    if Mix.env() == :test do
-      {:ok, %{action: action_name, params: params, context: context}}
-    else
-      changeset = Ash.Changeset.new(resource)
-      changeset = Ash.Changeset.for_action(changeset, action_name, params)
-      changeset = Ash.Changeset.set_context(changeset, context)
+    changeset = Ash.Changeset.new(resource)
+    changeset = Ash.Changeset.for_action(changeset, action_name, params)
+    changeset = Ash.Changeset.set_context(changeset, context)
 
-      case Ash.create(changeset) do
-        {:ok, _} = success -> success
-        {:error, error} -> {:error, error}
-      end
+    case Ash.create(changeset) do
+      {:ok, _} = success -> success
+      {:error, error} -> {:error, error}
     end
   end
 
