@@ -9,10 +9,11 @@ defmodule AshCommanded.MixProject do
     [
       app: :ash_commanded,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() == :prod,
       deps: deps(),
+      elixirc_paths: elixirc_paths(Mix.env()),
 
       # Hex
       description: @description,
@@ -23,7 +24,19 @@ defmodule AshCommanded.MixProject do
       docs: docs(),
 
       # Testing
-      aliases: aliases()
+      aliases: aliases(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.html": :test
+      ],
+
+      # Static analysis
+      dialyzer: [
+        ignore_warnings: ".dialyzer_ignore.exs",
+        plt_file: {:no_warn, "priv/plts/project.plt"}
+      ]
     ]
   end
 
@@ -39,16 +52,29 @@ defmodule AshCommanded.MixProject do
     [
       {:ash, "~> 3.0"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
-      {:spark, "~> 2.3"},
+      {:spark, "~> 2.6"},
       {:igniter, "~> 0.5", only: [:dev, :test]},
       {:mock, "~> 0.3.0", only: [:test]},
 
+      # Event sourcing runtime
+      {:commanded, "~> 1.4"},
+      {:eventstore, "~> 1.4", optional: true},
+      {:commanded_eventstore_adapter, "~> 1.4", optional: true},
+
+      # Static analysis and coverage
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:excoveralls, "~> 0.18", only: [:test]},
+      {:usage_rules, "~> 1.2", only: [:dev]},
+
       # Documentation
       {:ex_doc, "~> 0.30", only: [:dev, :test], runtime: false}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:dev), do: ["lib", "test/support/parity"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp package do
     [
@@ -163,6 +189,7 @@ defmodule AshCommanded.MixProject do
 
   defp aliases do
     [
+      setup: ["local.hex --force", "local.rebar --force", "deps.get", "deps.compile"],
       docs: ["docs", &copy_images/1],
       "gen.docs": ["spark.cheat_sheets", "docs"],
       "spark.cheat_sheets": "spark.cheat_sheets --extensions AshCommanded.Commanded.Dsl"
