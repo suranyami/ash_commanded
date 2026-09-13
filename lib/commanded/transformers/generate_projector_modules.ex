@@ -84,6 +84,14 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
         app_prefix = BaseTransformer.get_module_prefix(resource_module)
         resource_name = BaseTransformer.get_resource_name(resource_module)
 
+        # Derive the Commanded application module from the domain.
+        # Ash persists the domain on the resource DSL state (@persist {:domain, domain}),
+        # so we have the domain atom even though the domain module hasn't compiled yet.
+        # The naming convention mirrors generate_commanded_application.ex: DomainModule.DomainNameApplication
+        domain = Transformer.get_persisted(dsl_state, :domain) || app_prefix
+        domain_name = domain |> Module.split() |> List.last()
+        commanded_application = Module.concat([domain, "#{domain_name}Application"])
+
         projector_module = build_projector_module(resource_name, app_prefix)
 
         # Create the module AST and define it
@@ -94,7 +102,8 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
             autogen_projections,
             event_projections,
             event_modules,
-            projection_modules
+            projection_modules,
+            commanded_application
           )
 
         # Skip actual module creation in test environment
@@ -163,7 +172,8 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
         _projections,
         event_projections,
         event_modules,
-        projection_modules
+        projection_modules,
+        commanded_application \\ nil
       ) do
     # Create a more descriptive moduledoc
     moduledoc = "Event handler that projects events onto the #{resource_name} resource"
@@ -172,11 +182,10 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
     event_handlers =
       event_projections
       |> Enum.map(fn {event_name, event_projections} ->
-        build_event_handler(event_name, event_projections, event_modules, projection_modules)
+        build_event_handler(event_name, event_projections, event_modules, projection_modules, resource_module)
       end)
 
-    # Basic application name - would need to be configurable in production
-    application_name = :"#{resource_module}.CommandedApplication"
+    application_name = commanded_application || Module.concat([resource_module, "CommandedApplication"])
     projector_name = "#{resource_module}Projector"
 
     # Action-specific implementation functions for each Ash action
@@ -210,9 +219,6 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
         alias Ash.Changeset
         alias Ash.Resource
 
-        # Import resource module to get Ash actions
-        import unquote(resource_module)
-
         unquote_splicing(event_handlers)
 
         unquote_splicing(action_handlers)
@@ -221,7 +227,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
   end
 
   # Build an event handler function for a specific event and its projections
-  defp build_event_handler(event_name, projections, event_modules, projection_modules) do
+  defp build_event_handler(event_name, projections, event_modules, projection_modules, resource_module) do
     # Look up the event module for this event
     event_module = event_modules[event_name]
 
@@ -230,14 +236,29 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
       |> Enum.map(fn projection ->
         # Look up the projection module for this projection
         projection_module = projection_modules[projection.name]
+        action = projection.action
 
-        quote do
-          with {:ok, changeset} <-
-                 unquote(projection_module).apply(event, unquote(projection.name)),
-               {:ok, result} <- perform_action(changeset, unquote(projection_module).action()) do
-            {:ok, result}
-          else
-            {:error, reason} -> {:error, reason}
+        # For create projections, pass the resource module directly.
+        # For update/destroy, look up the existing record by event.id first.
+        if action == :create do
+          quote do
+            with {:ok, changeset} <-
+                   unquote(projection_module).apply(event, unquote(resource_module)),
+                 {:ok, result} <- perform_action(changeset, unquote(projection_module).action()) do
+              {:ok, result}
+            else
+              {:error, reason} -> {:error, reason}
+            end
+          end
+        else
+          quote do
+            with {:ok, record} <- Ash.get(unquote(resource_module), event.id),
+                 {:ok, changeset} <- unquote(projection_module).apply(event, record),
+                 {:ok, result} <- perform_action(changeset, unquote(projection_module).action()) do
+              {:ok, result}
+            else
+              {:error, reason} -> {:error, reason}
+            end
           end
         end
       end)

@@ -129,7 +129,8 @@ defmodule AshCommanded.Commanded.Dsl do
       AshCommanded.Commanded.Transformers.GenerateEventHandlerModules,
       AshCommanded.Commanded.Transformers.GenerateAggregateModule,
       AshCommanded.Commanded.Transformers.GenerateDomainRouterModule,
-      AshCommanded.Commanded.Transformers.GenerateMainRouterModule
+      AshCommanded.Commanded.Transformers.GenerateMainRouterModule,
+      AshCommanded.Commanded.Transformers.GenerateCommandedApplication
     ],
     verifiers: [
       AshCommanded.Commanded.Verifiers.ValidateCommandFields,
@@ -191,11 +192,28 @@ defmodule AshCommanded.Commanded.Dsl do
   """
   @spec application(Spark.Dsl.t()) :: keyword() | nil
   def application(dsl) do
-    opts = Spark.Dsl.Extension.get_opt(dsl, [:commanded, :application], nil, nil)
+    # Use :otp_app (a required field) as the sentinel — if nil, the section was not configured.
+    case Spark.Dsl.Extension.get_opt(dsl, [:commanded, :application], :otp_app, nil) do
+      nil ->
+        nil
 
-    case opts do
-      nil -> nil
-      opts -> opts
+      _ ->
+        get = fn key, default ->
+          Spark.Dsl.Extension.get_opt(dsl, [:commanded, :application], key, default)
+        end
+
+        [
+          otp_app: get.(:otp_app, nil),
+          event_store: get.(:event_store, nil),
+          pubsub: get.(:pubsub, :local),
+          registry: get.(:registry, :local),
+          include_supervisor?: get.(:include_supervisor?, false),
+          prefix: get.(:prefix, nil),
+          snapshotting: get.(:snapshotting, false),
+          snapshot_threshold: get.(:snapshot_threshold, 100),
+          snapshot_version: get.(:snapshot_version, 1),
+          snapshot_store: get.(:snapshot_store, nil)
+        ]
     end
   end
 end

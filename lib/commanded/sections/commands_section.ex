@@ -31,6 +31,10 @@ defmodule AshCommanded.Commanded.Sections.CommandsSection do
           type: :atom,
           doc: "The Ash action to call when handling this command. Defaults to the command name."
         ],
+        event: [
+          type: :atom,
+          doc: "The event emitted by this command. Defaults to the command name if not specified."
+        ],
         action_type: [
           type: {:in, [:create, :update, :destroy, :read, :custom]},
           doc:

@@ -234,8 +234,8 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
       command_module = command_modules[command.name]
 
       # Find potential matching event for this command
-      # Default to using an event with the same name as the command
-      matching_event_name = command.name
+      # Use explicit event: option if set, otherwise fall back to command name
+      matching_event_name = command.event || command.name
       matching_event = Enum.find(events, &(&1.name == matching_event_name))
 
       event_module = matching_event && event_modules[matching_event.name]

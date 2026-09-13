@@ -14,17 +14,17 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
   ```elixir
   defmodule MyApp.EventHandlers.UserNotificationHandler do
     @moduledoc "General purpose event handler for User events"
-    
+
     use Commanded.Event.Handler,
       application: MyApp.CommandedApplication,
       name: "MyApp.EventHandlers.UserNotificationHandler"
-      
+
     def handle(%MyApp.Events.UserRegistered{} = event, _metadata) do
       # Call the action or execute the function defined in the DSL
       MyApp.Notifications.send_welcome_email(event.email)
       :ok
     end
-    
+
     # More handlers for other events...
   end
   ```

@@ -71,7 +71,7 @@ defmodule AshCommanded.Commanded.Sections.ApplicationSection do
         default: 1
       ],
       snapshot_store: [
-        type: {:or, [:atom, :map]},
+        type: {:or, [:atom, :map, {:in, [nil]}]},
         doc: "Optional custom snapshot store module or configuration",
         default: nil
       ],
