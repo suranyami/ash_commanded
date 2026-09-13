@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Build Integrity
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-09-12T03:44:57.720Z"
-last_activity: 2026-09-11
-last_activity_desc: Roadmap created; 57 v1 requirements mapped across 13 phases
-state_head: fd9593eb92785c4b77922f2ccd668da1c4995d45
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-09-13T22:11:20.258Z"
+last_activity: 2026-09-13
+last_activity_desc: Phase 01 execution started
+state_head: 5c980c4e2e6c8bb0c22f4baa5372d934a06ee195
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-11)
 
 **Core value:** `core`'s five event-sourced domains run in production on AshCommanded.
-**Current focus:** Phase 1 — Build Integrity
+**Current focus:** Phase 01 — Build Integrity
 
 ## Current Position
 
-Phase: 01 (Build Integrity) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
+Phase: 01 (Build Integrity) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-09-11 — Roadmap created; 57 v1 requirements mapped across 13 phases
+Last activity: 2026-09-13 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 Updated after each plan completion.
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 25min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -70,6 +75,9 @@ Recent decisions affecting current work:
   phase, because adding AGG-01..03 means rewriting that module anyway.
 - Roadmap: `SAGA-01..03` (process managers) sit in Phase 6 and gate nothing — `core` uses no
   process managers. They are 1.0 completeness, not a migration prerequisite.
+- [Phase 01]: Task 1 satisfied by orchestrator's pre-existing commit b481ae1; not re-created (D-27 sequencing preserved)
+- [Phase 01]: Task 2 package-legitimacy checkpoint approved by human with hex.pm evidence for all seven new dependencies before mix deps.get fetch
+- [Phase 01]: Removed pre-existing unused mix.lock entry (:inflex) to satisfy mix deps.unlock --check-unused gate
 
 ### Pending Todos
 
@@ -106,6 +114,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-11T23:03:37.342Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-build-integrity/01-CONTEXT.md
+Last session: 2026-09-13T22:11:20.245Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

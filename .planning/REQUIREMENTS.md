@@ -66,7 +66,7 @@
 
 ### Code Quality
 
-- [ ] **QUAL-01**: `:commanded` and `:eventstore` are declared dependencies in `mix.exs`
+- [x] **QUAL-01**: `:commanded` and `:eventstore` are declared dependencies in `mix.exs`
 - [ ] **QUAL-02**: No `IO.puts` or `IO.inspect` in production paths; `Logger` is used throughout
 - [ ] **QUAL-03**: `GenerateAggregateModule` (861 lines) is decomposed into a thin transformer plus focused AST builders
 - [ ] **QUAL-04**: `CommandActionMapper` (640 lines) is decomposed, with transaction and transformation concerns moved to their existing modules
@@ -84,7 +84,7 @@
 
 - [ ] **REPO-01**: `usage_rules` is set up and a `usage-rules.md` is published with the package
 - [ ] **REPO-02**: An `AGENTS.md` documents DSL conventions, transformer ordering and testing expectations for coding agents
-- [ ] **REPO-03**: Dependencies are current — Ash, Spark (`~> 2.6`, required by Ash), ExDoc — with Credo and Dialyxir added
+- [x] **REPO-03**: Dependencies are current — Ash, Spark (`~> 2.6`, required by Ash), ExDoc — with Credo and Dialyxir added
 - [ ] **REPO-04**: `mix.exs` declares `elixir: "~> 1.18"` and CI runs a matrix across Elixir 1.18, 1.19 and 1.20 on their supported OTP releases
 - [ ] **REPO-05**: CI runs format check, Credo, compile with warnings as errors, tests, Dialyzer and a docs build
 
@@ -186,7 +186,7 @@ Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 | SNAP-01 | Phase 4 | Pending |
 | SNAP-02 | Phase 4 | Pending |
 | SNAP-03 | Phase 4 | Pending |
-| QUAL-01 | Phase 1 | Pending |
+| QUAL-01 | Phase 1 | Complete |
 | QUAL-02 | Phase 1 | Pending |
 | QUAL-03 | Phase 4 | Pending |
 | QUAL-04 | Phase 6 | Pending |
@@ -198,7 +198,7 @@ Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 | DOCS-04 | Phase 7 | Pending |
 | REPO-01 | Phase 7 | Pending |
 | REPO-02 | Phase 7 | Pending |
-| REPO-03 | Phase 1 | Pending |
+| REPO-03 | Phase 1 | Complete |
 | REPO-04 | Phase 1 | Pending |
 | REPO-05 | Phase 1 | Pending |
 | MIG-01 | Phase 8 | Pending |
