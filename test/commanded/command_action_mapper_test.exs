@@ -1,11 +1,15 @@
 defmodule AshCommanded.Commanded.CommandActionMapperTest do
-  use ExUnit.Case
+  @moduledoc false
+  use ExUnit.Case, async: true
 
   alias AshCommanded.Commanded.CommandActionMapper
+  alias AshCommanded.TestSupport.Widget
 
-  # Define a sample command for testing
+  # A plain command struct — map_to_action only needs field access via Map.from_struct/1,
+  # not a DSL-generated command module, so a lightweight local struct is enough to drive it.
   defmodule TestCommand do
-    defstruct [:id, :name, :email, :status, :metadata]
+    @moduledoc false
+    defstruct [:id, :name]
   end
 
   describe "infer_action_type/1" do
@@ -42,99 +46,83 @@ defmodule AshCommanded.Commanded.CommandActionMapperTest do
     end
   end
 
-  describe "map_to_action/4 with transform_params" do
-    setup do
-      command = %TestCommand{
-        id: "123",
-        name: "Test User",
-        email: "test@example.com",
-        status: :active,
-        metadata: %{role: "admin"}
-      }
+  describe "map_to_action/4 against a real Ash resource" do
+    # Not-found case first, per plan: a regression reintroducing an action-not-found
+    # error must be distinguishable from an ordinary missing-record error.
+    test "update against a non-existent id returns an error, not a raise" do
+      missing_id = Ash.UUID.generate()
+      command = %TestCommand{id: missing_id, name: "Anything"}
 
-      {:ok, command: command}
+      assert {:error, error} =
+               CommandActionMapper.map_to_action(command, Widget, :update,
+                 action_type: :update,
+                 identity_field: :id
+               )
+
+      refute is_struct(error, Ash.Error.Invalid.NoSuchAction)
+      refute error |> inspect() |> String.contains?("NoSuchAction")
     end
 
-    test "transforms params with default mapping", %{command: command} do
-      # Mock resource module for testing
-      resource_module = __MODULE__
+    test "destroy against a non-existent id returns an error, not a raise" do
+      missing_id = Ash.UUID.generate()
+      command = %TestCommand{id: missing_id, name: "Anything"}
 
-      # Call the function directly
-      result =
-        CommandActionMapper.map_to_action(command, resource_module, :create,
-          context: %{test: true}
-        )
+      assert {:error, error} =
+               CommandActionMapper.map_to_action(command, Widget, :destroy,
+                 action_type: :destroy,
+                 identity_field: :id
+               )
 
-      # In our test helper, the result contains the params and action info
-      assert {:ok, result_data} = result
-      assert result_data.action == :create
-      assert result_data.params.id == "123"
-      assert result_data.params.name == "Test User"
-      assert result_data.params.email == "test@example.com"
-      assert result_data.params.status == :active
-      assert result_data.params.metadata == %{role: "admin"}
-      assert result_data.context == %{test: true}
+      refute is_struct(error, Ash.Error.Invalid.NoSuchAction)
+      refute error |> inspect() |> String.contains?("NoSuchAction")
     end
 
-    test "transforms params with map param_mapping", %{command: command} do
-      # Mock resource module for testing
-      resource_module = __MODULE__
+    test "create persists a real Ash record, readable back through Ash.get!" do
+      id = Ash.UUID.generate()
+      command = %TestCommand{id: id, name: "Widget One"}
 
-      # Define param mapping
-      param_mapping = %{
-        name: :full_name,
-        email: :contact_email
-      }
+      assert {:ok, _result} =
+               CommandActionMapper.map_to_action(command, Widget, :create, action_type: :create)
 
-      # Call the function directly
-      result =
-        CommandActionMapper.map_to_action(command, resource_module, :create,
-          param_mapping: param_mapping
-        )
-
-      # In our test helper, the result contains the params and action info
-      assert {:ok, result_data} = result
-      assert result_data.action == :create
-      assert result_data.params.id == "123"
-      assert result_data.params.full_name == "Test User"
-      assert result_data.params.contact_email == "test@example.com"
-      assert result_data.params.status == :active
-      assert result_data.params.metadata == %{role: "admin"}
-      refute Map.has_key?(result_data.params, :name)
-      refute Map.has_key?(result_data.params, :email)
+      assert Ash.get!(Widget, id).name == "Widget One"
     end
 
-    test "transforms params with function param_mapping", %{command: command} do
-      # Mock resource module for testing
-      resource_module = __MODULE__
+    test "update persists the new name on an existing record" do
+      id = Ash.UUID.generate()
 
-      # Define param mapping function
-      param_mapping = fn params ->
-        params
-        |> Map.put(:full_name, params.name)
-        |> Map.put(:contact_email, params.email)
-        |> Map.delete(:name)
-        |> Map.delete(:email)
-        |> Map.put(:created_at, "2023-01-01")
-      end
-
-      # Call the function directly
-      result =
-        CommandActionMapper.map_to_action(command, resource_module, :create,
-          param_mapping: param_mapping
+      {:ok, _} =
+        CommandActionMapper.map_to_action(%TestCommand{id: id, name: "Original"}, Widget, :create,
+          action_type: :create
         )
 
-      # In our test helper, the result contains the params and action info
-      assert {:ok, result_data} = result
-      assert result_data.action == :create
-      assert result_data.params.id == "123"
-      assert result_data.params.full_name == "Test User"
-      assert result_data.params.contact_email == "test@example.com"
-      assert result_data.params.status == :active
-      assert result_data.params.metadata == %{role: "admin"}
-      assert result_data.params.created_at == "2023-01-01"
-      refute Map.has_key?(result_data.params, :name)
-      refute Map.has_key?(result_data.params, :email)
+      update_command = %TestCommand{id: id, name: "Updated"}
+
+      assert {:ok, _result} =
+               CommandActionMapper.map_to_action(update_command, Widget, :update,
+                 action_type: :update,
+                 identity_field: :id
+               )
+
+      assert Ash.get!(Widget, id).name == "Updated"
+    end
+
+    test "destroy removes the record, so Ash.get afterwards returns a not-found error" do
+      id = Ash.UUID.generate()
+
+      {:ok, _} =
+        CommandActionMapper.map_to_action(%TestCommand{id: id, name: "Temp"}, Widget, :create,
+          action_type: :create
+        )
+
+      destroy_command = %TestCommand{id: id, name: "Temp"}
+
+      assert {:ok, _result} =
+               CommandActionMapper.map_to_action(destroy_command, Widget, :destroy,
+                 action_type: :destroy,
+                 identity_field: :id
+               )
+
+      assert {:error, %Ash.Error.Invalid{}} = Ash.get(Widget, id)
     end
   end
 end
