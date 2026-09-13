@@ -12,6 +12,13 @@ defmodule AshCommanded.Commanded.CommandActionMapperTest do
     defstruct [:id, :name]
   end
 
+  # Mirrors the real generated destroy_widget command shape (fields([:id]) only,
+  # per test/support/widget.ex) — destroy actions accept no other input.
+  defmodule DestroyCommand do
+    @moduledoc false
+    defstruct [:id]
+  end
+
   describe "infer_action_type/1" do
     test "infers create actions" do
       assert CommandActionMapper.infer_action_type(:create) == :create
@@ -65,7 +72,7 @@ defmodule AshCommanded.Commanded.CommandActionMapperTest do
 
     test "destroy against a non-existent id returns an error, not a raise" do
       missing_id = Ash.UUID.generate()
-      command = %TestCommand{id: missing_id, name: "Anything"}
+      command = %DestroyCommand{id: missing_id}
 
       assert {:error, error} =
                CommandActionMapper.map_to_action(command, Widget, :destroy,
@@ -114,7 +121,7 @@ defmodule AshCommanded.Commanded.CommandActionMapperTest do
           action_type: :create
         )
 
-      destroy_command = %TestCommand{id: id, name: "Temp"}
+      destroy_command = %DestroyCommand{id: id}
 
       assert {:ok, _result} =
                CommandActionMapper.map_to_action(destroy_command, Widget, :destroy,

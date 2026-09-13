@@ -484,33 +484,32 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     identity_value = Map.get(params, identity_field)
 
     if identity_value do
-      # In production, this would use actual Ash.Query and Ash.Changeset functions
-      # For now, return mock success for testing
-      if Mix.env() == :test do
-        {:ok, %{action: action_name, params: params, identity: identity_value, context: context}}
-      else
-        query = resource |> Ash.Query.for_read(:by_id) |> Ash.Query.set_context(context)
-        query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
+      query = resource |> Ash.Query.for_read(:read) |> Ash.Query.set_context(context)
+      query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
 
-        case Ash.read_one(query) do
-          {:ok, record} ->
-            changeset = Ash.Changeset.new(record)
-            changeset = Ash.Changeset.for_action(changeset, action_name, params)
-            changeset = Ash.Changeset.set_context(changeset, context)
+      case Ash.read_one(query) do
+        {:ok, nil} ->
+          {:error,
+           Error.action_error("Record not found",
+             field: identity_field,
+             value: identity_value,
+             context: %{resource: resource, action: action_name}
+           )}
 
-            Ash.update(changeset)
+        {:ok, record} ->
+          # The identity field was only needed to look the record up above — it
+          # already resolved to `record`, and Ash update/destroy actions do not
+          # accept it as an action input (it is not a changeable attribute for
+          # those actions), so it must not be forwarded as a param.
+          action_params = Map.delete(params, identity_field)
+          changeset = Ash.Changeset.new(record)
+          changeset = Ash.Changeset.for_action(changeset, action_name, action_params)
+          changeset = Ash.Changeset.set_context(changeset, context)
 
-          {:error, error} ->
-            {:error, error}
+          Ash.update(changeset)
 
-          nil ->
-            {:error,
-             Error.action_error("Record not found",
-               field: identity_field,
-               value: identity_value,
-               context: %{resource: resource, action: action_name}
-             )}
-        end
+        {:error, error} ->
+          {:error, error}
       end
     else
       {:error,
@@ -526,33 +525,39 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     identity_value = Map.get(params, identity_field)
 
     if identity_value do
-      # In production, this would use actual Ash.Query and Ash.Changeset functions
-      # For now, return mock success for testing
-      if Mix.env() == :test do
-        {:ok, %{action: action_name, identity: identity_value, context: context}}
-      else
-        query = resource |> Ash.Query.for_read(:by_id) |> Ash.Query.set_context(context)
-        query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
+      query = resource |> Ash.Query.for_read(:read) |> Ash.Query.set_context(context)
+      query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
 
-        case Ash.read_one(query) do
-          {:ok, record} ->
-            changeset = Ash.Changeset.new(record)
-            changeset = Ash.Changeset.for_action(changeset, action_name, params)
-            changeset = Ash.Changeset.set_context(changeset, context)
+      case Ash.read_one(query) do
+        {:ok, nil} ->
+          {:error,
+           Error.action_error("Record not found",
+             field: identity_field,
+             value: identity_value,
+             context: %{resource: resource, action: action_name}
+           )}
 
-            Ash.destroy(changeset)
+        {:ok, record} ->
+          # Same reasoning as execute_update/5: the identity field already resolved
+          # `record` above and is not a valid destroy-action input.
+          action_params = Map.delete(params, identity_field)
+          changeset = Ash.Changeset.new(record)
+          changeset = Ash.Changeset.for_action(changeset, action_name, action_params)
+          changeset = Ash.Changeset.set_context(changeset, context)
 
-          {:error, error} ->
-            {:error, error}
+          # Ash.destroy/1 returns bare :ok by default (not {:ok, record}) unless the
+          # caller asks for return_destroyed?: true. Normalize to {:ok, record} so the
+          # caller (execute_action_internal/11) always gets a consistent shape to hand
+          # to the post-processor, using the already-resolved `record` since the
+          # destroyed struct itself carries no further useful state.
+          case Ash.destroy(changeset) do
+            :ok -> {:ok, record}
+            {:ok, destroyed} -> {:ok, destroyed}
+            {:error, error} -> {:error, error}
+          end
 
-          nil ->
-            {:error,
-             Error.action_error("Record not found",
-               field: identity_field,
-               value: identity_value,
-               context: %{resource: resource, action: action_name}
-             )}
-        end
+        {:error, error} ->
+          {:error, error}
       end
     else
       {:error,
