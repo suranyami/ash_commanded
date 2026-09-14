@@ -1,0 +1,333 @@
+# ── AshCommanded.TestSupport.Parity.WidgetAggregate ──
+# 9 function(s) recovered from debug_info
+# source: /Users/djp/development/forks/ash_commanded/_build/dev/lib/ash_commanded/ebin/Elixir.AshCommanded.TestSupport.Parity.WidgetAggregate.beam
+
+# __struct__/0
+def __struct__() do
+  %{__struct__: AshCommanded.TestSupport.Parity.WidgetAggregate, id: nil, label: nil, version: 0}
+end
+
+# __struct__/1
+def __struct__(kv) do
+  Enum.reduce(
+    kv,
+    %{
+      __struct__: AshCommanded.TestSupport.Parity.WidgetAggregate,
+      id: nil,
+      label: nil,
+      version: 0
+    },
+    fn {key, val}, map -> %{map | key => val} end
+  )
+end
+
+# apply/2
+def apply(
+      %AshCommanded.TestSupport.Parity.WidgetAggregate{} = state,
+      %AshCommanded.TestSupport.Parity.Events.WidgetCreated{} = event
+    ) do
+  try do
+    changes =
+      Enum.reduce([:id, :label], %{}, fn field, acc ->
+        case :maps.is_key(field, event) do
+          x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) -> acc
+          _ -> :maps.put(field, Map.get(event, field), acc)
+        end
+      end)
+
+    updated_state = :maps.merge(state, changes)
+
+    updated_state =
+      Map.update(updated_state, :version, 1, fn capture -> :erlang.+(capture, 1) end)
+
+    snapshot_state_if_needed(updated_state)
+  rescue
+    e ->
+      Logger
+
+      case Logger.__should_log__(:error, AshCommanded.TestSupport.Parity.WidgetAggregate) do
+        nil ->
+          :ok
+
+        level ->
+          Logger.__do_log__(
+            level,
+            <<"Error applying event ", String.Chars.to_string(:widget_created)::binary, ": ",
+              String.Chars.to_string(Exception.message(e))::binary>>,
+            %{
+              file: ~c"lib/commanded/transformers/generate_aggregate_module.ex",
+              line: 146,
+              mfa: {AshCommanded.TestSupport.Parity.WidgetAggregate, :apply, 2}
+            },
+            %{application: :ash_commanded}
+          )
+      end
+
+      state
+  end
+end
+
+# execute/2
+def execute(
+      %AshCommanded.TestSupport.Parity.WidgetAggregate{} = aggregate,
+      %AshCommanded.TestSupport.Parity.Commands.CreateWidget{} = command
+    ) do
+  resource_module = AshCommanded.TestSupport.Parity.Widget
+
+  context = %{
+    aggregate: aggregate,
+    identity_field: :id,
+    action_name: :create,
+    action_type: nil,
+    param_mapping: nil,
+    metadata: Map.get(command, :metadata, %{}),
+    command: command,
+    resource: resource_module
+  }
+
+  try do
+    AshCommanded.Commanded.Middleware.CommandMiddlewareProcessor.apply_middleware(
+      command,
+      resource_module,
+      context,
+      fn cmd, ctx ->
+        process_command(
+          ctx.aggregate,
+          cmd,
+          resource_module,
+          ctx.action_name,
+          ctx.identity_field,
+          AshCommanded.TestSupport.Parity.Events.WidgetCreated,
+          :erlang.++(
+            [],
+            :erlang.++(
+              [],
+              :erlang.++(
+                [transforms: [], validations: []],
+                :erlang.++([], :erlang.++([], :erlang.++([], [])))
+              )
+            )
+          )
+        )
+      end
+    )
+  rescue
+    e ->
+      {:error,
+       AshCommanded.Commanded.Error.aggregate_error(
+         <<"Error executing command: ", String.Chars.to_string(Exception.message(e))::binary>>,
+         context: %{
+           command: :create_widget,
+           command_module: AshCommanded.TestSupport.Parity.Commands.CreateWidget,
+           error: Kernel.inspect(e)
+         }
+       )}
+  end
+end
+
+# process_command/7
+defp process_command(
+       aggregate,
+       command,
+       resource_module,
+       action_name,
+       identity_field,
+       event_module,
+       opts
+     ) do
+  command_id = Map.get(command, identity_field)
+  aggregate_id = Map.get(aggregate, identity_field)
+  middleware_context = Keyword.get(opts, :context, %{})
+  include_aggregate? = true
+  include_command? = true
+  include_metadata? = true
+  context_prefix = nil
+  static_context = %{}
+
+  middleware_context =
+    case include_aggregate? do
+      x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) ->
+        middleware_context
+
+      _ ->
+        key =
+          case context_prefix do
+            x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) ->
+              :aggregate
+
+            _ ->
+              :erlang.binary_to_atom(
+                <<String.Chars.to_string(context_prefix)::binary, ".aggregate">>,
+                :utf8
+              )
+          end
+
+        :maps.put(key, aggregate, middleware_context)
+    end
+
+  middleware_context =
+    case include_command? do
+      x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) ->
+        middleware_context
+
+      _ ->
+        key =
+          case context_prefix do
+            x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) ->
+              :command
+
+            _ ->
+              :erlang.binary_to_atom(
+                <<String.Chars.to_string(context_prefix)::binary, ".command">>,
+                :utf8
+              )
+          end
+
+        :maps.put(key, command, middleware_context)
+    end
+
+  middleware_context =
+    case (case include_metadata? do
+            x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) -> x
+            _ -> :maps.is_key(:metadata, command)
+          end) do
+      x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) ->
+        middleware_context
+
+      _ ->
+        metadata = Map.get(command, :metadata, %{})
+
+        base_key =
+          case context_prefix do
+            x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) ->
+              :metadata
+
+            _ ->
+              :erlang.binary_to_atom(
+                <<String.Chars.to_string(context_prefix)::binary, ".metadata">>,
+                :utf8
+              )
+          end
+
+        case :erlang.is_map(metadata) do
+          false -> middleware_context
+          true -> :maps.put(base_key, metadata, middleware_context)
+        end
+    end
+
+  middleware_context =
+    case (case static_context do
+            x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) -> x
+            _ -> :erlang.>(:erlang.map_size(static_context), 0)
+          end) do
+      x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) -> middleware_context
+      _ -> :maps.merge(middleware_context, static_context)
+    end
+
+  action_opts = :erlang.++(opts, identity_field: identity_field, context: middleware_context)
+
+  cond do
+    :erlang.==(aggregate_id, nil) ->
+      case AshCommanded.Commanded.CommandActionMapper.map_to_action(
+             command,
+             resource_module,
+             action_name,
+             action_opts
+           ) do
+        {:ok, result} ->
+          event_data = Map.from_struct(command)
+
+          event_data =
+            case (case :erlang.is_map(result) do
+                    false ->
+                      false
+
+                    true ->
+                      :erlang.not(
+                        case result do
+                          %_{} -> true
+                          _ -> false
+                        end
+                      )
+                  end) do
+              false -> event_data
+              true -> :maps.merge(event_data, result)
+            end
+
+          {:ok, Kernel.struct(event_module, event_data)}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+
+    :erlang.==(aggregate_id, command_id) ->
+      case AshCommanded.Commanded.CommandActionMapper.map_to_action(
+             command,
+             resource_module,
+             action_name,
+             action_opts
+           ) do
+        {:ok, result} ->
+          event_data = Map.from_struct(command)
+
+          event_data =
+            case (case :erlang.is_map(result) do
+                    false ->
+                      false
+
+                    true ->
+                      :erlang.not(
+                        case result do
+                          %_{} -> true
+                          _ -> false
+                        end
+                      )
+                  end) do
+              false -> event_data
+              true -> :maps.merge(event_data, result)
+            end
+
+          {:ok, Kernel.struct(event_module, event_data)}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+
+    true ->
+      {:error,
+       AshCommanded.Commanded.Error.aggregate_error("Invalid identity",
+         field: identity_field,
+         value: command_id,
+         context: %{aggregate_id: aggregate_id, command_id: command_id}
+       )}
+  end
+end
+
+# should_snapshot?/1
+def should_snapshot?(%AshCommanded.TestSupport.Parity.WidgetAggregate{} = state) do
+  case (case false do
+          x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) -> x
+          _ -> :erlang.>(state.version, 0)
+        end) do
+    x when :erlang.orelse(:erlang."=:="(x, false), :erlang."=:="(x, nil)) -> x
+    _ -> :erlang.==(:erlang.rem(state.version, snapshot_threshold()), 0)
+  end
+end
+
+# snapshot_state_if_needed/1
+def snapshot_state_if_needed(%AshCommanded.TestSupport.Parity.WidgetAggregate{} = state) do
+  state
+end
+
+# snapshot_threshold/0
+def snapshot_threshold() do
+  100
+end
+
+# snapshot_version/0
+def snapshot_version() do
+  1
+end
+
+──────────────────────────────────────────────────────────────────────────────
+
