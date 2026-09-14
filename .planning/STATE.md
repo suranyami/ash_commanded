@@ -4,10 +4,10 @@ current_phase: 01
 current_phase_name: Build Integrity
 status: executing
 stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-09-14T04:26:20.706Z"
+last_updated: "2026-09-14T04:46:30.845Z"
 last_activity: 2026-09-13
 last_activity_desc: Phase 01 execution started
-state_head: 88b4e7a49651ad8543d309c97b90cedbe7600962
+state_head: 1c8634e0309a814713d7f4d86955be98cf2811ff
 progress:
   total_phases: 13
   completed_phases: 0
@@ -88,6 +88,7 @@ Recent decisions affecting current work:
 - [Phase 01]: D-14's literal Code.compile_string + assert_raise pattern does not work against this repo's Spark 2.7.2 (verifier errors from @after_verify are converted to warnings, not raised); replaced with Spark.Test.assert_dsl_error/refute_dsl_errors, shipped in this same Spark version to solve exactly this problem.
 - [Phase 01]: Router generation never fires under current Domain/Resource DSL split (found via probe); Task 3 substitutes a hand-written router against real generated command/aggregate modules; fix deferred to Phase 2 alongside FOUND-03/FOUND-04
 - [Phase 01]: private?:true ETS makes cross-process Ash record visibility impossible after a real Commanded dispatch; router-dispatch tests assert via dispatch(returning: :aggregate_state) instead of Ash.get!/2
+- [Phase 01]: SC5 correction: coordinator found intermittent full-suite failures (meck's :cover-server race) my 2-run/6-seed verification missed; removed :meck entirely from the suite (2 files), re-verified via 35 consecutive full-suite runs
 
 ### Pending Todos
 
