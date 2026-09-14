@@ -165,6 +165,7 @@ end
 ```
 
 This will generate:
+
 - `ECommerce.Commands.RegisterCustomer` - Command struct
 - `ECommerce.Events.CustomerRegistered` - Event struct
 - `ECommerce.Projections.CustomerRegistered` - Projection definition
@@ -188,12 +189,14 @@ mix gen.docs
 ```
 
 The documentation includes:
+
 - Guides for commands, events, projections, event handlers, and routers
 - Guides for middleware, parameter handling, transactions, and context propagation
 - API reference for all modules
 - Cheatsheets for the DSL
 
 Additional documentation files:
+
 - [Commands](commands.html)
 - [Events](events.html)
 - [Projections](projections.html)
@@ -236,6 +239,7 @@ Generated command modules include:
 - Standard module documentation
 
 Example generated command:
+
 ```elixir
 defmodule ECommerce.Commands.RegisterCustomer do
   @moduledoc """
@@ -272,6 +276,7 @@ end
 ```
 
 Handler options:
+
 - `handler_name` - Custom function name for the handler clause
 - `action` - Specify a different Ash action to call (defaults to command name)
 - `autogenerate_handler?` - Set to false to disable handler generation
@@ -381,11 +386,13 @@ end
 ```
 
 Generated event modules include:
+
 - A struct with the specified fields
 - Typespecs for all fields
 - Standard module documentation
 
 Example generated event:
+
 ```elixir
 defmodule ECommerce.Events.CustomerRegistered do
   @moduledoc """
@@ -407,6 +414,7 @@ end
 
 Aggregates process events and update state. AshCommanded generates aggregate modules for each resource.
 Each event that mutate state is handled by the Aggregate via an apply function that is automatically generated for you.
+
 ```elixir
 defmodule ECommerce.CustomerAggregate do
   defstruct [:id, :email, :name, :status]
@@ -454,6 +462,7 @@ end
 ```
 
 Projection options:
+
 - `action` - The Ash action to perform (`:create`, `:update`, `:destroy`, etc.)
 - `changes` - Static map or function that returns the changes to apply
 - `autogenerate?` - Set to false to disable projection generation
@@ -500,6 +509,7 @@ end
 ```
 
 Event handler options:
+
 - `events` - List of event names this handler will respond to
 - `action` - Action to perform when handling the event (atom or function)
 - `handler_name` - Override the auto-generated handler module name
@@ -592,6 +602,7 @@ end
 ```
 
 This generates a Commanded application module that:
+
 - Configures the event store and other Commanded settings
 - Includes the domain router
 - Provides a supervisor for all projectors
@@ -601,4 +612,37 @@ This generates a Commanded application module that:
 
 Process Managers in Commanded are responsible for coordinating one or more aggregates. They handle events and dispatch commands in response. This is very business logic specific and would be rather difficult to generate appropriately. It is suggested to write your Process Managers using [Reactor](https://hexdocs.pm/reactor/readme.html) instead, which is a library specifically designed for workflow orchestration in Elixir and works well with Commanded's event-driven architecture.
 
+## Recommended Reading
 
+AshCommanded is a [Spark](https://hexdocs.pm/spark) DSL extension. If you are contributing to this
+library — adding a section, a transformer or a verifier — read these first. They define the contract
+the extension must hold to.
+
+### Spark DSL authoring
+
+- [Writing Extensions](https://spark.hexdocs.pm/writing-extensions.html) — the authoritative
+  structural guide. Defines the compile-stage contract this library is built on:
+  - **Transformers** run during compilation, in dependency order, and may read and modify any part
+    of the DSL state.
+  - **Persisters** run after every transformer has completed, and should only write to the
+    persisted data map.
+  - **Verifiers** run after the module is compiled. They are read-only and create no compile-time
+    dependencies.
+
+  Two rules from that guide bind contributions here: *prefer a verifier over a transformer when you
+  only need to validate* — a verifier sees the final state and its post-compilation timing avoids
+  circular compile-time dependencies — and *put introspection functions in a `ModuleName.Info`
+  module* rather than on the extension, so they can carry typespecs and documentation.
+
+- [Get Started with Spark](https://hexdocs.pm/spark/get-started-with-spark.html) — section and
+  entity structure fundamentals.
+- [`Spark.Dsl.Extension`](https://hexdocs.pm/spark/Spark.Dsl.Extension.html) — the extension
+  declaration API.
+
+### The libraries this extension bridges
+
+- [Ash Framework](https://hexdocs.pm/ash) — the resource and action framework being extended.
+- [Commanded](https://hexdocs.pm/commanded) — the CQRS/Event Sourcing library whose modules this
+  DSL generates.
+- [Reactor](https://hexdocs.pm/reactor/readme.html) — suggested for process managers, which this
+  library deliberately does not generate (see *Where are the Process Managers?* above).
