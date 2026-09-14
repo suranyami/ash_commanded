@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Build Integrity
 status: executing
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-09-14T04:46:30.845Z"
+stopped_at: Completed 01-07-PLAN.md
+last_updated: "2026-09-14T05:46:06.730Z"
 last_activity: 2026-09-13
 last_activity_desc: Phase 01 execution started
-state_head: 1c8634e0309a814713d7f4d86955be98cf2811ff
+state_head: ad6382b6b227d0e3fc05778734c5fd12faad93c5
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-11)
 ## Current Position
 
 Phase: 01 (Build Integrity) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-09-13 — Phase 01 execution started
 
@@ -63,6 +63,7 @@ Updated after each plan completion.
 | Phase 01 P04 | 26min | 2 tasks | 8 files |
 | Phase 01 P05 | 40 min | 3 tasks | 9 files |
 | Phase 01 P06 | 2h10min | 3 tasks | 11 files |
+| Phase 01 P07 | 55min | 3 tasks | 32 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Router generation never fires under current Domain/Resource DSL split (found via probe); Task 3 substitutes a hand-written router against real generated command/aggregate modules; fix deferred to Phase 2 alongside FOUND-03/FOUND-04
 - [Phase 01]: private?:true ETS makes cross-process Ash record visibility impossible after a real Commanded dispatch; router-dispatch tests assert via dispatch(returning: :aggregate_state) instead of Ash.get!/2
 - [Phase 01]: SC5 correction: coordinator found intermittent full-suite failures (meck's :cover-server race) my 2-run/6-seed verification missed; removed :meck entirely from the suite (2 files), re-verified via 35 consecutive full-suite runs
+- [Phase 01]: Fixed generate_projector_modules.ex and generate_event_handler_modules.ex compiler warnings at the source (prune unused action clauses; correct Ash API dispatch) rather than suppressing — D-26 requires warnings-as-errors cleared inside this phase, not deferred
+- [Phase 01]: Used per-file inline Credo disables naming the exact ROADMAP phase (2/4/5/6) that resolves each structural-debt file, instead of blanket .credo.exs disables — D-21 requires every disable to carry a reason; per-file scoping keeps the check active everywhere else
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-14T04:26:14.000Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-09-14T05:45:59.208Z
+Stopped at: Completed 01-07-PLAN.md
 Resume file: None

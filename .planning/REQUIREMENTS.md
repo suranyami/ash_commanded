@@ -69,7 +69,7 @@
 ### Code Quality
 
 - [x] **QUAL-01**: `:commanded` and `:eventstore` are declared dependencies in `mix.exs`
-- [ ] **QUAL-02**: No `IO.puts` or `IO.inspect` in production paths; `Logger` is used throughout
+- [x] **QUAL-02**: No `IO.puts` or `IO.inspect` in production paths; `Logger` is used throughout
 - [ ] **QUAL-03**: `GenerateAggregateModule` emits thin generated code — a generated `execute/2` clause is under ~10 lines and delegates to a runtime module, rather than inlining command execution, middleware, transaction and snapshot logic into every clause. Measured on the OUTPUT, not the generator: the module currently emits 541 generated lines across 11 `quote` blocks, one of which is 225 lines, while every other transformer's largest block is 31 lines and `generate_command_modules.ex`/`generate_event_modules.ex` emit 6. Splitting the generator into separate builder modules does not satisfy this — it relocates the emission without shrinking it. The duplication spans a macro boundary: the same concerns are implemented in both the generated body and `command_action_mapper.ex` (639 lines)
 - [ ] **QUAL-04**: `CommandActionMapper` (640 lines) is decomposed, with transaction and transformation concerns moved to their existing modules
 - [ ] **QUAL-05**: `Error` (514 lines) is reviewed and reduced or justified
@@ -88,7 +88,7 @@
 - [ ] **REPO-02**: An `AGENTS.md` documents DSL conventions, transformer ordering and testing expectations for coding agents
 - [x] **REPO-03**: Dependencies are current — Ash, Spark (`~> 2.6`, required by Ash), ExDoc — with Credo and Dialyxir added
 - [ ] **REPO-04**: `mix.exs` declares `elixir: "~> 1.18"` and CI runs a matrix across Elixir 1.18, 1.19 and 1.20 on their supported OTP releases
-- [ ] **REPO-05**: CI runs format check, Credo, compile with warnings as errors, tests, Dialyzer and a docs build
+- [x] **REPO-05**: CI runs format check, Credo, compile with warnings as errors, tests, Dialyzer and a docs build
 
 ### Migration Tooling
 
@@ -191,7 +191,7 @@ Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 | SNAP-02 | Phase 4 | Pending |
 | SNAP-03 | Phase 4 | Pending |
 | QUAL-01 | Phase 1 | Complete |
-| QUAL-02 | Phase 1 | Pending |
+| QUAL-02 | Phase 1 | Complete |
 | QUAL-03 | Phase 4 | Pending |
 | QUAL-04 | Phase 6 | Pending |
 | QUAL-05 | Phase 6 | Pending |
@@ -204,7 +204,7 @@ Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 | REPO-02 | Phase 7 | Pending |
 | REPO-03 | Phase 1 | Complete |
 | REPO-04 | Phase 1 | Pending |
-| REPO-05 | Phase 1 | Pending |
+| REPO-05 | Phase 1 | Complete |
 | MIG-01 | Phase 8 | Pending |
 | MIG-02 | Phase 8 | Pending |
 | MIG-03 | Phase 8 | Pending |
