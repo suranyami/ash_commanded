@@ -469,9 +469,18 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   # Execute a create action
   defp execute_create(resource, action_name, params, context) do
-    changeset = Ash.Changeset.new(resource)
-    changeset = Ash.Changeset.for_action(changeset, action_name, params)
-    changeset = Ash.Changeset.set_context(changeset, context)
+    # Context must be threaded through for_action/3's own :context option, not
+    # applied afterward via a separate set_context/2 call: declarative changes
+    # and validations attached to the action run *during* for_action (Ash's
+    # changeset-construction step), before control ever returns here. A
+    # set_context call placed after for_action arrives too late for any of
+    # them to see it — proven by test/commanded/context_test.exs, which reads
+    # context back off a real change rather than off the mapper's own return
+    # value.
+    changeset =
+      resource
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_action(action_name, params, context: context)
 
     case Ash.create(changeset) do
       {:ok, _} = success -> success
@@ -484,8 +493,10 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     identity_value = Map.get(params, identity_field)
 
     if identity_value do
-      query = resource |> Ash.Query.for_read(:read) |> Ash.Query.set_context(context)
-      query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
+      query =
+        resource
+        |> Ash.Query.for_read(:read, %{}, context: context)
+        |> Ash.Query.filter(^[{identity_field, identity_value}])
 
       case Ash.read_one(query) do
         {:ok, nil} ->
@@ -502,9 +513,14 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
           # accept it as an action input (it is not a changeable attribute for
           # those actions), so it must not be forwarded as a param.
           action_params = Map.delete(params, identity_field)
-          changeset = Ash.Changeset.new(record)
-          changeset = Ash.Changeset.for_action(changeset, action_name, action_params)
-          changeset = Ash.Changeset.set_context(changeset, context)
+
+          # See execute_create/4's comment: context goes through for_action/3's
+          # opts, not a later set_context/2 call, so declarative changes on the
+          # action can actually observe it.
+          changeset =
+            record
+            |> Ash.Changeset.new()
+            |> Ash.Changeset.for_action(action_name, action_params, context: context)
 
           Ash.update(changeset)
 
@@ -525,8 +541,10 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     identity_value = Map.get(params, identity_field)
 
     if identity_value do
-      query = resource |> Ash.Query.for_read(:read) |> Ash.Query.set_context(context)
-      query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
+      query =
+        resource
+        |> Ash.Query.for_read(:read, %{}, context: context)
+        |> Ash.Query.filter(^[{identity_field, identity_value}])
 
       case Ash.read_one(query) do
         {:ok, nil} ->
@@ -541,9 +559,13 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
           # Same reasoning as execute_update/5: the identity field already resolved
           # `record` above and is not a valid destroy-action input.
           action_params = Map.delete(params, identity_field)
-          changeset = Ash.Changeset.new(record)
-          changeset = Ash.Changeset.for_action(changeset, action_name, action_params)
-          changeset = Ash.Changeset.set_context(changeset, context)
+
+          # See execute_create/4's comment: context goes through for_action/3's
+          # opts, not a later set_context/2 call.
+          changeset =
+            record
+            |> Ash.Changeset.new()
+            |> Ash.Changeset.for_action(action_name, action_params, context: context)
 
           # Ash.destroy/1 returns bare :ok by default (not {:ok, record}) unless the
           # caller asks for return_destroyed?: true. Normalize to {:ok, record} so the
@@ -573,8 +595,13 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     identity_value = Map.get(params, identity_field)
 
     if identity_value do
-      query = resource |> Ash.Query.for_read(action_name) |> Ash.Query.set_context(context)
-      query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
+      # See execute_create/4's comment: context goes through for_read/4's opts,
+      # not a later set_context/2 call, so declarative preparations on the
+      # action can actually observe it.
+      query =
+        resource
+        |> Ash.Query.for_read(action_name, %{}, context: context)
+        |> Ash.Query.filter(^[{identity_field, identity_value}])
 
       # Ash.read_one/1 returns {:ok, nil} for "no match," never a bare nil (same
       # shape execute_update/5 and execute_destroy/5 already account for) — the
@@ -606,10 +633,12 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   # Execute a custom action
   defp execute_custom(resource, action_name, params, context) do
-    # For custom actions, we use Ash.ActionInput to run generic actions
+    # For custom actions, we use Ash.ActionInput to run generic actions. As
+    # with the other four paths, context goes through for_action/4's own
+    # :context opt so it is visible during argument casting, not applied
+    # afterward via set_context/2.
     try do
-      action_input = Ash.ActionInput.for_action(resource, action_name, params)
-      action_input = Ash.ActionInput.set_context(action_input, context)
+      action_input = Ash.ActionInput.for_action(resource, action_name, params, context: context)
 
       case Ash.run_action(action_input) do
         {:ok, _} = success -> success
