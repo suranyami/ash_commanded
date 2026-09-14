@@ -97,7 +97,7 @@ these land, no test written in any later phase can fail for a real reason.
   3. Declaring `application` on an `Ash.Resource`, or `commands` on an `Ash.Domain`, raises a `Spark.Error.DslError` naming the correct extension.
   4. `mix compile` from clean succeeds with resources, domain and application all present, and no transformer calls `Ash.Domain.Info` or `Ash.Resource.Info` on any module other than self.
   5. Every verifier in `lib/commanded/verifiers/` has both an accepting test and a rejecting test with an asserted error message; `ValidateCommandActions`, `ValidateCommandHandlers` and `ValidateCommandNameConflict` either exist with such tests or are absent from `CLAUDE.md`.
-  6. `AGENTS.md` states the DSL authoring rules — section/entity structure, verifier-over-transformer for validation, the `ModuleName.Info` introspection convention, and the escape-hatch types — and a contributor adding a transformer or verifier is told where it goes and which stage it belongs in.
+  6. `AGENTS.md` states the DSL authoring rules, leading with **generated code is thin wiring; logic lives in hand-written runtime modules** — a generated clause carries only the per-entity literals that vary, and anything computable at macro-expansion time is computed there rather than reassembled at runtime. Then section/entity structure, verifier-over-transformer for validation, the `ModuleName.Info` introspection convention, `Transformer.get_persisted/2` over module-name reconstruction, and the escape-hatch types — so a contributor adding a transformer or verifier is told where it goes, which stage it belongs in, and how much of it belongs in the emitted AST at all.
   7. `mix ash_commanded.dump` renders every generated module for a fixture resource to formatted Elixir, committed golden renders exist for that fixture, and CI fails when generated output changes without the golden files being updated in the same change.
 
 **Plans**: TBD
@@ -142,7 +142,7 @@ it replaces will hard-crash replay of `core`'s historical events.
   2. An aggregate holds a map-valued state field that is not a resource attribute, and that field is rebuilt correctly from history after the aggregate process is killed and rehydrated.
   3. A single command emits two events, both persisted to the stream in declared order.
   4. Aggregate lifespan, `snapshot_every` and `snapshot_version` are set from the DSL and honoured, and a snapshot written before a VM restart is still readable after it through the shipped Postgres adapter.
-  5. `GenerateAggregateModule` is under 300 lines, with command execution, event application and snapshot concerns in separate builder modules.
+  5. A generated `execute/2` clause is under ~10 lines and delegates to a hand-written runtime module; no `quote` block in `lib/commanded/transformers/` exceeds 40 lines. Measured on generated OUTPUT, not generator length — splitting the generator into builder modules relocates the emission without shrinking it. Baseline at time of writing: `generate_aggregate_module.ex` emits 541 generated lines across 11 `quote` blocks with a 225-line `execute/2` body; every other transformer's largest block is 31 lines and none exceeds 40. The same concerns are currently implemented twice — once inlined in the generated body, once in `command_action_mapper.ex` — and the fix is removing that duplication across the macro boundary.
 
 **Plans**: TBD
 
@@ -315,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 | ------- | ---------------- | -------- | ----------- |
-| 1. Build Integrity | 3/8 | In Progress|  |
+| 1. Build Integrity | 3/8 | In Progress | |
 | 2. Deterministic Generation and Compile-Time Rejection | 0/TBD | Not started | - |
 | 3. Event Identity and Versioning | 0/TBD | Not started | - |
 | 4. Aggregate Expressiveness and Lifecycle | 0/TBD | Not started | - |
