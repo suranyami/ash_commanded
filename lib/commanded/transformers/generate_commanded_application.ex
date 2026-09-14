@@ -1,3 +1,12 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+# credo:disable-for-this-file Credo.Check.Design.TagTODO
+#
+# `generate_application_module/1`'s complexity, and the `TODO: Add dynamically discovered
+# projectors here` at line ~109, are both projector-supervision concerns ROADMAP.md's Phase 5
+# ("Projection Expressiveness", FOUND-05) already names: "FOUND-05 replaces the unfinished
+# TODO at generate_commanded_application.ex:115 and must not reintroduce the cross-module
+# compile deadlock closed in Phase 2." Resolving the TODO here, ahead of that phase's own
+# compile-order design work, risks exactly the deadlock that note warns against (D-21).
 defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
   @moduledoc """
   Generates a Commanded.Application module based on the configuration in the application section.

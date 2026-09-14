@@ -66,7 +66,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingDslTest do
 
       # Verify it has transforms
       assert register_command.transforms
-      assert length(register_command.transforms) > 0
+      assert register_command.transforms != []
 
       # Verify basic transform specs
       assert Enum.any?(
@@ -83,7 +83,7 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingDslTest do
     test "command with validations has expected structure", %{register_command: register_command} do
       # Verify it has validations
       assert register_command.validations
-      assert length(register_command.validations) > 0
+      assert register_command.validations != []
 
       # Verify basic validation specs
       assert Enum.any?(

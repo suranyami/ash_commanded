@@ -58,35 +58,36 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventModules do
   def transform(dsl_state) do
     resource_module = Transformer.get_persisted(dsl_state, :module)
 
-    with events when is_list(events) and events != [] <-
-           Transformer.get_entities(dsl_state, [:commanded, :events]) do
-      resource_name = BaseTransformer.get_resource_name(resource_module)
-      app_prefix = BaseTransformer.get_module_prefix(resource_module)
+    case Transformer.get_entities(dsl_state, [:commanded, :events]) do
+      [] ->
+        {:ok, dsl_state}
 
-      final_state =
-        Enum.reduce(events, dsl_state, fn event, acc_dsl_state ->
-          event_module = build_event_module(event, app_prefix)
+      events ->
+        resource_name = BaseTransformer.get_resource_name(resource_module)
+        app_prefix = BaseTransformer.get_module_prefix(resource_module)
 
-          BaseTransformer.create_module(
-            event_module,
-            build_event_module_ast(event, resource_name),
-            __ENV__
-          )
+        final_state =
+          Enum.reduce(events, dsl_state, fn event, acc_dsl_state ->
+            event_module = build_event_module(event, app_prefix)
 
-          # Store the generated module in DSL state for potential use by other transformers
-          event_modules = Transformer.get_persisted(acc_dsl_state, :event_modules, [])
+            BaseTransformer.create_module(
+              event_module,
+              build_event_module_ast(event, resource_name),
+              __ENV__
+            )
 
-          updated_dsl_state =
-            Transformer.persist(acc_dsl_state, :event_modules, [
-              {event.name, event_module} | event_modules
-            ])
+            # Store the generated module in DSL state for potential use by other transformers
+            event_modules = Transformer.get_persisted(acc_dsl_state, :event_modules, [])
 
-          updated_dsl_state
-        end)
+            updated_dsl_state =
+              Transformer.persist(acc_dsl_state, :event_modules, [
+                {event.name, event_module} | event_modules
+              ])
 
-      {:ok, final_state}
-    else
-      _ -> {:ok, dsl_state}
+            updated_dsl_state
+          end)
+
+        {:ok, final_state}
     end
   end
 

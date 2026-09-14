@@ -38,15 +38,13 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionActions do
   defp build_error_message(resource_module, invalid_projections) do
     projections_list =
       invalid_projections
-      |> Enum.map(fn projection ->
+      |> Enum.map_join("\n", fn projection ->
         "  - Projection `#{projection.name}` specifies potentially invalid action `#{projection.action}`"
       end)
-      |> Enum.join("\n")
 
     valid_actions_list =
       @valid_actions
-      |> Enum.map(&"  - #{inspect(&1)}")
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", &"  - #{inspect(&1)}")
 
     """
     Some projections in #{inspect(resource_module)} specify actions that might not be valid:

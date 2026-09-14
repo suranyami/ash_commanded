@@ -1,3 +1,15 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+# credo:disable-for-this-file Credo.Check.Readability.PredicateFunctionNames
+#
+# `normalize_error/1`'s complexity, and the `is_error?/1`/`is_error_result?/1` naming (Elixir
+# convention wants `error?`/`error_result?`, no `is_` prefix), are both public-API surface on
+# a 514-line module. ROADMAP.md's Phase 6 ("Event Handlers, Dispatch and Process Managers",
+# QUAL-04/QUAL-05) success criterion states `Error` must be "under 300 lines... or carr[y] a
+# comment naming what would break if it were split" — renaming or restructuring this public
+# API now, ahead of that decomposition, would force a second breaking rename once Phase 6
+# lands. Renaming `is_error?/1` today would also break every existing caller
+# (`command_action_mapper.ex`, `test/commanded/error_handling_test.exs`) for no benefit ahead
+# of the real split (D-21).
 defmodule AshCommanded.Commanded.Error do
   @moduledoc """
   Standardized error handling for AshCommanded.

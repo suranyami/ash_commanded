@@ -62,11 +62,10 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateEventHandlerEvents do
     # Build a list of handler-to-invalid-event references
     handlers_list =
       references_by_handler
-      |> Enum.map(fn {handler_name, invalid_events} ->
-        events_str = invalid_events |> Enum.map(&"`#{&1}`") |> Enum.join(", ")
+      |> Enum.map_join("\n", fn {handler_name, invalid_events} ->
+        events_str = Enum.map_join(invalid_events, ", ", &"`#{&1}`")
         "  - Handler `#{handler_name}` references unknown event(s): #{events_str}"
       end)
-      |> Enum.join("\n")
 
     # Show valid event names to help the user correct their code
     valid_events_list =
@@ -75,7 +74,7 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateEventHandlerEvents do
           "No events are defined in #{inspect(resource_module)}."
 
         events ->
-          valid_list = events |> Enum.map(&"  - #{inspect(&1)}") |> Enum.join("\n")
+          valid_list = Enum.map_join(events, "\n", &"  - #{inspect(&1)}")
           "The following events are defined in #{inspect(resource_module)}:\n\n#{valid_list}"
       end
 

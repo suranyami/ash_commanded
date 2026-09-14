@@ -1,3 +1,13 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+# credo:disable-for-this-file Credo.Check.Refactor.Nesting
+# credo:disable-for-this-file Credo.Check.Refactor.FunctionArity
+#
+# This module is 640 lines spanning mapping, transformation, validation, transactions and
+# error handling — the exact debt PROJECT.md's known-debt inventory and ROADMAP.md Phase 6
+# ("Event Handlers, Dispatch and Process Managers", QUAL-04/QUAL-05) already name. Phase 6's
+# own success criterion states this module must be "under 250 lines with transaction,
+# transformation and error-handling concerns moved to their existing modules" — decomposing
+# it now, inside a build-integrity phase, would be redone rather than reused (D-21).
 defmodule AshCommanded.Commanded.CommandActionMapper do
   @moduledoc """
   Provides utilities for mapping between Commanded commands and Ash actions.

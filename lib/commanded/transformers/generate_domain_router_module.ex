@@ -1,3 +1,11 @@
+# credo:disable-for-this-file Credo.Check.Refactor.Nesting
+#
+# Router-generation transformer nesting is exactly the compile-order boundary
+# ROADMAP.md's Phase 2 ("Deterministic Generation and Compile-Time Rejection", FOUND-03/
+# FOUND-04) already schedules to rework, per `.planning/phases/01-build-integrity/
+# deferred-items.md`'s "From Plan 01-06" entry (router generation never fires under the
+# current Domain/Resource DSL split — Phase 2 rewrites this transformer's control flow to
+# fix it). Reducing nesting here now would be redone once that rewrite lands (D-21).
 defmodule AshCommanded.Commanded.Transformers.GenerateDomainRouterModule do
   @moduledoc """
   Generates a domain-specific router module based on the commands defined in a domain's resources.
@@ -59,7 +67,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateDomainRouterModule do
     resource_module = Transformer.get_persisted(dsl_state, :module)
 
     # Only process if this is an Ash.Resource
-    case is_ash_resource?(resource_module) do
+    case ash_resource?(resource_module) do
       false ->
         {:ok, dsl_state}
 
@@ -129,7 +137,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateDomainRouterModule do
   end
 
   # Check if module is an Ash.Resource
-  defp is_ash_resource?(module) do
+  defp ash_resource?(module) do
     Code.ensure_loaded?(module) &&
       function_exported?(module, :__ash_resource__, 0)
   end

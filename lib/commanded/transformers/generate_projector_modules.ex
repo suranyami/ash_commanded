@@ -1,3 +1,9 @@
+# credo:disable-for-this-file Credo.Check.Refactor.Nesting
+#
+# `build_event_handler/5`'s nesting is a projection-expressiveness concern ROADMAP.md's
+# Phase 5 ("Projection Expressiveness", PROJ-01..04) already schedules to rework — that
+# phase rewrites projector generation to add idempotency and richer projection composition.
+# Reducing nesting here now would be redone once that rewrite lands (D-21).
 defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
   @moduledoc """
   Generates projector modules based on the projections defined in the DSL.
@@ -94,6 +100,16 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
 
         projector_module = build_projector_module(resource_name, app_prefix)
 
+        # Only the action types a resource's own projections actually declare are emitted as
+        # `perform_action/2` clauses below (see `build_action_handlers/1`). Emitting all five
+        # possible clauses unconditionally, regardless of which actions this resource uses, is
+        # exactly the fat-generated-code pattern FOUND-06/QUAL-02 forbid: every clause the
+        # resource's projections never reach is dead code, and `mix compile --warnings-as-errors`
+        # (D-26) correctly refuses to pass with a "this clause of defp perform_action/2 is never
+        # used" warning for each of them. Fixed at the warning's source (01-07) rather than
+        # suppressed.
+        actions_used = autogen_projections |> Enum.map(& &1.action) |> Enum.uniq()
+
         # Create the module AST and define it
         ast =
           build_projector_module_ast(
@@ -103,7 +119,8 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
             event_projections,
             event_modules,
             projection_modules,
-            commanded_application
+            commanded_application,
+            actions_used
           )
 
         BaseTransformer.create_module(projector_module, ast, __ENV__)
@@ -166,7 +183,8 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
         event_projections,
         event_modules,
         projection_modules,
-        commanded_application \\ nil
+        commanded_application \\ nil,
+        actions_used \\ [:create, :update, :destroy, :read]
       ) do
     # Create a more descriptive moduledoc
     moduledoc = "Event handler that projects events onto the #{resource_name} resource"
@@ -189,8 +207,10 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
 
     projector_name = "#{resource_module}Projector"
 
-    # Action-specific implementation functions for each Ash action
-    action_handlers = build_action_handlers()
+    # Action-specific implementation functions — only for the action types this resource's
+    # own projections actually use (see build_action_handlers/1's moduledoc-adjacent comment
+    # at the call site in transform/1).
+    action_handlers = build_action_handlers(actions_used)
 
     quote do
       @moduledoc unquote(moduledoc)
@@ -295,27 +315,51 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
     end
   end
 
-  # Build handler functions for different Ash actions
-  defp build_action_handlers do
-    [
+  # Build handler functions for different Ash actions — one clause per action type this
+  # resource's own projections actually use (`actions_used`), plus a catch-all only when a
+  # projection uses an action outside the four Ash standard verbs (a genuinely custom action
+  # name). Emitting a clause for an action type no projection reaches produces dead code that
+  # `mix compile --warnings-as-errors` correctly refuses to pass ("this clause of defp
+  # perform_action/2 is never used") — narrowed here rather than suppressed (see transform/1).
+  @standard_action_clauses [
+    create:
       quote do
         defp perform_action(changeset, :create), do: Ash.create(changeset)
       end,
+    update:
       quote do
         defp perform_action(changeset, :update), do: Ash.update(changeset)
       end,
+    destroy:
       quote do
         defp perform_action(changeset, :destroy), do: Ash.destroy(changeset)
       end,
+    read:
       quote do
         defp perform_action(changeset, :read), do: Ash.read(changeset)
-      end,
-      quote do
-        defp perform_action(changeset, action) when is_atom(action) do
-          # For custom actions, use Ash.run_action
-          Ash.run_action(changeset, action)
-        end
       end
-    ]
+  ]
+
+  defp build_action_handlers(actions_used) do
+    standard_clauses =
+      @standard_action_clauses
+      |> Enum.filter(fn {action, _ast} -> action in actions_used end)
+      |> Enum.map(fn {_action, ast} -> ast end)
+
+    custom_actions = Enum.reject(actions_used, &(&1 in [:create, :update, :destroy, :read]))
+
+    if custom_actions == [] do
+      standard_clauses
+    else
+      standard_clauses ++
+        [
+          quote do
+            defp perform_action(changeset, action) when is_atom(action) do
+              # For custom actions, use Ash.run_action
+              Ash.run_action(changeset, action)
+            end
+          end
+        ]
+    end
   end
 end

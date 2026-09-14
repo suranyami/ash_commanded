@@ -40,11 +40,10 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionEvents do
     # Build a list of projection-to-invalid-event references
     projections_list =
       invalid_projections
-      |> Enum.map(fn projection ->
+      |> Enum.map_join("\n", fn projection ->
         event_name = projection.event_name || projection.name
         "  - Projection `#{projection.name}` references unknown event `#{event_name}`"
       end)
-      |> Enum.join("\n")
 
     # Show valid event names to help the user correct their code
     valid_events_list =
@@ -53,7 +52,7 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionEvents do
           "No events are defined in #{inspect(resource_module)}."
 
         events ->
-          valid_list = events |> Enum.map(&"  - #{inspect(&1)}") |> Enum.join("\n")
+          valid_list = Enum.map_join(events, "\n", &"  - #{inspect(&1)}")
           "The following events are defined in #{inspect(resource_module)}:\n\n#{valid_list}"
       end
 

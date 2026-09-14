@@ -48,10 +48,9 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateEventFields do
   defp build_error_message(resource_module, invalid_events) do
     events_with_errors =
       invalid_events
-      |> Enum.map(fn {event_name, invalid_fields} ->
+      |> Enum.map_join("\n", fn {event_name, invalid_fields} ->
         "  - Event `#{event_name}` has unknown fields: #{inspect(invalid_fields)}"
       end)
-      |> Enum.join("\n")
 
     """
     The following events in #{inspect(resource_module)} reference fields that don't exist as attributes:

@@ -1,3 +1,12 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+# credo:disable-for-this-file Credo.Check.Refactor.Nesting
+# credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
+#
+# This module is 861 lines spanning command execution, event application and snapshot
+# generation — the exact debt PROJECT.md's known-debt inventory and ROADMAP.md Phase 4
+# ("Aggregate Expressiveness and Lifecycle", QUAL-03) already name for decomposition.
+# Phase 4 rewrites this transformer to add preconditions and non-attribute state, and
+# decomposing it is explicitly part of that work rather than separate cleanup (D-21).
 defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
   @moduledoc """
   Generates an aggregate module based on the commands and events defined in the DSL.

@@ -48,10 +48,9 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateCommandFields do
   defp build_error_message(resource_module, invalid_commands) do
     commands_with_errors =
       invalid_commands
-      |> Enum.map(fn {command_name, invalid_fields} ->
+      |> Enum.map_join("\n", fn {command_name, invalid_fields} ->
         "  - Command `#{command_name}` has unknown fields: #{inspect(invalid_fields)}"
       end)
-      |> Enum.join("\n")
 
     """
     The following commands in #{inspect(resource_module)} reference fields that don't exist as attributes:

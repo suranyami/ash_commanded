@@ -57,35 +57,36 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectionModules do
   def transform(dsl_state) do
     resource_module = Transformer.get_persisted(dsl_state, :module)
 
-    with projections when is_list(projections) and projections != [] <-
-           Transformer.get_entities(dsl_state, [:commanded, :projections]) do
-      resource_name = BaseTransformer.get_resource_name(resource_module)
-      app_prefix = BaseTransformer.get_module_prefix(resource_module)
+    case Transformer.get_entities(dsl_state, [:commanded, :projections]) do
+      [] ->
+        {:ok, dsl_state}
 
-      final_state =
-        Enum.reduce(projections, dsl_state, fn projection, acc_dsl_state ->
-          projection_module = build_projection_module(projection, app_prefix)
+      projections ->
+        resource_name = BaseTransformer.get_resource_name(resource_module)
+        app_prefix = BaseTransformer.get_module_prefix(resource_module)
 
-          BaseTransformer.create_module(
-            projection_module,
-            build_projection_module_ast(projection, resource_name),
-            __ENV__
-          )
+        final_state =
+          Enum.reduce(projections, dsl_state, fn projection, acc_dsl_state ->
+            projection_module = build_projection_module(projection, app_prefix)
 
-          # Store the generated module in DSL state for potential use by other transformers
-          projection_modules = Transformer.get_persisted(acc_dsl_state, :projection_modules, [])
+            BaseTransformer.create_module(
+              projection_module,
+              build_projection_module_ast(projection, resource_name),
+              __ENV__
+            )
 
-          updated_dsl_state =
-            Transformer.persist(acc_dsl_state, :projection_modules, [
-              {projection.name, projection_module} | projection_modules
-            ])
+            # Store the generated module in DSL state for potential use by other transformers
+            projection_modules = Transformer.get_persisted(acc_dsl_state, :projection_modules, [])
 
-          updated_dsl_state
-        end)
+            updated_dsl_state =
+              Transformer.persist(acc_dsl_state, :projection_modules, [
+                {projection.name, projection_module} | projection_modules
+              ])
 
-      {:ok, final_state}
-    else
-      _ -> {:ok, dsl_state}
+            updated_dsl_state
+          end)
+
+        {:ok, final_state}
     end
   end
 

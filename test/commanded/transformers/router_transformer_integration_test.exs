@@ -70,7 +70,7 @@ defmodule AshCommanded.Commanded.Transformers.RouterTransformerIntegrationTest d
       # Check that the command modules were generated
       command_modules = Spark.Dsl.Extension.get_persisted(UserResource, :command_modules, [])
       assert is_list(command_modules)
-      assert length(command_modules) > 0
+      assert command_modules != []
 
       # Check that the aggregate module was stored in the DSL state
       aggregate_module = Spark.Dsl.Extension.get_persisted(UserResource, :aggregate_module)
@@ -99,7 +99,7 @@ defmodule AshCommanded.Commanded.Transformers.RouterTransformerIntegrationTest d
       mappings = Spark.Dsl.Extension.get_persisted(UserResource, :command_resource_mappings, [])
       assert is_list(mappings)
 
-      if length(mappings) > 0 do
+      if mappings != [] do
         mapping = List.first(mappings)
         assert mapping.resource == UserResource
         assert mapping.domain == TestDomain
@@ -109,7 +109,7 @@ defmodule AshCommanded.Commanded.Transformers.RouterTransformerIntegrationTest d
 
         # Check for commands in the mapping
         assert is_list(mapping.commands)
-        assert length(mapping.commands) > 0
+        assert mapping.commands != []
       end
     end
   end

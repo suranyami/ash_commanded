@@ -46,8 +46,7 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateCommandNames do
   defp build_error_message(resource_module, duplicate_names) do
     duplicates_list =
       duplicate_names
-      |> Enum.map(fn name -> "  - #{inspect(name)}" end)
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", fn name -> "  - #{inspect(name)}" end)
 
     """
     The following command names are duplicated in #{inspect(resource_module)}:

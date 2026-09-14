@@ -7,55 +7,53 @@ defmodule AshCommanded.Commanded.ContextBuilderTest do
     Builds a context map based on configuration
     """
     def build_context(aggregate, command, opts \\ []) do
-      # Default configuration
-      include_aggregate? = Keyword.get(opts, :include_aggregate?, true)
-      include_command? = Keyword.get(opts, :include_command?, true)
-      include_metadata? = Keyword.get(opts, :include_metadata?, true)
-      context_prefix = Keyword.get(opts, :context_prefix, nil)
+      %{}
+      |> maybe_put_aggregate(aggregate, opts)
+      |> maybe_put_command(command, opts)
+      |> maybe_put_metadata(command, opts)
+      |> maybe_merge_static_context(opts)
+    end
+
+    defp maybe_put_aggregate(context, aggregate, opts) do
+      if Keyword.get(opts, :include_aggregate?, true) do
+        Map.put(context, prefixed_key(opts, :aggregate), aggregate)
+      else
+        context
+      end
+    end
+
+    defp maybe_put_command(context, command, opts) do
+      if Keyword.get(opts, :include_command?, true) do
+        Map.put(context, prefixed_key(opts, :command), command)
+      else
+        context
+      end
+    end
+
+    defp maybe_put_metadata(context, command, opts) do
+      if Keyword.get(opts, :include_metadata?, true) && Map.has_key?(command, :metadata) do
+        metadata = Map.get(command, :metadata, %{})
+        Map.put(context, prefixed_key(opts, :metadata), metadata)
+      else
+        context
+      end
+    end
+
+    defp maybe_merge_static_context(context, opts) do
       static_context = Keyword.get(opts, :static_context, %{})
 
-      # Start with empty context
-      context = %{}
+      if is_map(static_context) && map_size(static_context) > 0 do
+        Map.merge(context, static_context)
+      else
+        context
+      end
+    end
 
-      # Add aggregate if configured
-      context =
-        if include_aggregate? do
-          key = if context_prefix, do: :"#{context_prefix}.aggregate", else: :aggregate
-          Map.put(context, key, aggregate)
-        else
-          context
-        end
-
-      # Add command if configured
-      context =
-        if include_command? do
-          key = if context_prefix, do: :"#{context_prefix}.command", else: :command
-          Map.put(context, key, command)
-        else
-          context
-        end
-
-      # Add metadata if present and configured
-      context =
-        if include_metadata? && Map.has_key?(command, :metadata) do
-          metadata = Map.get(command, :metadata, %{})
-          base_key = if context_prefix, do: :"#{context_prefix}.metadata", else: :metadata
-
-          # Add as a map under metadata key 
-          Map.put(context, base_key, metadata)
-        else
-          context
-        end
-
-      # Add static context if configured
-      context =
-        if is_map(static_context) && map_size(static_context) > 0 do
-          Map.merge(context, static_context)
-        else
-          context
-        end
-
-      context
+    defp prefixed_key(opts, key) do
+      case Keyword.get(opts, :context_prefix, nil) do
+        nil -> key
+        prefix -> :"#{prefix}.#{key}"
+      end
     end
   end
 

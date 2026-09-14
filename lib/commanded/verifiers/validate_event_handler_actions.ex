@@ -65,15 +65,13 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateEventHandlerActions do
   defp build_error_message(resource_module, invalid_handlers, valid_actions) do
     handlers_list =
       invalid_handlers
-      |> Enum.map(fn handler ->
+      |> Enum.map_join("\n", fn handler ->
         "  - Handler `#{handler.name}` specifies potentially invalid action `#{handler.action}`"
       end)
-      |> Enum.join("\n")
 
     valid_actions_list =
       valid_actions
-      |> Enum.map(&"  - #{inspect(&1)}")
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", &"  - #{inspect(&1)}")
 
     """
     Some event handlers in #{inspect(resource_module)} specify actions that might not be valid:

@@ -59,35 +59,36 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandModules do
   def transform(dsl_state) do
     resource_module = Transformer.get_persisted(dsl_state, :module)
 
-    with commands when is_list(commands) and commands != [] <-
-           Transformer.get_entities(dsl_state, [:commanded, :commands]) do
-      resource_name = BaseTransformer.get_resource_name(resource_module)
-      app_prefix = BaseTransformer.get_module_prefix(resource_module)
+    case Transformer.get_entities(dsl_state, [:commanded, :commands]) do
+      [] ->
+        {:ok, dsl_state}
 
-      final_state =
-        Enum.reduce(commands, dsl_state, fn command, acc_dsl_state ->
-          command_module = build_command_module(command, app_prefix)
+      commands ->
+        resource_name = BaseTransformer.get_resource_name(resource_module)
+        app_prefix = BaseTransformer.get_module_prefix(resource_module)
 
-          BaseTransformer.create_module(
-            command_module,
-            build_command_module_ast(command, resource_name),
-            __ENV__
-          )
+        final_state =
+          Enum.reduce(commands, dsl_state, fn command, acc_dsl_state ->
+            command_module = build_command_module(command, app_prefix)
 
-          # Store the generated module in DSL state for potential use by other transformers
-          command_modules = Transformer.get_persisted(acc_dsl_state, :command_modules, [])
+            BaseTransformer.create_module(
+              command_module,
+              build_command_module_ast(command, resource_name),
+              __ENV__
+            )
 
-          updated_dsl_state =
-            Transformer.persist(acc_dsl_state, :command_modules, [
-              {command.name, command_module} | command_modules
-            ])
+            # Store the generated module in DSL state for potential use by other transformers
+            command_modules = Transformer.get_persisted(acc_dsl_state, :command_modules, [])
 
-          updated_dsl_state
-        end)
+            updated_dsl_state =
+              Transformer.persist(acc_dsl_state, :command_modules, [
+                {command.name, command_module} | command_modules
+              ])
 
-      {:ok, final_state}
-    else
-      _ -> {:ok, dsl_state}
+            updated_dsl_state
+          end)
+
+        {:ok, final_state}
     end
   end
 

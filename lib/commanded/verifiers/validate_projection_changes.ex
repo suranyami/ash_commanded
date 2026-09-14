@@ -32,7 +32,7 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionChanges do
 
         {projection, invalid_attrs}
       end)
-      |> Enum.filter(fn {_projection, invalid_attrs} -> length(invalid_attrs) > 0 end)
+      |> Enum.filter(fn {_projection, invalid_attrs} -> invalid_attrs != [] end)
 
     case projections_with_invalid_changes do
       [] ->
@@ -47,16 +47,14 @@ defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionChanges do
   defp build_error_message(resource_module, invalid_projections, valid_attributes) do
     projections_list =
       invalid_projections
-      |> Enum.map(fn {projection, invalid_attrs} ->
-        invalid_attrs_str = Enum.map(invalid_attrs, &inspect/1) |> Enum.join(", ")
+      |> Enum.map_join("\n", fn {projection, invalid_attrs} ->
+        invalid_attrs_str = Enum.map_join(invalid_attrs, ", ", &inspect/1)
         "  - Projection `#{projection.name}` has unknown attributes: #{invalid_attrs_str}"
       end)
-      |> Enum.join("\n")
 
     valid_attributes_list =
       valid_attributes
-      |> Enum.map(&"  - #{inspect(&1)}")
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", &"  - #{inspect(&1)}")
 
     """
     Some projections in #{inspect(resource_module)} reference attributes that don't exist:

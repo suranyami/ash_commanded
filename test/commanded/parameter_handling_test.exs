@@ -342,10 +342,10 @@ defmodule AshCommanded.Test.Commanded.ParameterHandlingTest do
 
         # Check email format
         issues =
-          if not String.contains?(params.email, "@") do
-            issues ++ ["Invalid email format"]
-          else
+          if String.contains?(params.email, "@") do
             issues
+          else
+            issues ++ ["Invalid email format"]
           end
 
         # Check age

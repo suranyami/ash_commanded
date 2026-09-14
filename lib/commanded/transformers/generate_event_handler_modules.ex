@@ -1,3 +1,10 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+# credo:disable-for-this-file Credo.Check.Refactor.Nesting
+#
+# `build_handler_module_ast/5`'s complexity and nesting are event-handler dispatch/execution
+# concerns ROADMAP.md's Phase 6 ("Event Handlers, Dispatch and Process Managers", HAND-01/
+# HAND-02) already schedules to rework — that phase makes subscription and dispatch options
+# declarable, which rewrites this exact code path. Reducing it now would be redone (D-21).
 defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
   @moduledoc """
   Generates event handler modules based on the event_handlers defined in the DSL.
@@ -217,10 +224,61 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
         unquote_splicing(event_handlers)
 
         # Helper for executing actions
+        #
+        # `Ash.run_action/3` does not exist (confirmed against `deps/ash/lib/ash.ex`) — this
+        # previously called a nonexistent function, dead by construction because no test in the
+        # suite exercises the atom-action path (see `AshCommanded.TestSupport.Widget`'s
+        # moduledoc comment on its own event_handlers block). Dispatching an arbitrary named Ash
+        # action correctly requires branching on the action's own declared type, exactly as
+        # `AshCommanded.Commanded.CommandActionMapper.execute_create/4` (and its
+        # execute_update/destroy/read/custom siblings) already do for commands — mirrored here
+        # rather than reinvented. Fixed at the warning's source (01-07, D-26) rather than
+        # suppressed; `mix compile --warnings-as-errors` had refused to pass with
+        # "Ash.run_action/3 is undefined or private".
         defp execute_action(event, action_name) when is_atom(action_name) do
-          # Convert event struct to map for action params
           params = Map.from_struct(event)
-          Ash.run_action(unquote(resource_module), action_name, params)
+
+          case Ash.Resource.Info.action(unquote(resource_module), action_name) do
+            nil ->
+              {:error, {:unknown_action, action_name}}
+
+            %{type: :create} ->
+              unquote(resource_module)
+              |> Ash.Changeset.for_create(action_name, params)
+              |> Ash.create()
+
+            %{type: :read} ->
+              unquote(resource_module)
+              |> Ash.Query.for_read(action_name, params)
+              |> Ash.read()
+
+            %{type: :update} ->
+              case Ash.get(unquote(resource_module), Map.get(params, :id)) do
+                {:ok, record} ->
+                  record
+                  |> Ash.Changeset.for_update(action_name, params)
+                  |> Ash.update()
+
+                error ->
+                  error
+              end
+
+            %{type: :destroy} ->
+              case Ash.get(unquote(resource_module), Map.get(params, :id)) do
+                {:ok, record} ->
+                  record
+                  |> Ash.Changeset.for_destroy(action_name, params)
+                  |> Ash.destroy()
+
+                error ->
+                  error
+              end
+
+            %{type: :action} ->
+              unquote(resource_module)
+              |> Ash.ActionInput.for_action(action_name, params)
+              |> Ash.run_action()
+          end
         end
 
         # Helper for handling responses
