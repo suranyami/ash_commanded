@@ -87,3 +87,20 @@ None of the above touch `lib/commanded/transformers/generate_aggregate_module.ex
   Decision: quarantined on the user's explicit instruction after being told that this re-introduces an
   exclusion in the same phase that D-16 removed all default exclusions. Recorded as a knowing
   exception, not an oversight.
+
+## Signed off
+
+- **`snapshot_adapter.ex` no longer declares `@behaviour Commanded.Aggregates.Aggregate.Snapshotter`
+  (deviation from D-07).** D-07 specified making the declaration unconditional once Commanded became
+  a hard dependency. Verified against `deps/commanded` 1.4.11 and against Commanded's current
+  documentation: no such module exists, and Commanded's real snapshotting is internal
+  (`Commanded.Snapshotting`), configured per-aggregate via a plain map with no pluggable adapter
+  behaviour. Declaring the behaviour fails `mix compile --warnings-as-errors` with "behaviour does not
+  exist". The declaration was removed and the four adapter functions left unchanged.
+
+  D-07 was made on a false premise — the `Code.ensure_loaded?` guard was permanently false, so the
+  behaviour was never attached and the compiler never checked those functions against anything. The
+  decision only became inspectable once the guard came off.
+
+  **User signed off 2026-09-14** after independently confirming against current Commanded
+  documentation. Phase 4 (SNAP-01..03) owns whatever the adapter should conform to instead.
