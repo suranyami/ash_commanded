@@ -107,14 +107,26 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
           @impl true
           def child_spec() do
             # TODO: Add dynamically discovered projectors here
-            Supervisor.child_spec(
-              {Supervisor,
-               [
-                 strategy: :one_for_one,
-                 name: Module.concat(unquote(app_module), Supervisor)
-               ]},
-              id: Module.concat(unquote(app_module), Supervisor)
-            )
+            #
+            # `Supervisor.child_spec/2`'s first argument must be a module (or `{module, arg}`)
+            # that itself implements `child_spec/1` — bare `Supervisor` does not (it is not a
+            # `use Supervisor`-based child module), so passing `{Supervisor, opts}` here raised
+            # `ArgumentError: The module Supervisor was given as a child to a supervisor but it
+            # does not implement child_spec/1` the moment this function was ever actually called
+            # (never exercised before a real, mocked-free
+            # commanded_application_generator_test.exs called it directly). Build the child
+            # spec map directly instead — an anonymous `Supervisor.start_link/2` with no
+            # children, registered under this application's own name.
+            %{
+              id: Module.concat(unquote(app_module), Supervisor),
+              start:
+                {Supervisor, :start_link,
+                 [
+                   [],
+                   [strategy: :one_for_one, name: Module.concat(unquote(app_module), Supervisor)]
+                 ]},
+              type: :supervisor
+            }
           end
         end
       else

@@ -176,23 +176,39 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
 
     test "snapshot functions use application config when dsl_state has application section" do
       # When dsl_state is present, build_aggregate_module_ast calls Dsl.application(dsl_state).
-      # Stub Dsl.application to return config so we assert the AST uses it.
+      #
+      # Previously mocked AshCommanded.Commanded.Dsl.application/1 via :meck to return this
+      # config. Replaced with a real plain-map dsl_state carrying the config under the same
+      # [:commanded, :application] path AshCommanded.Commanded.Dsl.application/1 itself reads
+      # via Spark.Dsl.Extension.get_opt/5 (see commanded_application_generator_test.exs's own
+      # dsl_state/2 helper and moduledoc for the fuller rationale: this repo's only two
+      # remaining :meck users, both async: true, were together causing an intermittent
+      # `:cover`-server-startup race — `:meck.new/2` asks `:cover` to preserve the original
+      # module's cover state, and `:cover.call/1` starts the cover server on demand if it isn't
+      # running, so two concurrent `:meck.new/2` calls could race to start it and one would get
+      # `{:error, {:already_started, pid}}` against a success-only match. Reproduced by running
+      # the full suite repeatedly, not by varying seeds — a seed only reorders tests, it doesn't
+      # change whether two async files' `:meck.new/2` calls land in the same instant).
       app_config = [
+        # otp_app is required here: AshCommanded.Commanded.Dsl.application/1 uses :otp_app as
+        # its own sentinel to detect whether the `application` section is configured at all
+        # (`Spark.Dsl.Extension.get_opt(dsl, [:commanded, :application], :otp_app, nil)`) —
+        # without it, the real function returns nil regardless of the other keys present. The
+        # old :meck-mocked version never needed this, since it replaced the whole function.
+        otp_app: :test_app,
         snapshotting: true,
         snapshot_threshold: 50,
         snapshot_version: 2
       ]
-
-      :meck.new(AshCommanded.Commanded.Dsl, [:passthrough])
-      :meck.expect(AshCommanded.Commanded.Dsl, :application, fn _ -> app_config end)
 
       attribute_names = [:id, :email]
       command = %Command{name: :register_user, fields: [:id, :email], identity_field: :id}
       event = %Event{name: :user_registered, fields: [:id, :email]}
       command_modules = %{register_user: MyApp.Commands.RegisterUser}
       event_modules = %{user_registered: MyApp.Events.UserRegistered}
-      # non-nil so Dsl.application/1 is called
-      dsl_state = %{}
+      # non-nil, and carrying a real [:commanded, :application] section, so
+      # AshCommanded.Commanded.Dsl.application/1 returns app_config for real
+      dsl_state = %{[:commanded, :application] => %{opts: app_config}}
 
       ast =
         invoke_private(
@@ -208,8 +224,6 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
             dsl_state
           ]
         )
-
-      :meck.unload(AshCommanded.Commanded.Dsl)
 
       ast_string = Macro.to_string(ast)
 
@@ -244,11 +258,18 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
       assert String.contains?(ast_string_nil, "def snapshot_state_if_needed("),
              "snapshot_state_if_needed/1 must be generated when dsl_state is nil (snapshotting disabled)"
 
-      # When snapshotting is enabled, the full implementation is generated
-      app_config = [snapshotting: true, snapshot_threshold: 50, snapshot_version: 2]
-      :meck.new(AshCommanded.Commanded.Dsl, [:passthrough])
-      :meck.expect(AshCommanded.Commanded.Dsl, :application, fn _ -> app_config end)
-      dsl_state = %{}
+      # When snapshotting is enabled, the full implementation is generated. Real dsl_state, not
+      # a :meck mock of AshCommanded.Commanded.Dsl.application/1 — see the previous test's
+      # comment for why.
+      # otp_app required — see the previous test's comment.
+      app_config = [
+        otp_app: :test_app,
+        snapshotting: true,
+        snapshot_threshold: 50,
+        snapshot_version: 2
+      ]
+
+      dsl_state = %{[:commanded, :application] => %{opts: app_config}}
 
       ast_with_app_config =
         invoke_private(
@@ -265,7 +286,6 @@ defmodule AshCommanded.Commanded.Transformers.AggregateGeneratorTest do
           ]
         )
 
-      :meck.unload(AshCommanded.Commanded.Dsl)
       ast_string_enabled = Macro.to_string(ast_with_app_config)
 
       assert String.contains?(ast_string_enabled, "def snapshot_state_if_needed("),
