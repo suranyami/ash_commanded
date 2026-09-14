@@ -88,6 +88,74 @@ None of the above touch `lib/commanded/transformers/generate_aggregate_module.ex
   exclusion in the same phase that D-16 removed all default exclusions. Recorded as a knowing
   exception, not an oversight.
 
+## From Plan 01-06
+
+- **Router generation never fires at all, for any domain, under the current Domain/Resource DSL
+  split — a second, more fundamental defect in the same family as FOUND-03/FOUND-04.** Confirmed
+  by a live probe (compile a real `Ash.Domain` using `AshCommanded.Commanded.DomainDsl` with a
+  resource carrying commands, no `application` section so the compile-order crash below is
+  avoided): the command, event and aggregate modules generate correctly, but
+  `Code.ensure_loaded?/1` is `false` for both `<Domain>.Router` and `<Prefix>.Router`.
+
+  **Root cause:** `GenerateMainRouterModule.transform/1` and `GenerateDomainRouterModule.transform/1`
+  are declared only in `AshCommanded.Commanded.Dsl`'s (resource-level) `transformers:` list.
+  Both check `Spark.Dsl.Transformer.get_persisted(dsl_state, :module)` — the module *currently
+  being compiled* — against `is_ash_domain?/1` / `is_ash_resource?/1`. Since these transformers
+  only ever run while a *resource* is compiling, that persisted `:module` is always the resource,
+  never the domain, so `GenerateMainRouterModule`'s domain branch can never fire.
+  `AshCommanded.Commanded.DomainDsl` does not list either transformer in its own
+  `transformers:` (only `GenerateCommandedApplication`), so there is no path by which a domain's
+  own compile ever runs router generation either. `GenerateDomainRouterModule` does correctly
+  persist `:command_resource_mappings` onto the *resource's own* dsl_state — but nothing ever
+  reads that resource-level state back from a domain's compile (Spark dsl_state is per-module;
+  there is no built-in cross-module aggregation), so even completing the domain-side wiring
+  would need a domain transformer that explicitly walks `Ash.Domain.Info.resources(domain)` and
+  reads `Spark.Dsl.Extension.get_persisted/2` on each already-compiled resource — a structural
+  change to the transformer architecture, not a mechanical fix.
+
+  This explains, in part, why `GenerateCommandedApplication`'s own compile-order crash
+  (`TestDomain.Router.__registered_commands__/0 is undefined`, quarantined above as
+  FOUND-03/FOUND-04) was never caught by any router-level test before this phase: no router
+  module has ever existed to compile against, in any configuration, so the crash could only ever
+  be reached once *something* (any mechanism) finally produced a router module for a domain
+  carrying an `application` section — which never happened until this phase made `:commanded` a
+  hard dependency and this plan's own probe went looking.
+
+  **Impact on this plan (01-06, TEST-06/TEST-03):** Task 3 could not dispatch a command through
+  "the generated router" as originally planned, because no such module is ever produced.
+  `test/commanded/generated_modules_test.exs`'s router-dispatch tests use
+  `AshCommanded.TestSupport.WidgetRouter` (in `test/support/commanded_app_case.ex`) — a
+  hand-written `Commanded.Commands.Router` wired directly to the DSL's real generated
+  `Commands.CreateWidget` and `WidgetAggregate` modules — to prove the underlying TEST-06
+  per-test-application-isolation claim and real dispatch through Commanded, substituting for the
+  (nonexistent) DSL-generated router. This is a substitution, not a fix; documented as a
+  deviation in `01-06-SUMMARY.md`.
+
+  **Phase 2 must:** when fixing FOUND-03/FOUND-04's compile-order boundary, also wire
+  `GenerateDomainRouterModule`/`GenerateMainRouterModule` (or equivalents) into
+  `AshCommanded.Commanded.DomainDsl`'s own transformer list, reading each declared resource's
+  persisted command mappings via `Spark.Dsl.Extension.get_persisted/2` rather than the current
+  resource-scoped `Transformer.get_persisted/2` calls, which can never see cross-resource state.
+
+- **`AshCommanded.TestSupport.Widget`'s `ets do private? true end` makes Ash-side writes
+  invisible across a real Commanded dispatch, and is incompatible with asserting on the
+  projected Ash record from outside the dispatching process.** `Ash.DataLayer.Ets`'s `private?`
+  scopes the ETS table to the *calling process* (`Process.get({:ash_ets_table, ...})`).
+  `aggregate_end_to_end_test.exs` (Plan 01-02) calls `WidgetAggregate.execute/2` directly, so the
+  write happens in the test's own process and `Ash.get!/2` afterward sees it. Dispatching the
+  same command through a real `Commanded.Application` router instead runs `execute/2` inside the
+  aggregate's own registered GenServer process (Commanded's standard one-process-per-aggregate
+  design) — a different process than the test — so the private ETS table the write lands in is
+  invisible to a subsequent `Ash.get!/2` call from the test process. Confirmed by direct probe
+  while writing Task 3's router-dispatch tests. Worked around in `generated_modules_test.exs` by
+  asserting on `dispatch(..., returning: :aggregate_state)`'s returned aggregate struct (computed
+  and returned synchronously to the caller regardless of which process executed it) instead of
+  round-tripping through `Ash.get!/2`. Not fixed here — changing `private?` to `false` would
+  affect every other test using this shared fixture and is out of this plan's scope. Flagged for
+  whichever future plan needs cross-process Ash-record visibility from a real dispatch path (this
+  may simply be inherent to `private?: true` and require a per-test non-private resource
+  instead, not a "fix" in the usual sense).
+
 ## Signed off
 
 - **`snapshot_adapter.ex` no longer declares `@behaviour Commanded.Aggregates.Aggregate.Snapshotter`
