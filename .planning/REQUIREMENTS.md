@@ -14,6 +14,8 @@
 - [ ] **FOUND-03**: The `application` section is valid only on an `Ash.Domain` via `AshCommanded.Commanded.DomainDsl`, and `commands`/`events`/`projections`/`event_handlers` only on an `Ash.Resource` via `AshCommanded.Commanded.Dsl`
 - [ ] **FOUND-04**: A resource-level transformer that reads its domain's DSL state is rejected or prevented, so the compile deadlock cannot be reintroduced
 - [ ] **FOUND-05**: A domain's generated Commanded application supervises every projector across its resources without manual registration
+- [ ] **FOUND-06**: In-repo rules for authoring and maintaining the Spark DSL are written down and enforceable — section/entity structure, "prefer a verifier over a transformer when you only need to validate", the `ModuleName.Info` introspection convention, and the `{:spark_behaviour, _}` / `{:spark_function_behaviour, _, _}` escape-hatch types in place of hand-rolled `is_function`/`is_atom` branching
+- [ ] **FOUND-07**: Generated module source can be rendered and reviewed — a `mix ash_commanded.dump` task writes every generated module to formatted Elixir, and committed golden renders for a canonical fixture resource are diffed in CI so a change in generated output is a reviewable diff rather than a silent one
 
 ### Test Infrastructure
 
@@ -158,6 +160,8 @@ Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 | FOUND-03 | Phase 2 | Pending |
 | FOUND-04 | Phase 2 | Pending |
 | FOUND-05 | Phase 5 | Pending |
+| FOUND-06 | Phase 2 | Pending |
+| FOUND-07 | Phase 2 | Pending |
 | TEST-01 | Phase 1 | Pending |
 | TEST-02 | Phase 1 | Pending |
 | TEST-03 | Phase 1 | Pending |

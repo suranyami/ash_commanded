@@ -89,7 +89,7 @@ these land, no test written in any later phase can fail for a real reason.
 
 **Goal**: Code generation runs in a declared, total order, the Domain/Resource boundary is enforced rather than conventional, and DSL misuse is rejected at compile time with a specific message.
 **Depends on**: Phase 1
-**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, TEST-05, QUAL-06
+**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-06, FOUND-07, TEST-05, QUAL-06
 **Success Criteria** (what must be TRUE):
 
   1. Every transformer in `lib/commanded/transformers/` declares `after?/1`, the total order is written down in exactly one place, and no `after?/1` clause names a module that does not exist — the dead `ExtractCommands` references in `collect_parameter_transforms.ex` and `collect_parameter_validations.ex` are gone.
@@ -97,6 +97,8 @@ these land, no test written in any later phase can fail for a real reason.
   3. Declaring `application` on an `Ash.Resource`, or `commands` on an `Ash.Domain`, raises a `Spark.Error.DslError` naming the correct extension.
   4. `mix compile` from clean succeeds with resources, domain and application all present, and no transformer calls `Ash.Domain.Info` or `Ash.Resource.Info` on any module other than self.
   5. Every verifier in `lib/commanded/verifiers/` has both an accepting test and a rejecting test with an asserted error message; `ValidateCommandActions`, `ValidateCommandHandlers` and `ValidateCommandNameConflict` either exist with such tests or are absent from `CLAUDE.md`.
+  6. `AGENTS.md` states the DSL authoring rules — section/entity structure, verifier-over-transformer for validation, the `ModuleName.Info` introspection convention, and the escape-hatch types — and a contributor adding a transformer or verifier is told where it goes and which stage it belongs in.
+  7. `mix ash_commanded.dump` renders every generated module for a fixture resource to formatted Elixir, committed golden renders exist for that fixture, and CI fails when generated output changes without the golden files being updated in the same change.
 
 **Plans**: TBD
 
@@ -313,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 | ------- | ---------------- | -------- | ----------- |
-| 1. Build Integrity | 2/8 | In Progress|  |
+| 1. Build Integrity | 2/8 | In Progress | |
 | 2. Deterministic Generation and Compile-Time Rejection | 0/TBD | Not started | - |
 | 3. Event Identity and Versioning | 0/TBD | Not started | - |
 | 4. Aggregate Expressiveness and Lifecycle | 0/TBD | Not started | - |
@@ -329,12 +331,12 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ## Requirement Coverage
 
-All 57 v1 requirements map to exactly one phase.
+All 59 v1 requirements map to exactly one phase.
 
 | Phase | Requirements | Count |
 | ------- | -------------- | ------- |
 | 1 | QUAL-01, QUAL-02, REPO-03, REPO-04, REPO-05, TEST-01, TEST-02, TEST-03, TEST-04, TEST-06 | 10 |
-| 2 | FOUND-01, FOUND-02, FOUND-03, FOUND-04, TEST-05, QUAL-06 | 6 |
+| 2 | FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-06, FOUND-07, TEST-05, QUAL-06 | 8 |
 | 3 | TYPE-01, TYPE-02, TYPE-03, TYPE-04, TYPE-05 | 5 |
 | 4 | AGG-01, AGG-02, AGG-03, AGG-04, AGG-05, SNAP-01, SNAP-02, SNAP-03, QUAL-03 | 9 |
 | 5 | PROJ-01, PROJ-02, PROJ-03, PROJ-04, FOUND-05 | 5 |
@@ -346,7 +348,7 @@ All 57 v1 requirements map to exactly one phase.
 | 11 | MIG-06 | 1 |
 | 12 | MIG-07 | 1 |
 | 13 | MIG-08, REL-01 | 2 |
-| **Total** | | **57** |
+| **Total** | | **59** |
 
 ## Ordering Constraints
 
