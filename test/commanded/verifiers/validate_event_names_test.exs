@@ -1,95 +1,92 @@
 defmodule AshCommanded.Commanded.Verifiers.ValidateEventNamesTest do
-  use ExUnit.Case, async: false
-  @moduletag :verifier_test
+  # Rewritten per Plan 01-05 (D-14/D-17) — see validate_command_names_test.exs for
+  # the full rationale of the `Spark.Test` mechanism used here in place of the
+  # plan's literal `Code.compile_string` + `assert_raise` wording, which does not
+  # work against this repo's Spark version (confirmed empirically, recorded in
+  # the 01-05 SUMMARY).
+  @moduledoc false
+  use ExUnit.Case, async: true
 
-  alias AshCommanded.Commanded.Event
-  alias AshCommanded.Commanded.Verifiers.ValidateEventNames
-  alias Spark.Dsl.Verifier
+  import Spark.Test
 
-  import Mock
+  describe "duplicate event names" do
+    test "compiling a resource with two events of the same name raises Spark.Error.DslError" do
+      err =
+        assert_dsl_error do
+          defmodule Module.concat([
+                      :"AshCommandedTest#{System.unique_integer([:positive])}",
+                      :DuplicateEventNames
+                    ]) do
+            use Ash.Resource,
+              domain: nil,
+              extensions: [AshCommanded.Commanded.Dsl]
 
-  describe "verify/1" do
-    test "returns :ok when all event names are unique" do
-      # Create mock events with unique names
-      event1 = %Event{
-        name: :user_registered,
-        fields: [:id, :email, :name]
-      }
+            attributes do
+              uuid_primary_key :id
+            end
 
-      event2 = %Event{
-        name: :user_updated,
-        fields: [:id, :email, :name]
-      }
+            commanded do
+              events do
+                event :user_registered do
+                  fields([:id])
+                end
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :events] -> [event1, event2]
-        end do
-        assert ValidateEventNames.verify(%{}) == :ok
+                event :user_registered do
+                  fields([:id])
+                end
+              end
+            end
+          end
+        end
+
+      assert err.message =~ ~r/event names are duplicated/
+      assert err.message =~ ":user_registered"
+    end
+
+    test "a resource with one well-formed event compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :WellFormedEventNames
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          commanded do
+            events do
+              event :user_registered do
+                fields([:id])
+              end
+            end
+          end
+        end
       end
     end
 
-    test "returns an error when duplicate event names are found" do
-      # Create mock events with duplicate names
-      event1 = %Event{
-        name: :user_event,
-        fields: [:id, :email, :name]
-      }
+    test "a resource with an empty events block compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :EmptyEventsBlock
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
 
-      event2 = %Event{
-        name: :user_event,
-        fields: [:id, :email, :name]
-      }
+          attributes do
+            uuid_primary_key :id
+          end
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :events] -> [event1, event2]
-        end do
-        result = ValidateEventNames.verify(%{})
-        assert {:error, error} = result
-        assert error.message =~ "The following event names are duplicated in TestResource"
-        assert error.message =~ ":user_event"
-        assert error.path == [:commanded, :events]
-      end
-    end
-
-    test "identifies all duplicate event names in the error message" do
-      # Create multiple duplicate event names
-      event1 = %Event{
-        name: :user_registered,
-        fields: [:id, :email, :name]
-      }
-
-      event2 = %Event{
-        name: :user_registered,
-        fields: [:id, :email]
-      }
-
-      event3 = %Event{
-        name: :password_changed,
-        fields: [:id, :password]
-      }
-
-      event4 = %Event{
-        name: :password_changed,
-        fields: [:id, :password]
-      }
-
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :events] -> [event1, event2, event3, event4]
-        end do
-        result = ValidateEventNames.verify(%{})
-        assert {:error, error} = result
-        assert error.message =~ "The following event names are duplicated in TestResource"
-        assert error.message =~ ":user_registered"
-        assert error.message =~ ":password_changed"
+          commanded do
+            events do
+            end
+          end
+        end
       end
     end
   end

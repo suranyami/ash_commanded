@@ -1,99 +1,90 @@
 defmodule AshCommanded.Commanded.Verifiers.ValidateEventFieldsTest do
-  use ExUnit.Case, async: false
-  @moduletag :verifier_test
+  # Rewritten per Plan 01-05 (D-14/D-17) — see validate_command_names_test.exs for
+  # the full rationale of the `Spark.Test` mechanism used here in place of the
+  # plan's literal `Code.compile_string` + `assert_raise` wording, which does not
+  # work against this repo's Spark version (confirmed empirically, recorded in
+  # the 01-05 SUMMARY).
+  @moduledoc false
+  use ExUnit.Case, async: true
 
-  alias AshCommanded.Commanded.Event
-  alias AshCommanded.Commanded.Verifiers.ValidateEventFields
-  alias Spark.Dsl.Verifier
+  import Spark.Test
 
-  import Mock
+  describe "event fields referencing non-existent attributes" do
+    test "compiling an event with a field that isn't a resource attribute raises Spark.Error.DslError" do
+      err =
+        assert_dsl_error do
+          defmodule Module.concat([
+                      :"AshCommandedTest#{System.unique_integer([:positive])}",
+                      :InvalidEventField
+                    ]) do
+            use Ash.Resource,
+              domain: nil,
+              extensions: [AshCommanded.Commanded.Dsl]
 
-  describe "verify/1" do
-    test "returns :ok when all event fields are valid resource attributes" do
-      # Create mock events with valid fields
-      event = %Event{
-        name: :user_registered,
-        fields: [:id, :email, :name]
-      }
+            attributes do
+              uuid_primary_key :id
+              attribute :email, :string
+            end
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :events] ->
-            [event]
+            commanded do
+              events do
+                event :user_registered do
+                  fields([:id, :email, :not_a_real_attribute])
+                end
+              end
+            end
+          end
+        end
 
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :email},
-              %{name: :name}
-            ]
-        end do
-        assert ValidateEventFields.verify(%{}) == :ok
+      assert err.message =~ ~r/Event `user_registered` has unknown fields/
+      assert err.message =~ ":not_a_real_attribute"
+    end
+
+    test "an event whose fields are all real resource attributes compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :WellFormedEventFields
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :email, :string
+          end
+
+          commanded do
+            events do
+              event :user_registered do
+                fields([:id, :email])
+              end
+            end
+          end
+        end
       end
     end
 
-    test "returns an error when an event has fields that don't exist in the resource" do
-      # Create mock events with invalid fields
-      event = %Event{
-        name: :user_registered,
-        fields: [:id, :email, :nonexistent_field]
-      }
+    test "a resource with an empty events block compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :EmptyEventsBlockFields
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :events] ->
-            [event]
+          attributes do
+            uuid_primary_key :id
+          end
 
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :email},
-              %{name: :name}
-            ]
-        end do
-        result = ValidateEventFields.verify(%{})
-        assert {:error, error} = result
-        assert error.message =~ "Event `user_registered` has unknown fields"
-        assert error.message =~ ":nonexistent_field"
-      end
-    end
-
-    test "includes all events with invalid fields in the error message" do
-      # Create multiple mock events with invalid fields
-      event1 = %Event{
-        name: :user_registered,
-        fields: [:id, :email, :nonexistent_field1]
-      }
-
-      event2 = %Event{
-        name: :user_updated,
-        fields: [:id, :nonexistent_field2]
-      }
-
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :events] ->
-            [event1, event2]
-
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :email},
-              %{name: :name}
-            ]
-        end do
-        result = ValidateEventFields.verify(%{})
-        assert {:error, error} = result
-        assert error.message =~ "Event `user_registered` has unknown fields"
-        assert error.message =~ ":nonexistent_field1"
-        assert error.message =~ "Event `user_updated` has unknown fields"
-        assert error.message =~ ":nonexistent_field2"
+          commanded do
+            events do
+            end
+          end
+        end
       end
     end
   end
