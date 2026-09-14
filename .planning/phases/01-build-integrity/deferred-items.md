@@ -23,3 +23,9 @@ Not fixed here; recorded so Plan 01-03/01-04 (or later phases) do not rediscover
 
 None of the above touch `lib/commanded/transformers/generate_aggregate_module.ex`,
 `lib/commanded/command_action_mapper.ex`, or any file this plan's fixture created.
+
+- **`lib/commanded/transformers/generate_projector_modules.ex`** — `mix format --check-formatted`
+  reports this file as unformatted. Pre-existing (not modified by this plan); out of this plan's
+  file list (Plan 01-03 owns the other three guarded transformers). Confirmed this plan's own
+  touched files (`command_action_mapper.ex`, `generate_aggregate_module.ex`, `test/support/*`,
+  the two new/rewritten test files) all pass `mix format --check-formatted` individually.
