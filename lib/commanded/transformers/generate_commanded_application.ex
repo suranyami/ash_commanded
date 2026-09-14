@@ -33,19 +33,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
   @impl true
   @spec transform(Transformer.t()) :: {:ok, Transformer.t()} | {:error, term()}
   def transform(dsl) do
-    case has_commanded?() do
-      true ->
-        # Only generate if this is a domain (has resources)
-        case get_domain_resources(dsl) do
-          [] ->
-            {:ok, dsl}
-
-          _resources ->
-            do_transform(dsl)
-        end
-
-      false ->
+    # Only generate if this is a domain (has resources)
+    case get_domain_resources(dsl) do
+      [] ->
         {:ok, dsl}
+
+      _resources ->
+        do_transform(dsl)
     end
   end
 
@@ -238,9 +232,5 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
 
   defp get_domain_resources(dsl) do
     Spark.Dsl.Extension.get_entities(dsl, [:resources]) || []
-  end
-
-  defp has_commanded? do
-    Code.ensure_loaded?(Commanded.Application)
   end
 end

@@ -121,22 +121,15 @@ defmodule AshCommanded.Commanded.Transformers.GenerateMainRouterModule do
             command_mappings
           )
 
-        # Skip actual module creation in test environment
-        unless Application.get_env(
-                 :ash_commanded,
-                 :skip_router_module_creation,
-                 Mix.env() == :test
-               ) do
-          # Create the domain router modules
-          domain_routers
-          |> Enum.each(fn {domain_module, router_ast} ->
-            router_module = GenerateDomainRouterModule.build_domain_router_module(domain_module)
-            BaseTransformer.create_module(router_module, router_ast, __ENV__)
-          end)
+        # Create the domain router modules
+        domain_routers
+        |> Enum.each(fn {domain_module, router_ast} ->
+          router_module = GenerateDomainRouterModule.build_domain_router_module(domain_module)
+          BaseTransformer.create_module(router_module, router_ast, __ENV__)
+        end)
 
-          # Create the main router module
-          BaseTransformer.create_module(main_router_module, main_router_ast, __ENV__)
-        end
+        # Create the main router module
+        BaseTransformer.create_module(main_router_module, main_router_ast, __ENV__)
 
         # Store the generated module in DSL state
         updated_dsl_state =
@@ -212,29 +205,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateMainRouterModule do
         generate_aggregate_dispatch_handler(command_modules, aggregate_module, identity_field)
       end)
 
-    # Check if Commanded is available to determine what to generate
-    if Code.ensure_loaded?(Commanded) do
-      quote do
-        @moduledoc unquote(moduledoc)
+    quote do
+      @moduledoc unquote(moduledoc)
 
-        use Commanded.Commands.Router
+      use Commanded.Commands.Router
 
-        # Dispatch handlers for each aggregate
-        unquote_splicing(dispatch_handlers)
-      end
-    else
-      # Generate a stub module for testing when Commanded isn't available
-      quote do
-        @moduledoc unquote(moduledoc)
-
-        # This is a stub implementation for testing
-        # In production, this would use Commanded.Commands.Router
-
-        # Stub dispatch function
-        def dispatch(command) do
-          {:ok, command}
-        end
-      end
+      # Dispatch handlers for each aggregate
+      unquote_splicing(dispatch_handlers)
     end
   end
 
@@ -343,33 +320,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateMainRouterModule do
         end
       end
 
-    # Check if Commanded is available to determine what to generate
-    if Code.ensure_loaded?(Commanded) do
-      quote do
-        @moduledoc unquote(moduledoc)
+    quote do
+      @moduledoc unquote(moduledoc)
 
-        use Commanded.Commands.Router
+      use Commanded.Commands.Router
 
-        # Router body (forwards or direct dispatches)
-        unquote_splicing(router_body)
-      end
-    else
-      # Generate a stub module for testing when Commanded isn't available
-      quote do
-        @moduledoc unquote(moduledoc)
-
-        # This is a stub implementation for testing
-        # In production, this would use Commanded.Commands.Router
-
-        # Stub dispatch function
-        def dispatch(command) do
-          {:ok, command}
-        end
-
-        def dispatch_command(command, _opts \\ []) do
-          dispatch(command)
-        end
-      end
+      # Router body (forwards or direct dispatches)
+      unquote_splicing(router_body)
     end
   end
 
