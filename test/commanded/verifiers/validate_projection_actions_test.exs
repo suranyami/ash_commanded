@@ -1,114 +1,112 @@
 defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionActionsTest do
-  use ExUnit.Case, async: false
-  @moduletag :verifier_test
+  # Rewritten per Plan 01-05 (D-14/D-17) — see validate_command_names_test.exs for
+  # the full rationale of the `Spark.Test` mechanism used here in place of the
+  # plan's literal `Code.compile_string` + `assert_raise` wording, which does not
+  # work against this repo's Spark version (confirmed empirically, recorded in
+  # the 01-05 SUMMARY).
+  #
+  # Every malformed resource below declares a valid, matching event and a valid
+  # `changes` map so that only `ValidateProjectionActions` — the verifier under
+  # test — has anything to reject. Without that scaffolding, `ValidateProjectionEvents`
+  # or `ValidateProjectionChanges` would also fire on the same resource and the
+  # test would not isolate the verifier it claims to exercise.
+  @moduledoc false
+  use ExUnit.Case, async: true
 
-  alias AshCommanded.Commanded.Projection
-  alias AshCommanded.Commanded.Verifiers.ValidateProjectionActions
-  alias Spark.Dsl.Verifier
+  import Spark.Test
 
-  import Mock
+  describe "projections with invalid actions" do
+    test "compiling a projection with an action outside the valid set raises Spark.Error.DslError" do
+      err =
+        assert_dsl_error do
+          defmodule Module.concat([
+                      :"AshCommandedTest#{System.unique_integer([:positive])}",
+                      :InvalidProjectionAction
+                    ]) do
+            use Ash.Resource,
+              domain: nil,
+              extensions: [AshCommanded.Commanded.Dsl]
 
-  describe "verify/1" do
-    test "returns :ok when all projections have valid actions" do
-      # Create projections with valid actions
-      create_projection = %Projection{
-        name: :user_registered,
-        action: :create,
-        changes: %{status: :active}
-      }
+            attributes do
+              uuid_primary_key :id
+              attribute :status, :atom
+            end
 
-      update_projection = %Projection{
-        name: :email_changed,
-        action: :update,
-        changes: %{email: "new@example.com"}
-      }
+            commanded do
+              events do
+                event :user_registered do
+                  fields([:id])
+                end
+              end
 
-      destroy_projection = %Projection{
-        name: :user_deleted,
-        action: :destroy,
-        changes: %{}
-      }
+              projections do
+                projection :user_registered do
+                  event_name(:user_registered)
+                  action :not_a_real_action
+                  changes(%{status: :active})
+                end
+              end
+            end
+          end
+        end
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] ->
-            [create_projection, update_projection, destroy_projection]
-        end do
-        assert ValidateProjectionActions.verify(%{}) == :ok
+      assert err.message =~
+               ~r/Projection `user_registered` specifies potentially invalid action `not_a_real_action`/
+    end
+
+    test "a projection with a valid action compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :WellFormedProjectionAction
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :status, :atom
+          end
+
+          commanded do
+            events do
+              event :user_registered do
+                fields([:id])
+              end
+            end
+
+            projections do
+              projection :user_registered do
+                event_name(:user_registered)
+                action :create
+                changes(%{status: :active})
+              end
+            end
+          end
+        end
       end
     end
 
-    test "returns an error when a projection has an invalid action" do
-      # Create a projection with an invalid action
-      invalid_projection = %Projection{
-        name: :user_registered,
-        action: :invalid_action,
-        changes: %{status: :active}
-      }
+    test "a resource with an empty projections block compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :EmptyProjectionsBlockActions
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] -> [invalid_projection]
-        end do
-        result = ValidateProjectionActions.verify(%{})
-        assert {:error, error} = result
+          attributes do
+            uuid_primary_key :id
+          end
 
-        assert error.message =~
-                 "Projection `user_registered` specifies potentially invalid action `invalid_action`"
-
-        assert error.message =~ "Common valid Ash actions include"
-        assert error.message =~ "- :create"
-        assert error.message =~ "- :update"
-        assert error.message =~ "- :destroy"
-      end
-    end
-
-    test "returns an error with multiple invalid projections" do
-      # Create multiple projections with invalid actions
-      invalid_projection1 = %Projection{
-        name: :user_registered,
-        action: :invalid_action1,
-        changes: %{status: :active}
-      }
-
-      invalid_projection2 = %Projection{
-        name: :email_changed,
-        action: :invalid_action2,
-        changes: %{email: "new@example.com"}
-      }
-
-      valid_projection = %Projection{
-        name: :user_deleted,
-        action: :destroy,
-        changes: %{}
-      }
-
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] ->
-            [invalid_projection1, invalid_projection2, valid_projection]
-        end do
-        result = ValidateProjectionActions.verify(%{})
-        assert {:error, error} = result
-
-        # Check that both invalid projections are mentioned
-        assert error.message =~
-                 "Projection `user_registered` specifies potentially invalid action `invalid_action1`"
-
-        assert error.message =~
-                 "Projection `email_changed` specifies potentially invalid action `invalid_action2`"
-
-        # Check that valid actions are listed
-        assert error.message =~ "Common valid Ash actions include"
-        assert error.message =~ "- :create"
-        assert error.message =~ "- :update"
-        assert error.message =~ "- :destroy"
+          commanded do
+            projections do
+            end
+          end
+        end
       end
     end
   end

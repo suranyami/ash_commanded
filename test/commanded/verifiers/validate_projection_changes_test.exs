@@ -1,169 +1,110 @@
 defmodule AshCommanded.Commanded.Verifiers.ValidateProjectionChangesTest do
-  use ExUnit.Case, async: false
-  @moduletag :verifier_test
+  # Rewritten per Plan 01-05 (D-14/D-17) — see validate_command_names_test.exs for
+  # the full rationale of the `Spark.Test` mechanism used here in place of the
+  # plan's literal `Code.compile_string` + `assert_raise` wording, which does not
+  # work against this repo's Spark version (confirmed empirically, recorded in
+  # the 01-05 SUMMARY).
+  #
+  # Every malformed resource below declares a valid action and a valid, matching
+  # event so that only `ValidateProjectionChanges` — the verifier under test —
+  # has anything to reject.
+  @moduledoc false
+  use ExUnit.Case, async: true
 
-  alias AshCommanded.Commanded.Projection
-  alias AshCommanded.Commanded.Verifiers.ValidateProjectionChanges
-  alias Spark.Dsl.Verifier
+  import Spark.Test
 
-  import Mock
+  describe "projection changes referencing non-existent attributes" do
+    test "compiling a projection whose changes map references a non-attribute raises Spark.Error.DslError" do
+      err =
+        assert_dsl_error do
+          defmodule Module.concat([
+                      :"AshCommandedTest#{System.unique_integer([:positive])}",
+                      :InvalidProjectionChanges
+                    ]) do
+            use Ash.Resource,
+              domain: nil,
+              extensions: [AshCommanded.Commanded.Dsl]
 
-  describe "verify/1" do
-    test "returns :ok when all static projection changes reference valid attributes" do
-      # Create projection with valid attribute changes
-      projection = %Projection{
-        name: :user_registered,
-        action: :create,
-        changes: %{
-          name: "Test User",
-          email: "test@example.com",
-          status: :active
-        }
-      }
+            attributes do
+              uuid_primary_key :id
+              attribute :status, :atom
+            end
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] ->
-            [projection]
+            commanded do
+              events do
+                event :user_registered do
+                  fields([:id])
+                end
+              end
 
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :name},
-              %{name: :email},
-              %{name: :status}
-            ]
-        end do
-        assert ValidateProjectionChanges.verify(%{}) == :ok
+              projections do
+                projection :user_registered do
+                  event_name(:user_registered)
+                  action :create
+                  changes(%{status: :active, not_a_real_attribute: "value"})
+                end
+              end
+            end
+          end
+        end
+
+      assert err.message =~ ~r/Projection `user_registered` has unknown attributes/
+      assert err.message =~ ":not_a_real_attribute"
+    end
+
+    test "a projection whose changes map references only real attributes compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :WellFormedProjectionChanges
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :status, :atom
+          end
+
+          commanded do
+            events do
+              event :user_registered do
+                fields([:id])
+              end
+            end
+
+            projections do
+              projection :user_registered do
+                event_name(:user_registered)
+                action :create
+                changes(%{status: :active})
+              end
+            end
+          end
+        end
       end
     end
 
-    test "skips validation for function-based changes" do
-      # Create a projection with a function for changes
-      # The validator should skip this as it can't validate function output
-      changes_fn = fn _event -> %{} end
+    test "a resource with an empty projections block compiles without raising" do
+      refute_dsl_errors do
+        defmodule Module.concat([
+                    :"AshCommandedTest#{System.unique_integer([:positive])}",
+                    :EmptyProjectionsBlockChanges
+                  ]) do
+          use Ash.Resource,
+            domain: nil,
+            extensions: [AshCommanded.Commanded.Dsl]
 
-      projection = %Projection{
-        name: :user_registered,
-        action: :create,
-        changes: changes_fn
-      }
+          attributes do
+            uuid_primary_key :id
+          end
 
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] ->
-            [projection]
-
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :name},
-              %{name: :email}
-            ]
-        end do
-        assert ValidateProjectionChanges.verify(%{}) == :ok
-      end
-    end
-
-    test "returns an error when static changes reference invalid attributes" do
-      # Create projection with invalid attribute references
-      projection = %Projection{
-        name: :user_registered,
-        action: :create,
-        changes: %{
-          name: "Test User",
-          nonexistent_field: "test value",
-          another_bad_field: 123
-        }
-      }
-
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] ->
-            [projection]
-
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :name},
-              %{name: :email}
-            ]
-        end do
-        result = ValidateProjectionChanges.verify(%{})
-        assert {:error, error} = result
-        assert error.message =~ "Projection `user_registered` has unknown attributes:"
-        assert error.message =~ ":nonexistent_field"
-        assert error.message =~ ":another_bad_field"
-        assert error.message =~ "The following attributes are defined in TestResource"
-        assert error.message =~ "- :id"
-        assert error.message =~ "- :name"
-        assert error.message =~ "- :email"
-      end
-    end
-
-    test "returns an error with multiple invalid projections" do
-      # Create multiple projections with invalid attributes
-      projection1 = %Projection{
-        name: :user_registered,
-        action: :create,
-        changes: %{
-          name: "Test User",
-          nonexistent_field1: "value"
-        }
-      }
-
-      projection2 = %Projection{
-        name: :email_changed,
-        action: :update,
-        changes: %{
-          email: "new@example.com",
-          nonexistent_field2: "value"
-        }
-      }
-
-      valid_projection = %Projection{
-        name: :user_active,
-        action: :update,
-        changes: %{status: :active}
-      }
-
-      # Mock the DSL state and verifier functions
-      with_mock Verifier,
-        get_persisted: fn _state, :module -> TestResource end,
-        get_entities: fn
-          _state, [:commanded, :projections] ->
-            [projection1, projection2, valid_projection]
-
-          _state, [:attributes] ->
-            [
-              %{name: :id},
-              %{name: :name},
-              %{name: :email},
-              %{name: :status}
-            ]
-        end do
-        result = ValidateProjectionChanges.verify(%{})
-        assert {:error, error} = result
-
-        # Check that both invalid projections are mentioned
-        assert error.message =~
-                 "Projection `user_registered` has unknown attributes: :nonexistent_field1"
-
-        assert error.message =~
-                 "Projection `email_changed` has unknown attributes: :nonexistent_field2"
-
-        # Check that valid attributes are listed
-        assert error.message =~ "The following attributes are defined in TestResource"
-        assert error.message =~ "- :id"
-        assert error.message =~ "- :name"
-        assert error.message =~ "- :email"
-        assert error.message =~ "- :status"
+          commanded do
+            projections do
+            end
+          end
+        end
       end
     end
   end
