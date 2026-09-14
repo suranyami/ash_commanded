@@ -1,19 +1,27 @@
 defmodule AshCommanded.ErrorHandlingTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias AshCommanded.Commanded.Error
+  alias AshCommanded.TestSupport.Widget
 
-  # Define a test resource and command/event for testing
-  defmodule TestResource do
-    defstruct [:id, :name, :email]
-  end
-
+  # These commands and events are used only by the "Error module" and "Error
+  # normalization" describe blocks below, which exercise AshCommanded.Commanded.Error
+  # construction/formatting directly — they never route through CommandActionMapper,
+  # so a plain struct is sufficient and unaffected by the mapper's real-Ash rewrite.
   defmodule TestCommand do
     defstruct [:id, :name, :email]
   end
 
   defmodule TestEvent do
     defstruct [:id, :name, :email]
+  end
+
+  # Used by the "Command action mapper error handling" describe block below —
+  # its fields are scoped to what AshCommanded.TestSupport.Widget actually accepts
+  # ([:id, :name]), since those tests now route through the real mapper against a
+  # real Ash resource.
+  defmodule MapperTestCommand do
+    defstruct [:id, :name]
   end
 
   describe "Error module" do
@@ -173,16 +181,19 @@ defmodule AshCommanded.ErrorHandlingTest do
 
   describe "Command action mapper error handling" do
     test "handles transformation errors" do
-      command = %TestCommand{id: "123", name: "Test", email: "test@example.com"}
+      command = %MapperTestCommand{id: "123", name: "Test"}
 
       # Create a param mapping function that raises an error
       param_mapping = fn _params -> raise "Transformation error" end
 
-      # Try to map the command to an action
+      # Try to map the command to an action against the real Widget fixture —
+      # the raise happens in the param-mapping stage, before the resource is
+      # ever touched, so this error's origin is unaffected by which resource
+      # is passed. Pointed at Widget for consistency with the rest of the suite.
       result =
         AshCommanded.Commanded.CommandActionMapper.map_to_action(
           command,
-          TestResource,
+          Widget,
           :create,
           param_mapping: param_mapping
         )
@@ -192,18 +203,20 @@ defmodule AshCommanded.ErrorHandlingTest do
     end
 
     test "handles validation errors" do
-      command = %TestCommand{id: "123", name: "Test", email: "invalid-email"}
+      command = %MapperTestCommand{id: "123", name: "T"}
 
-      # Create validations that will fail
+      # Create validations that will fail (Widget's :name is the only string
+      # field these commands carry)
       validations = [
-        {:validate, :email, [format: ~r/@.*\./]}
+        {:validate, :name, [min_length: 5]}
       ]
 
-      # Try to map the command to an action with validations
+      # Try to map the command to an action with validations — validation runs
+      # before any Ash action executes, so this also never touches the resource.
       result =
         AshCommanded.Commanded.CommandActionMapper.map_to_action(
           command,
-          TestResource,
+          Widget,
           :create,
           validations: validations
         )
@@ -213,13 +226,13 @@ defmodule AshCommanded.ErrorHandlingTest do
     end
 
     test "handles missing identity fields" do
-      command = %TestCommand{name: "Test", email: "test@example.com"}
+      command = %MapperTestCommand{name: "Test"}
 
       # Try to map the command to an update action which requires an ID
       result =
         AshCommanded.Commanded.CommandActionMapper.map_to_action(
           command,
-          TestResource,
+          Widget,
           :update,
           action_type: :update
         )
@@ -229,6 +242,28 @@ defmodule AshCommanded.ErrorHandlingTest do
 
       {:error, error} = result
       assert error.message =~ "Missing identity field"
+    end
+
+    test "normalizes a real Ash error raised by a failing create action" do
+      # "abc" is neither a formatted UUID string nor a 16-byte raw binary, so
+      # Ash.Type.UUID genuinely rejects it at cast time — this is a real
+      # Ash.Error.Invalid flowing through CommandActionMapper's error handling
+      # and Error.from_ash_error/1, a path the create mock previously made
+      # impossible to reach (it always returned {:ok, _} regardless of input).
+      command = %MapperTestCommand{id: "abc", name: "Test"}
+
+      result =
+        AshCommanded.Commanded.CommandActionMapper.map_to_action(
+          command,
+          Widget,
+          :create,
+          action_type: :create
+        )
+
+      assert {:error, error} = result
+      errors = List.wrap(error)
+      assert errors != []
+      assert Enum.all?(errors, &Error.is_error?/1)
     end
   end
 end

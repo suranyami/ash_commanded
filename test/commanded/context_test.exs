@@ -1,13 +1,20 @@
 defmodule AshCommanded.Commanded.ContextTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
-  # Mock command action mapper for testing
-  defmodule MockCommandActionMapper do
-    def map_to_action(_command, _resource, _action_name, opts) do
-      # Return the context from the options to verify it was properly built
-      context = Keyword.get(opts, :context, %{})
-      {:ok, %{context: context}}
-    end
+  # Deliberately not AshCommanded.TestSupport.Widget: proving :context lands on
+  # the real changeset requires a change that copies it onto a persisted
+  # attribute, and Widget's create action has none — attaching one there would
+  # be an unrelated edit to a fixture other plans in this wave also read.
+  # ContextWidget (test/support/context_widget.ex) is the same ETS-backed,
+  # dependency-free real-Ash-resource pattern Widget itself uses, with exactly
+  # that one addition.
+  alias AshCommanded.TestSupport.ContextWidget
+
+  # A plain command struct — map_to_action only needs field access via
+  # Map.from_struct/1, scoped to what ContextWidget's create action accepts.
+  defmodule ContextCommand do
+    @moduledoc false
+    defstruct [:id, :name]
   end
 
   # Define a test module with a custom DSL extension for testing context options
@@ -95,80 +102,66 @@ defmodule AshCommanded.Commanded.ContextTest do
     end
 
     test "context is built correctly in command execution" do
-      # Create test command and aggregate
-      command = %{
-        id: "123",
-        email: "test@example.com",
-        name: "Test User",
-        # Add metadata for testing
-        metadata: %{
-          user_id: "admin-456",
-          timestamp: DateTime.utc_now()
-        },
-        # Context configuration
-        include_aggregate?: true,
-        include_command?: true,
-        include_metadata?: true,
-        context_prefix: nil,
-        static_context: %{app_version: "1.0.0"}
-      }
-
+      # Mirrors what GenerateAggregateModule's generated execute/2 builds for a
+      # command with include_aggregate?: true, include_command?: true,
+      # include_metadata?: true, context_prefix: nil,
+      # static_context: %{app_version: "1.0.0"} — see generate_aggregate_module.ex.
       aggregate = %{id: nil, name: nil, email: nil}
+      metadata = %{user_id: "admin-456", timestamp: DateTime.utc_now()}
 
-      # Create middleware context similar to what would be created in the aggregate module
-      context = %{}
+      context =
+        %{}
+        |> Map.put(:aggregate, aggregate)
+        |> Map.put(:metadata, metadata)
+        |> Map.merge(%{app_version: "1.0.0"})
 
-      # Add aggregate
-      context = Map.put(context, :aggregate, aggregate)
+      id = Ash.UUID.generate()
 
-      # Add command
-      context = Map.put(context, :command, command)
+      # The mapper no longer echoes its opts back — context is only provable by
+      # observing where it actually lands: on the real Ash changeset the create
+      # action receives, via ContextWidget's context-capturing change.
+      assert {:ok, _record} =
+               AshCommanded.Commanded.CommandActionMapper.map_to_action(
+                 %ContextCommand{id: id, name: "Widget"},
+                 ContextWidget,
+                 :create,
+                 action_type: :create,
+                 context: context
+               )
 
-      # Add metadata
-      context = Map.put(context, :metadata, command.metadata)
+      probe = Ash.get!(ContextWidget, id).context_probe
 
-      # Add static context
-      context = Map.merge(context, command.static_context)
-
-      # Verify context contains expected keys
-      assert context.aggregate == aggregate
-      assert context.command == command
-      assert context.metadata == command.metadata
-      assert context.app_version == "1.0.0"
+      assert probe =~ "app_version: \"1.0.0\""
+      assert probe =~ "aggregate:"
+      assert probe =~ "metadata:"
     end
 
     test "context with prefix is built correctly" do
-      # Create test command and aggregate
-      command = %{
-        id: "123",
-        email: "test@example.com",
-        name: "Test User",
-        # Context configuration
-        include_aggregate?: true,
-        include_command?: true,
-        include_metadata?: true,
-        context_prefix: :test,
-        static_context: %{app_version: "1.0.0"}
-      }
-
+      # Mirrors context_prefix: :test — aggregate/command keys are prefixed;
+      # static context is merged unprefixed, matching generate_aggregate_module.ex.
       aggregate = %{id: nil, name: nil, email: nil}
 
-      # Create middleware context similar to what would be created in the aggregate module
-      context = %{}
+      context =
+        %{}
+        |> Map.put(:"test.aggregate", aggregate)
+        |> Map.merge(%{app_version: "1.0.0"})
 
-      # Add aggregate with prefix
-      context = Map.put(context, :"test.aggregate", aggregate)
+      id = Ash.UUID.generate()
 
-      # Add command with prefix
-      context = Map.put(context, :"test.command", command)
+      assert {:ok, _record} =
+               AshCommanded.Commanded.CommandActionMapper.map_to_action(
+                 %ContextCommand{id: id, name: "Widget"},
+                 ContextWidget,
+                 :create,
+                 action_type: :create,
+                 context: context
+               )
 
-      # Add static context
-      context = Map.merge(context, command.static_context)
+      probe = Ash.get!(ContextWidget, id).context_probe
 
-      # Verify context contains expected keys with prefix
-      assert Map.get(context, :"test.aggregate") == aggregate
-      assert Map.get(context, :"test.command") == command
-      assert context.app_version == "1.0.0"
+      # inspect/1 renders an atom key containing a "." quoted, as "test.aggregate": ...
+      assert probe =~ ~s("test.aggregate")
+      assert probe =~ "app_version: \"1.0.0\""
     end
   end
 end

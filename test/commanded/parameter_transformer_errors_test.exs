@@ -1,7 +1,8 @@
 defmodule AshCommanded.ParameterTransformerErrorsTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias AshCommanded.Commanded.ParameterTransformer
+  alias AshCommanded.TestSupport.Widget
 
   describe "Parameter transformer error handling" do
     test "safely handles errors in map transforms" do
@@ -81,40 +82,48 @@ defmodule AshCommanded.ParameterTransformerErrorsTest do
   end
 
   describe "Command action mapper with parameter transformer" do
-    # Define a test resource and command for testing
-    defmodule TestResource do
-      defstruct [:id, :name, :email, :age]
+    # Scoped to Widget's own fields plus :age, an attribute Widget's create
+    # action does not accept — the vehicle for proving the negative assertion
+    # below.
+    defmodule TransformerTestCommand do
+      @moduledoc false
+      defstruct [:id, :name, :age]
     end
 
-    defmodule TestCommand do
-      defstruct [:id, :name, :email, :age]
-    end
-
-    test "handles errors in parameter transformation" do
-      command = %TestCommand{id: "123", name: "Test", email: "test@example.com", age: "thirty"}
+    test "a cast that fails to convert leaves the real action to reject the command, writing nothing" do
+      id = Ash.UUID.generate()
+      command = %TransformerTestCommand{id: id, name: "Test", age: "thirty"}
 
       # Create transforms where one will fail
       transforms = [
         # This should succeed
         {:cast, :id, :string},
-        # This should fail (not a number)
+        # ParameterTransformer.transform_params/2 is deliberately safe: a
+        # failed cast leaves the original value in place rather than raising
+        # or returning an error tuple (see the "safely handles..." tests
+        # above). That means :age survives, unchanged, as "thirty" — a value
+        # Widget's create action does not accept at all. The real Ash action
+        # is what actually rejects the command now; the mock this test used
+        # to hit always returned {:ok, _} regardless, so this negative path
+        # could never be observed before.
         {:cast, :age, :integer},
-        # This won't be reached after failure
         {:default, :status, "active"}
       ]
 
-      # Try to map the command to an action
+      # Try to map the command to a real Ash action
       result =
         AshCommanded.Commanded.CommandActionMapper.map_to_action(
           command,
-          TestResource,
+          Widget,
           :create,
           transforms: transforms
         )
 
-      # Since we're in test environment, CommandActionMapper returns success for actions
-      # In real usage, it would propagate errors from transformations
-      assert match?({:ok, _}, result)
+      assert {:error, _error} = result
+
+      # The whole point of this test: prove no record was written, by reading
+      # back through Ash.get and expecting not-found.
+      assert {:error, %Ash.Error.Invalid{}} = Ash.get(Widget, id)
     end
   end
 end
