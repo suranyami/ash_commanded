@@ -8,9 +8,20 @@ Special thanks to [Ben Smith](https://github.com/slashdotdash) for the Commanded
 ## Build and Test Commands
 
 ```bash
-# Install dependencies
-mix deps.get
+# Bootstrap a fresh clone — installs rebar/hex before fetching deps, so it
+# works on a machine that doesn't have rebar3 yet
+mix setup
 
+# Run every gate CI runs, in one command: format check, compile with
+# warnings as errors, Credo, tests, the dev/test compile-parity script,
+# Dialyzer, and a docs build. This is the local equivalent of CI.
+mix check
+```
+
+There is exactly one documented way to bootstrap (`mix setup`) and one to verify (`mix check`).
+Individual steps remain available directly if you only need one of them:
+
+```bash
 # Compile the project
 mix compile
 

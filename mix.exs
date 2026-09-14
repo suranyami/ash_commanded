@@ -54,7 +54,6 @@ defmodule AshCommanded.MixProject do
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:spark, "~> 2.6"},
       {:igniter, "~> 0.5", only: [:dev, :test]},
-      {:mock, "~> 0.3.0", only: [:test]},
 
       # Event sourcing runtime
       {:commanded, "~> 1.4"},
@@ -192,7 +191,26 @@ defmodule AshCommanded.MixProject do
       setup: ["local.hex --force", "local.rebar --force", "deps.get", "deps.compile"],
       docs: ["docs", &copy_images/1],
       "gen.docs": ["spark.cheat_sheets", "docs"],
-      "spark.cheat_sheets": "spark.cheat_sheets --extensions AshCommanded.Commanded.Dsl"
+      "spark.cheat_sheets": "spark.cheat_sheets --extensions AshCommanded.Commanded.Dsl",
+      # REPO-05's full gate list, cheapest first, so a contributor gets the fast failure
+      # first. CI (see .github/workflows) invokes this alias rather than restating the
+      # steps, so the two cannot drift (D-23).
+      #
+      # Runs as :dev by default (matching the `dialyzer`/`credo`/`compile --warnings-as-errors`
+      # steps, which must NOT see test/support's ExUnit-only modules — Dialyzer has no :ex_unit
+      # application in its PLT, so analyzing test/support under MIX_ENV=test raises spurious
+      # "unknown_function" findings for ExUnit.Callbacks macros). The `test` step is spawned in
+      # its own MIX_ENV=test subprocess via `cmd` instead, so the two envs don't fight over
+      # which one the whole alias runs under.
+      check: [
+        "format --check-formatted",
+        "compile --warnings-as-errors",
+        "credo",
+        "cmd MIX_ENV=test mix test",
+        "cmd ./scripts/compile_parity.sh",
+        "dialyzer",
+        "gen.docs"
+      ]
     ]
   end
 

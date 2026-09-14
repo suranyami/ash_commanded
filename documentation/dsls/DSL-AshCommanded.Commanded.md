@@ -55,9 +55,6 @@ Configure CQRS and Event Sourcing with Commanded
 ### Nested DSLs
  * [commands](#commanded-commands)
    * command
-   * transform_params
-   * validate_params
-   * transaction
  * [events](#commanded-events)
    * event
  * [projections](#commanded-projections)
@@ -74,9 +71,6 @@ Define commands that trigger state changes in the resource
 
 ### Nested DSLs
  * [command](#commanded-commands-command)
- * [transform_params](#commanded-commands-transform_params)
- * [validate_params](#commanded-commands-validate_params)
- * [transaction](#commanded-commands-transaction)
 
 
 
@@ -118,6 +112,7 @@ command name
 | [`fields`](#commanded-commands-command-fields){: #commanded-commands-command-fields .spark-required} | `list(atom)` |  | The fields that the command accepts, which should correspond to attributes in the resource |
 | [`identity_field`](#commanded-commands-command-identity_field){: #commanded-commands-command-identity_field } | `atom` |  | The field that uniquely identifies the aggregate instance this command targets |
 | [`action`](#commanded-commands-command-action){: #commanded-commands-command-action } | `atom` |  | The Ash action to call when handling this command. Defaults to the command name. |
+| [`event`](#commanded-commands-command-event){: #commanded-commands-command-event } | `atom` |  | The event emitted by this command. Defaults to the command name if not specified. |
 | [`action_type`](#commanded-commands-command-action_type){: #commanded-commands-command-action_type } | `:create \| :update \| :destroy \| :read \| :custom` |  | The type of action (:create, :update, :destroy, :read, or :custom). If not specified, inferred from the action name. |
 | [`param_mapping`](#commanded-commands-command-param_mapping){: #commanded-commands-command-param_mapping } | `map \| any` |  | A map or function for transforming command fields to action params. |
 | [`command_name`](#commanded-commands-command-command_name){: #commanded-commands-command-command_name } | `atom` |  | Override the auto-generated command module name |
@@ -143,86 +138,6 @@ command name
 ### Introspection
 
 Target: `AshCommanded.Commanded.Command`
-
-### commanded.commands.transform_params
-
-
-
-
-
-
-
-
-
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`map`](#commanded-commands-transform_params-map){: #commanded-commands-transform_params-map } | `list(any)` |  | Maps a field from one name to another |
-| [`cast`](#commanded-commands-transform_params-cast){: #commanded-commands-transform_params-cast } | `list(any)` |  | Casts a field to a specific type |
-| [`compute`](#commanded-commands-transform_params-compute){: #commanded-commands-transform_params-compute } | `list(any)` |  | Computes a field value using a function |
-| [`transform`](#commanded-commands-transform_params-transform){: #commanded-commands-transform_params-transform } | `list(any)` |  | Transforms a field value using a function |
-| [`default`](#commanded-commands-transform_params-default){: #commanded-commands-transform_params-default } | `list(any)` |  | Sets a default value for a field |
-| [`custom`](#commanded-commands-transform_params-custom){: #commanded-commands-transform_params-custom } | `list(any)` |  | Applies a custom transformation function to the entire params map |
-
-
-
-
-
-### Introspection
-
-Target: `AshCommanded.Commanded.ParameterTransformer`
-
-### commanded.commands.validate_params
-
-
-
-
-
-
-
-
-
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`validate`](#commanded-commands-validate_params-validate){: #commanded-commands-validate_params-validate } | `list(any)` |  | Validates a field against rules or using a function |
-
-
-
-
-
-### Introspection
-
-Target: `AshCommanded.Commanded.ParameterValidator`
-
-### commanded.commands.transaction
-
-
-
-
-
-
-
-
-
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`enabled?`](#commanded-commands-transaction-enabled?){: #commanded-commands-transaction-enabled? } | `boolean` | `true` | Whether transactions are enabled for this command |
-| [`repo`](#commanded-commands-transaction-repo){: #commanded-commands-transaction-repo } | `atom` |  | The repository to use for transactions (required if enabled) |
-| [`timeout`](#commanded-commands-transaction-timeout){: #commanded-commands-transaction-timeout } | `integer` |  | Transaction timeout in milliseconds |
-| [`isolation_level`](#commanded-commands-transaction-isolation_level){: #commanded-commands-transaction-isolation_level } | `:read_committed \| :repeatable_read \| :serializable` |  | Transaction isolation level |
-
-
-
-
-
-### Introspection
-
-Target: `AshCommanded.Commanded.Transaction`
 
 
 ### commanded.events
@@ -385,7 +300,7 @@ Target: `AshCommanded.Commanded.EventHandler`
 
 
 ### commanded.application
-Configure the Commanded application
+Configure the Commanded application (use on your Domain via AshCommanded.Commanded.DomainDsl)
 
 
 
@@ -403,9 +318,9 @@ Configure the Commanded application
 | [`snapshotting`](#commanded-application-snapshotting){: #commanded-application-snapshotting } | `boolean` | `false` | Whether to enable aggregate snapshotting |
 | [`snapshot_threshold`](#commanded-application-snapshot_threshold){: #commanded-application-snapshot_threshold } | `integer` | `100` | Number of events to process before taking a snapshot |
 | [`snapshot_version`](#commanded-application-snapshot_version){: #commanded-application-snapshot_version } | `integer` | `1` | The version of the snapshot schema |
-| [`snapshot_store`](#commanded-application-snapshot_store){: #commanded-application-snapshot_store } | `atom \| map` |  | Optional custom snapshot store module or configuration |
+| [`snapshot_store`](#commanded-application-snapshot_store){: #commanded-application-snapshot_store } | `atom \| map \| nil` |  | Optional custom snapshot store module or configuration |
 | [`include_supervisor?`](#commanded-application-include_supervisor?){: #commanded-application-include_supervisor? } | `boolean` | `false` | Whether to include a supervisor for the application |
-| [`prefix`](#commanded-application-prefix){: #commanded-application-prefix } | `String.t` |  | Application module prefix for generated code |
+| [`prefix`](#commanded-application-prefix){: #commanded-application-prefix } | `String.t \| nil` |  | Application module prefix for generated code |
 
 
 
