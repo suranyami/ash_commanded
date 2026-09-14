@@ -213,9 +213,6 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
       quote do
         unquote(quoted_core)
 
-        # Import resource module to get Ash actions
-        import unquote(resource_module)
-
         # Event handler functions
         unquote_splicing(event_handlers)
 
