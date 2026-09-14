@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. No test in the suite asserts against a hardcoded mock return from `CommandActionMapper`; create, update and destroy assertions read state back through `Ash`.
   5. `mix test` and `mix test <any single file>` agree on every test's outcome; no test's result depends on event-store or aggregate-process state left behind by another test.
 
-**Plans**: 5/8 plans executed across 6 waves
+**Plans**: 6/8 plans executed across 6 waves
 
 Plans:
 **Wave 1**
@@ -69,7 +69,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-06-PLAN.md — Test isolation, cross-environment generated-module parity, and direct calls into every generated module kind (wave 4)
+- [x] 01-06-PLAN.md — Test isolation, cross-environment generated-module parity, and direct calls into every generated module kind (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -315,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 | ------- | ---------------- | -------- | ----------- |
-| 1. Build Integrity | 5/8 | In Progress|  |
+| 1. Build Integrity | 6/8 | In Progress|  |
 | 2. Deterministic Generation and Compile-Time Rejection | 0/TBD | Not started | - |
 | 3. Event Identity and Versioning | 0/TBD | Not started | - |
 | 4. Aggregate Expressiveness and Lifecycle | 0/TBD | Not started | - |
