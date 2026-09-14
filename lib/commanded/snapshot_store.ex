@@ -10,6 +10,8 @@ defmodule AshCommanded.Commanded.SnapshotStore do
   can be provided by specifying a custom snapshot store module in the application config.
   """
 
+  require Logger
+
   alias AshCommanded.Commanded.Snapshot
 
   @doc """
@@ -108,7 +110,7 @@ defmodule AshCommanded.Commanded.SnapshotStore do
     end
   rescue
     e ->
-      IO.puts("Error retrieving snapshot: #{inspect(e)}")
+      Logger.error("Error retrieving snapshot: #{inspect(e)}")
       :error
   end
 

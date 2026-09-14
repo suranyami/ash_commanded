@@ -11,24 +11,25 @@ defmodule AshCommanded.Commanded.Middleware.BaseMiddleware do
   ```elixir
   defmodule MyApp.LoggingMiddleware do
     use AshCommanded.Commanded.Middleware.BaseMiddleware
-    
+    require Logger
+
     @impl true
     def before_dispatch(command, context, next) do
       # Log command being dispatched
-      IO.inspect(command, label: "Dispatching command")
+      Logger.debug("Dispatching command: \#{inspect(command)}")
       next.(command, context)
     end
-    
+
     @impl true
     def after_dispatch({:ok, result} = success, command, _context) do
       # Log successful execution
-      IO.inspect(result, label: "Command succeeded")
+      Logger.debug("Command succeeded: \#{inspect(result)}")
       success
     end
-    
+
     def after_dispatch({:error, reason} = error, command, _context) do
       # Log failed execution
-      IO.inspect(reason, label: "Command failed")
+      Logger.debug("Command failed: \#{inspect(reason)}")
       error
     end
   end
