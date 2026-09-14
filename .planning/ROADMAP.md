@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. No test in the suite asserts against a hardcoded mock return from `CommandActionMapper`; create, update and destroy assertions read state back through `Ash`.
   5. `mix test` and `mix test <any single file>` agree on every test's outcome; no test's result depends on event-store or aggregate-process state left behind by another test.
 
-**Plans**: 1/8 plans executed across 6 waves
+**Plans**: 2/8 plans executed across 6 waves
 
 Plans:
 **Wave 1**
@@ -59,7 +59,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Tracer: one command end-to-end through a really-compiled aggregate into real Ash state, extended to update and destroy (wave 2)
+- [x] 01-02-PLAN.md — Tracer: one command end-to-end through a really-compiled aggregate into real Ash state, extended to update and destroy (wave 2)
 - [ ] 01-03-PLAN.md — Delete the remaining module-creation knobs, all six load-check stubs, and both console-print sites (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -313,7 +313,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 | ------- | ---------------- | -------- | ----------- |
-| 1. Build Integrity | 1/8 | In Progress|  |
+| 1. Build Integrity | 2/8 | In Progress|  |
 | 2. Deterministic Generation and Compile-Time Rejection | 0/TBD | Not started | - |
 | 3. Event Identity and Versioning | 0/TBD | Not started | - |
 | 4. Aggregate Expressiveness and Lifecycle | 0/TBD | Not started | - |
