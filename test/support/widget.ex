@@ -46,6 +46,40 @@ defmodule AshCommanded.TestSupport.Widget do
         fields([:id])
       end
     end
+
+    # Minimal projection + event handler so Plan 01-06's Task 3 can call the generated
+    # projector/event-handler `handle/2` functions directly. No other plan in this wave edits
+    # this file.
+    #
+    # Uses `:widget_updated` (not `:widget_created`) for the projection: the projector's
+    # generated `handle/2` for a `:create`-action projection passes the resource MODULE to
+    # `apply/2` (creating a brand-new record), which would be a second, redundant creation path
+    # alongside the command-driven one `aggregate_end_to_end_test.exs` already exercises. Using
+    # `:update` instead requires an existing record — proving the projector actually reads
+    # (`Ash.get`), transforms, and re-persists, a strictly more thorough exercise of the
+    # generated code.
+    projections do
+      projection :widget_updated do
+        action :update
+        changes(fn event -> %{name: event.name} end)
+      end
+    end
+
+    # Uses a quoted lambda `action`, not an atom action reference: the generated event-handler
+    # `execute_action/2` path for atom actions calls `Ash.run_action/3`, a function that does not
+    # exist (a pre-existing, out-of-scope defect — see deferred-items.md "From Plan 01-03"). The
+    # lambda form bypasses `execute_action/2` entirely, so it is unaffected by that defect and
+    # correctly proves the generated handler module dispatches to the declared side effect.
+    event_handlers do
+      handler :widget_notifier do
+        events([:widget_created])
+
+        action fn event, _metadata ->
+          send(self(), {:widget_notified, event.id})
+          :ok
+        end
+      end
+    end
   end
 
   actions do

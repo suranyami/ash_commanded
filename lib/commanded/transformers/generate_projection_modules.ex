@@ -166,8 +166,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectionModules do
     Macro.escape(changes_with_handled_functions)
   end
 
-  # Generate AST for function reference in DSL
-  # Note: Spark will store this as a quoted function expression, not an actual function
+  # Generate AST for function reference in DSL.
+  #
+  # In practice `projection.changes` is never the raw `{:fn, _, _}` AST this clause's name
+  # suggests — Spark's `:quoted` schema type evaluates a `changes(fn event -> ... end)` DSL
+  # entry into a real, compiled anonymous function at DSL-processing time, before this
+  # transformer ever runs. Kept for robustness in case some other DSL entry point ever supplies
+  # literal unevaluated AST here; the function-value clauses below are what actually fires today.
   defp generate_changes_ast({:fn, _, _} = fn_ast) do
     quote do
       changes_fn = unquote(fn_ast)
@@ -175,10 +180,29 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectionModules do
     end
   end
 
-  # Handle any other function-like construct (e.g., &Module.func/0)
-  defp generate_changes_ast(other) when is_function(other) do
+  # A `changes(fn event -> ... end)` DSL entry (one argument: the triggering event).
+  #
+  # Found while exercising a real generated projector's `handle/2` for the first time (Plan
+  # 01-06, TEST-03): the previous version of this clause just re-embedded the function value
+  # itself via `Macro.escape/1` without ever calling it, so `apply/2` assigned the raw function
+  # to `changes` and passed it straight to `Ash.Changeset.for_action/3`, which requires a map or
+  # keyword list — crashing with `Protocol.UndefinedError` ("protocol Enumerable not implemented
+  # for type Function") the moment a real event flowed through. `is_function(email_proj.changes,
+  # 1)` in `projections_dsl_test.exs` only ever asserted that the DSL *parsed* the function; no
+  # test called the generated code with a real event, so this was never observed until now.
+  defp generate_changes_ast(other) when is_function(other, 1) do
     quote do
-      unquote(Macro.escape(other))
+      unquote(Macro.escape(other)).(event)
+    end
+  end
+
+  # A `changes(&SomeModule.compute/0)`-style zero-arity function reference (e.g. the
+  # `registered_at: &DateTime.utc_now/0` shape used as a *map value* elsewhere is handled by
+  # `handle_function_value/1` below; this clause is for `changes` itself being a bare zero-arity
+  # function, not one taking the event).
+  defp generate_changes_ast(other) when is_function(other, 0) do
+    quote do
+      unquote(Macro.escape(other)).()
     end
   end
 
