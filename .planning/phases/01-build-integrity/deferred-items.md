@@ -137,6 +137,42 @@ None of the above touch `lib/commanded/transformers/generate_aggregate_module.ex
   persisted command mappings via `Spark.Dsl.Extension.get_persisted/2` rather than the current
   resource-scoped `Transformer.get_persisted/2` calls, which can never see cross-resource state.
 
+  **Corroborated a second time, later in this same plan:** re-tested the hypothesis that this is
+  merely a compile-*ordering* problem (files under `test/support` compile ahead of test files, in
+  dependency order — could that resolve it?) by defining an equivalent domain+resource pair
+  directly under `test/support/` with a real `application` section. Compiling under `MIX_ENV=dev`
+  "succeeded" only because `test/support` (minus `test/support/parity`) is outside `:dev`'s
+  `elixirc_paths` and the fixture was silently never compiled; compiling under `MIX_ENV=test`
+  (where it IS on the path) crashed with the identical
+  `function ...Router.__registered_commands__/0 is undefined` error. File placement does not
+  change the outcome — confirms the root cause above is correct: the router is never generated
+  for any domain, full stop, not merely generated too late.
+
+  **A related, now-fixed bug surfaced by finally calling the generated application module's
+  `child_spec/0` for real** (this plan's rewrite of
+  `commanded_application_generator_test.exs` away from mocking `BaseTransformer.create_module/3`
+  — see its own moduledoc): `generate_commanded_application.ex`'s `include_supervisor?: true`
+  branch called `Supervisor.child_spec({Supervisor, opts}, id: ...)`, which requires the first
+  element to itself implement `child_spec/1` — bare `Supervisor` doesn't, so this raised
+  `ArgumentError` the instant it was ever actually invoked (never before this session — the old
+  test only string-matched the generated AST, never called the function). Fixed to build the
+  child-spec map directly. Unrelated to the router-generation defect above; recorded here only
+  because it was found via the same investigation.
+
+  **Also fixed in this plan, not deferred:** the suite's last two `:meck` users
+  (`commanded_application_generator_test.exs`'s three application-generation tests, and
+  `aggregate_generator_test.exs`'s two snapshot-config tests, both mocking
+  `AshCommanded.Commanded.Dsl.application/1` or `BaseTransformer.create_module/3`) were removed
+  entirely, in response to a real intermittent full-suite failure the coordinator measured (5
+  runs, 2 failures, `{:error, {:already_started, pid}}` from `:cover.call/1` inside
+  `:meck`'s `backup_original/4` — `:meck.new/2` asks the Erlang coverage server to preserve a
+  mocked module's cover state, and `:cover.call/1` starts that server on demand if it isn't
+  running; two concurrent `async: true` tests' `:meck.new/2` calls could race to start it, and
+  the loser crashed). Both files now build real dsl_state maps (or, for
+  `commanded_application_generator_test.exs`, a real hand-defined router — see above) instead of
+  mocking anything. `grep -rn ':meck\.\|with_mock' test/` now returns no matches. Verified via 35
+  consecutive full-suite runs, 0 failures (was ~40% failure rate before this fix).
+
 - **`AshCommanded.TestSupport.Widget`'s `ets do private? true end` makes Ash-side writes
   invisible across a real Commanded dispatch, and is incompatible with asserting on the
   projected Ash record from outside the dispatching process.** `Ash.DataLayer.Ets`'s `private?`
