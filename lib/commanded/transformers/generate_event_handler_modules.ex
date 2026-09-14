@@ -92,14 +92,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
                 event_modules
               )
 
-            # Skip actual module creation in test environment
-            unless Application.get_env(
-                     :ash_commanded,
-                     :skip_event_handler_module_creation,
-                     Mix.env() == :test
-                   ) do
-              BaseTransformer.create_module(handler_module, ast, __ENV__)
-            end
+            BaseTransformer.create_module(handler_module, ast, __ENV__)
 
             {handler_name, handler_module}
           end)
@@ -209,23 +202,12 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
     application_name = :"#{resource_module}.CommandedApplication"
     event_handler_module_name = "#{resource_module}#{handler_name_str}Handler"
 
-    # Check if Commanded module exists, else use stub code
-    # This is necessary for testing environments where Commanded isn't available
-    if Code.ensure_loaded?(Commanded) do
-      quote do
-        @moduledoc unquote(moduledoc)
+    quote do
+      @moduledoc unquote(moduledoc)
 
-        use Commanded.Event.Handler,
-          application: unquote(application_name),
-          name: unquote(event_handler_module_name)
-      end
-    else
-      quote do
-        @moduledoc unquote(moduledoc)
-
-        # Define a stub implementation for testing
-        def init(config), do: {:ok, config}
-      end
+      use Commanded.Event.Handler,
+        application: unquote(application_name),
+        name: unquote(event_handler_module_name)
     end
     |> then(fn quoted_core ->
       quote do

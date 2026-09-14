@@ -137,8 +137,9 @@ defmodule AshCommanded.Commanded.Transformers.ProjectorGeneratorTest do
       # Check for expected components
       assert String.contains?(ast_string, "@moduledoc")
 
-      # Check for either Commanded.Event.Handler or our stub implementation
-      assert String.contains?(ast_string, "init")
+      # The stub fallback is gone (Commanded is a hard dependency) — the only
+      # surviving branch always uses the real Commanded.Event.Handler
+      assert String.contains?(ast_string, "Commanded.Event.Handler")
 
       # Check for handle function presence
       assert String.contains?(ast_string, "def handle")

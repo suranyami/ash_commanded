@@ -106,14 +106,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
             commanded_application
           )
 
-        # Skip actual module creation in test environment
-        unless Application.get_env(
-                 :ash_commanded,
-                 :skip_projector_module_creation,
-                 Mix.env() == :test
-               ) do
-          BaseTransformer.create_module(projector_module, ast, __ENV__)
-        end
+        BaseTransformer.create_module(projector_module, ast, __ENV__)
 
         # Store the generated module in DSL state
         updated_dsl_state =
@@ -182,38 +175,33 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
     event_handlers =
       event_projections
       |> Enum.map(fn {event_name, event_projections} ->
-        build_event_handler(event_name, event_projections, event_modules, projection_modules, resource_module)
+        build_event_handler(
+          event_name,
+          event_projections,
+          event_modules,
+          projection_modules,
+          resource_module
+        )
       end)
 
-    application_name = commanded_application || Module.concat([resource_module, "CommandedApplication"])
+    application_name =
+      commanded_application || Module.concat([resource_module, "CommandedApplication"])
+
     projector_name = "#{resource_module}Projector"
 
     # Action-specific implementation functions for each Ash action
     action_handlers = build_action_handlers()
 
-    # Check if Commanded module exists, else use stub code
-    # This is necessary for testing environments where Commanded isn't available
-    if Code.ensure_loaded?(Commanded) do
-      quote do
-        @moduledoc unquote(moduledoc)
+    quote do
+      @moduledoc unquote(moduledoc)
 
-        use Commanded.Event.Handler,
-          application: unquote(application_name),
-          name: unquote(projector_name)
-      end
-    else
-      quote do
-        @moduledoc unquote(moduledoc)
-
-        # Define a stub implementation for testing
-        def init(config), do: {:ok, config}
-      end
+      use Commanded.Event.Handler,
+        application: unquote(application_name),
+        name: unquote(projector_name)
     end
     |> then(fn quoted_core ->
       quote do
         unquote(quoted_core)
-
-        # Common parts regardless of Commanded availability
 
         # Aliases for the projection modules
         alias Ash.Changeset
@@ -227,7 +215,13 @@ defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
   end
 
   # Build an event handler function for a specific event and its projections
-  defp build_event_handler(event_name, projections, event_modules, projection_modules, resource_module) do
+  defp build_event_handler(
+         event_name,
+         projections,
+         event_modules,
+         projection_modules,
+         resource_module
+       ) do
     # Look up the event module for this event
     event_module = event_modules[event_name]
 
