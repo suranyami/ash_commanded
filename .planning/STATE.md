@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Build Integrity
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-09-14T00:30:10.215Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-09-14T03:20:38.524Z"
 last_activity: 2026-09-13
 last_activity_desc: Phase 01 execution started
-state_head: 087beb20b8ca841541900ef646997b3b51a114cb
+state_head: 5456c87ae64e2c1b92de66c7a2dbe424b0ab3ca9
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-11)
 ## Current Position
 
 Phase: 01 (Build Integrity) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-09-13 — Phase 01 execution started
 
@@ -60,6 +60,7 @@ Updated after each plan completion.
 |------|----------|-------|-------|
 | Phase 01 P01 | 25min | 3 tasks | 2 files |
 | Phase 01 P03 | 25min | 3 tasks | 10 files |
+| Phase 01 P04 | 26min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Removed pre-existing unused mix.lock entry (:inflex) to satisfy mix deps.unlock --check-unused gate
 - [Phase 01]: 01-03: snapshot_adapter.ex no longer declares @behaviour Commanded.Aggregates.Aggregate.Snapshotter — that module has never existed in Commanded 1.4.11
 - [Phase 01]: 01-03: removed dead self-referential import unquote(resource_module) from generated event handlers, exposed by unguarding module creation
+- [Phase 01]: 01-04: fixed a context-propagation defect present in all five CommandActionMapper execute_* paths — context set via set_context/2 after for_action/for_read arrives too late for declarative changes/validations/preparations, which run during changeset/query construction — Found via TDD RED phase while rewriting context_test.exs to assert on a real persisted change output instead of an echoed mapper return value; unreachable while the Mix.env() mocks were in place
 
 ### Pending Todos
 
@@ -117,6 +119,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-14T00:30:10.203Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-09-14T03:20:38.511Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None

@@ -19,10 +19,10 @@
 
 ### Test Infrastructure
 
-- [ ] **TEST-01**: No production code branches on `Mix.env()` — module creation and Ash action execution behave identically in test and production
+- [x] **TEST-01**: No production code branches on `Mix.env()` — module creation and Ash action execution behave identically in test and production
 - [ ] **TEST-02**: A developer can write a test asserting that an invalid DSL is rejected at compile time with a specific error message
 - [ ] **TEST-03**: The test suite exercises generated aggregate, projector, router and event-handler modules as real compiled modules
-- [ ] **TEST-04**: The test suite exercises real Ash create/update/destroy execution rather than mocked return values
+- [x] **TEST-04**: The test suite exercises real Ash create/update/destroy execution rather than mocked return values
 - [ ] **TEST-05**: Every verifier has tests covering both a valid DSL that is accepted and an invalid DSL that is rejected
 - [ ] **TEST-06**: Event store state is isolated between tests, with no leakage across async tests
 
@@ -162,10 +162,10 @@ Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
 | FOUND-05 | Phase 5 | Pending |
 | FOUND-06 | Phase 2 | Pending |
 | FOUND-07 | Phase 2 | Pending |
-| TEST-01 | Phase 1 | Pending |
+| TEST-01 | Phase 1 | Complete |
 | TEST-02 | Phase 1 | Pending |
 | TEST-03 | Phase 1 | Pending |
-| TEST-04 | Phase 1 | Pending |
+| TEST-04 | Phase 1 | Complete |
 | TEST-05 | Phase 2 | Pending |
 | TEST-06 | Phase 1 | Pending |
 | TYPE-01 | Phase 3 | Pending |
