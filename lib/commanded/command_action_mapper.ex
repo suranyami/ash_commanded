@@ -573,29 +573,27 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     identity_value = Map.get(params, identity_field)
 
     if identity_value do
-      # In production, this would use actual Ash.Query functions
-      # For now, return mock success for testing
-      if Mix.env() == :test do
-        {:ok, %{action: action_name, identity: identity_value, context: context}}
-      else
-        query = resource |> Ash.Query.for_read(action_name) |> Ash.Query.set_context(context)
-        query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
+      query = resource |> Ash.Query.for_read(action_name) |> Ash.Query.set_context(context)
+      query = Ash.Query.filter(query, ^[{identity_field, identity_value}])
 
-        case Ash.read_one(query) do
-          {:ok, record} ->
-            {:ok, record}
+      # Ash.read_one/1 returns {:ok, nil} for "no match," never a bare nil (same
+      # shape execute_update/5 and execute_destroy/5 already account for) — the
+      # not-found clause must match {:ok, nil} before the general {:ok, record}
+      # clause, or record binds to nil and flows on as if it were found.
+      case Ash.read_one(query) do
+        {:ok, nil} ->
+          {:error,
+           Error.action_error("Record not found",
+             field: identity_field,
+             value: identity_value,
+             context: %{resource: resource, action: action_name}
+           )}
 
-          {:error, error} ->
-            {:error, error}
+        {:ok, record} ->
+          {:ok, record}
 
-          nil ->
-            {:error,
-             Error.action_error("Record not found",
-               field: identity_field,
-               value: identity_value,
-               context: %{resource: resource, action: action_name}
-             )}
-        end
+        {:error, error} ->
+          {:error, error}
       end
     else
       {:error,
@@ -608,32 +606,26 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   # Execute a custom action
   defp execute_custom(resource, action_name, params, context) do
-    # In production, this would use actual Ash.run_action
-    # For now, return mock success for testing
-    if Mix.env() == :test do
-      {:ok, %{action: action_name, params: params, context: context}}
-    else
-      # For custom actions, we'll use Ash.ActionInput to run generic actions
-      try do
-        action_input = Ash.ActionInput.for_action(resource, action_name, params)
-        action_input = Ash.ActionInput.set_context(action_input, context)
+    # For custom actions, we use Ash.ActionInput to run generic actions
+    try do
+      action_input = Ash.ActionInput.for_action(resource, action_name, params)
+      action_input = Ash.ActionInput.set_context(action_input, context)
 
-        case Ash.run_action(action_input) do
-          {:ok, _} = success -> success
-          {:error, error} -> {:error, error}
-        end
-      rescue
-        e in _ ->
-          {:error,
-           Error.action_error("Error running custom action: #{Exception.message(e)}",
-             context: %{
-               resource: resource,
-               action: action_name,
-               params: inspect(params),
-               error: inspect(e)
-             }
-           )}
+      case Ash.run_action(action_input) do
+        {:ok, _} = success -> success
+        {:error, error} -> {:error, error}
       end
+    rescue
+      e in _ ->
+        {:error,
+         Error.action_error("Error running custom action: #{Exception.message(e)}",
+           context: %{
+             resource: resource,
+             action: action_name,
+             params: inspect(params),
+             error: inspect(e)
+           }
+         )}
     end
   end
 end

@@ -348,7 +348,6 @@ defmodule AshCommanded.Commanded.Error do
   """
   @spec from_commanded_error(any()) :: t()
   def from_commanded_error(error) do
-    # Mock implementation for tests
     case error do
       %{message: message} ->
         aggregate_error(message, context: %{source: :commanded})
