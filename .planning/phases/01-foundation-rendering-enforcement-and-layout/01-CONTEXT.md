@@ -27,7 +27,8 @@ application, aggregates and projections all belong to later phases.
 
 - **D-01:** Gates are suppressed on not-yet-rewritten files with per-file
   `# credo:disable-for-this-file` headers, deleted as each component is rewritten. This matches the
-  idiom already used in five files and keeps the suppression visible at the point of the offence
+  idiom already used in **eight** files (15 disable lines; grep-verified 2026-09-15 — an earlier draft
+  of this file said "five files", which was wrong) and keeps the suppression visible at the offence
   rather than in a central allowlist. — **Reversibility:** reversible — the alternative (a central
   allowlist) is a mechanical swap touching only `.credo.exs` and the file headers.
 - **D-02:** Every gate disable carries a structured phase reference, and a test parses all disables
@@ -120,12 +121,19 @@ application, aggregates and projections all belong to later phases.
 
 - Prefer configuring Credo's existing checks over writing custom ones wherever a built-in covers the
   rule. Stated during discussion and not objected to. Concretely:
-  `Credo.Check.Refactor.LongQuoteBlocks` already exists, is already enabled at `.credo.exs:128` with
-  defaults, and is currently hand-disabled on `generate_aggregate_module.ex` — FOUND-07 may need only
-  `max_line_count: 40` and the deletion of a disable. `Credo.Check.Design.DuplicatedCode` is likewise
-  already enabled at `.credo.exs:177`. `.credo.exs` has empty `plugins: []` and `requires: []` keys
-  waiting at lines 39 and 44. Custom checks only for rules with no built-in: the runtime-reassembly
-  class, string→AST reparse, and module-name surgery.
+  `Credo.Check.Refactor.LongQuoteBlocks` already exists, **is enabled** (`.credo.exs:128`, inside the
+  `enabled:` block opened at :68) with defaults, and is currently hand-disabled on
+  `generate_aggregate_module.ex` — FOUND-07 may need only `max_line_count: 40` and the deletion of a
+  disable. Custom checks only for rules with no built-in: the runtime-reassembly class, string→AST
+  reparse, and module-name surgery. `.credo.exs` has empty `plugins: []` and `requires: []` keys
+  waiting at lines 39 and 44.
+
+  **Correction (2026-09-15, after phase research).** An earlier version of this file stated that
+  `Credo.Check.Design.DuplicatedCode` was "already enabled at `.credo.exs:177`". That is **wrong**.
+  Line 177 sits inside the `disabled:` block opened at `.credo.exs:166` — the check is DISABLED. The
+  original scout read the line's `[]` options and inferred enablement without checking which block
+  contained it. Consequence for FOUND-11: there is nothing to turn off, so adopting `ex_dna` is a
+  pure addition rather than a swap.
 - The shape and prescriptiveness of AGENTS.md, how `usage_rules` output is generated and kept
   current, and the exact Elixir/OTP versions in the CI matrix were all offered and not selected for
   discussion. Planner has latitude, subject to D-12 requiring the canonical render version be
@@ -172,6 +180,9 @@ application, aggregates and projections all belong to later phases.
   `DuplicatedCode` at :177.
 - `mix.exs` — the `check` alias (:dev by default, with `test` spawned in its own MIX_ENV subprocess
   and a comment explaining why); `usage_rules ~> 1.2` is already a dev dependency at :67.
+- **`.github/workflows/` does not exist.** FOUND-16 and D-12 author CI from scratch rather than
+  adjusting an existing matrix. LEARNINGS.md §2 lists it conditionally ("if plan 01-08 lands before
+  the rewrite begins"); plan 01-08 never ran, so the condition did not hold.
 - `.planning/evidence-generated-aggregate.txt` — the 333-line pre-rewrite aggregate render. The
   before-picture later phases measure against.
 
@@ -190,6 +201,10 @@ application, aggregates and projections all belong to later phases.
 - `scripts/render_generated.exs`: a working `:beam_lib` renderer, already handling the formatter
   rejecting imperfectly-round-tripping AST by falling back to unformatted output. FOUND-03's
   post-compile path is largely this, promoted into a mix task.
+  **Do not overestimate its coverage.** It covers ONLY the `--beam` flag path. The DEFAULT bare
+  invocation (FOUND-01/02/05, pre-`Module.create/3` AST) has no prototype in this repo at all and
+  depends entirely on the new D-06 capture hook. The prototype is a fallback view, not a head start
+  on the primary one.
 - `test/support/parity/` + `scripts/compile_parity.sh`: the fixture and checking mechanism D-09
   extends rather than replaces.
 - `.credo.exs`'s empty `plugins: []` and `requires: []`: the hooks for `ex_dna` and for in-repo
@@ -207,9 +222,30 @@ application, aggregates and projections all belong to later phases.
   evolution of it rather than a new module.
 - Generated module names follow `<ResourceModule>.Commands.<CommandName>` and siblings.
 
+### Known Collision — FOUND-10 vs FOUND-18
+
+`Module.split`/`Module.concat` appear **30 times across 13 files** in `lib/` (verified 2026-09-15),
+not the single site LEARNINGS.md cites. Three of them are `lib/commanded/transformers/base_transformer.ex`
+lines 22, 26 and 41 — inside `get_module_prefix/1`, which is the very seam FOUND-18's shared codegen
+helper and D-06's capture hook attach to. **A FOUND-10 check that flags module-name surgery will fire
+on the module this phase is building.** The planner must decide explicitly: rewrite
+`get_module_prefix/1` to derive from `Transformer.get_persisted/2`, or suppress it under D-01/D-02's
+phase-annotated disable — and if suppressed, name the phase that removes it.
+
+Not every occurrence is the defect. The check needs to separate three uses that look alike:
+deriving a module atom to reference (the real defect — `generate_command_modules.ex:99` and
+siblings); building a display string (`logging_middleware.ex:37,57,75` take `List.last()` for a log
+label); and naming a process (`generate_commanded_application.ex:130,135` name a Supervisor).
+Pattern mapping found a fourth, borderline case at `generate_commanded_application.ex:231-248`, which
+derives a module name from a domain name *and* is real surgery — decide it explicitly rather than
+letting the taxonomy decide it by accident. False-positive design is therefore part of FOUND-10, not
+an afterthought.
+
 ### Integration Points
 - Every transformer must route module creation through the shared helper for D-06's capture to be
   complete — a transformer that calls `Module.create/3` directly renders as a hole in the output.
+  Research confirmed `base_transformer.ex:70-74`'s `create_module/3` is already called by all nine
+  module-creating transformers, so the seam exists and is singular.
 - `compile_parity.sh`'s explicit module list and `mix.exs`'s `check` alias both need extending, and
   CI invokes the alias rather than restating steps, so the two cannot drift.
 - The D-13 rename touches every file in `lib/` and `test/`, plus the `spark.cheat_sheets` alias,
