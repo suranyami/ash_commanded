@@ -60,7 +60,16 @@ output that breaks the rewrite rules — so every later phase has something real
   4. A developer runs the structural clone check across `lib/` and reads a report naming clone pairs that Credo's built-in duplicate check does not report; `AGENTS.md` carries Rule 9 ("no double-handling") as a reviewer checklist item with an explicit statement that no mechanical check for it exists.
   5. `AGENTS.md` exists documenting idiomatic Elixir, DSL conventions, transformer ordering, testing expectations and the Spark API surface, with `core` as the worked reference; `usage_rules` is a dev dependency and the library's generated usage rules are committed; `lib/` has sibling `resource/` and `domain/` trees each holding `transformers/`, `verifiers/` and `info.ex`; a deliberate error in generated code reports a `file:`/`line:` a developer can open; and CI runs the suite green on the current Elixir/OTP release plus the previous two minors.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+
+- [ ] 01-01-PLAN.md — Tracer: AST capture seam, `mix ash_commanded.dump`, one golden, the clause-size gate, and explicit file/line metadata (wave 1)
+- [ ] 01-02-PLAN.md — Renderer expansion: `--beam`, `--write` ratchet, canonical-version golden diff, runtime-reassembly lint, full golden corpus (wave 2)
+- [ ] 01-03-PLAN.md — Static gates: two custom Credo checks, quote-block ceiling, structural clone detection and the clone report (wave 2)
+- [ ] 01-04-PLAN.md — The big-bang namespace move: `resource/` and `domain/` trees, `.Info` modules, and the golden-diff neutrality proof (wave 3)
+- [ ] 01-05-PLAN.md — Seeded-violation fixtures, the gate meta-test, phase-cited suppressions and the gate-evidence record (wave 4)
+- [ ] 01-06-PLAN.md — `usage-rules.md`, `AGENTS.md` and the first CI workflow with a three-leg matrix (wave 4)
 
 ### Phase 2: Commands and Events
 
@@ -223,15 +232,15 @@ These hold across every phase and are not restated per phase:
 **Execution Order:**
 Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
-| Phase | Plans Complete | Status | Completed |
-| ------- | ---------------- | -------- | ----------- |
-| 1. Foundation — Rendering, Enforcement and Layout | 0/TBD | Not started | - |
-| 2. Commands and Events | 0/TBD | Not started | - |
-| 3. Application and Routers | 0/TBD | Not started | - |
-| 4. Aggregates | 0/TBD | Not started | - |
-| 5. Projections, Event Handlers and Process Managers | 0/TBD | Not started | - |
-| 6. Event Versioning, Snapshots, Middleware and Transactions | 0/TBD | Not started | - |
-| 7. Documentation, Packaging and the End-to-End Example | 0/TBD | Not started | - |
+| Phase                                                       | Plans Complete | Status      | Completed |
+| ----------------------------------------------------------- | -------------- | ----------- | --------- |
+| 1. Foundation — Rendering, Enforcement and Layout           | 0/6            | Planned     | -         |
+| 2. Commands and Events                                      | 0/TBD          | Not started | -         |
+| 3. Application and Routers                                  | 0/TBD          | Not started | -         |
+| 4. Aggregates                                               | 0/TBD          | Not started | -         |
+| 5. Projections, Event Handlers and Process Managers         | 0/TBD          | Not started | -         |
+| 6. Event Versioning, Snapshots, Middleware and Transactions | 0/TBD          | Not started | -         |
+| 7. Documentation, Packaging and the End-to-End Example      | 0/TBD          | Not started | -         |
 
 **Coverage:** 87/87 milestone requirements mapped, each to exactly one phase.
 
