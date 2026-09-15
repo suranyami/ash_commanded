@@ -1,227 +1,179 @@
-# Requirements: AshCommanded
+# Requirements: AshCommanded — Milestone v0.3 Library Rewrite
 
-**Defined:** 2026-09-11
+**Defined:** 2026-09-15
 **Core Value:** `core`'s five event-sourced domains run in production on AshCommanded.
+**This milestone's contribution:** a rewritten generation layer good enough that the migration
+milestone is worth attempting. `core` migration itself is explicitly out of scope here.
 
-"User" below means a developer consuming the library, unless stated otherwise.
+**"User" throughout means the developer consuming AshCommanded**, not an end user of their app.
 
-## v1 Requirements
+## Method
+
+Every component requirement below is delivered through the same loop, and a component is not
+complete until all six steps are done:
+
+1. Propose the DSL surface
+2. Write a runnable usage example
+3. Build the transformer(s)
+4. **Render the generated output and get human approval of its conciseness**
+5. Iterate the transformer if the render is unsatisfactory
+6. Add persisters/verifiers and a test suite; `mix check` green
+
+## Milestone Requirements
 
 ### Foundation
 
-- [ ] **FOUND-01**: Transformer execution order is declared as an explicit total order, with every transformer declaring `after?/1`, and the dead `AshCommanded.Commanded.Transformers.ExtractCommands` references removed from `collect_parameter_transforms.ex` and `collect_parameter_validations.ex`
-- [ ] **FOUND-02**: A test fails if any generated module is produced empty, so a mis-ordered transformer cannot silently generate nothing
-- [ ] **FOUND-03**: The `application` section is valid only on an `Ash.Domain` via `AshCommanded.Commanded.DomainDsl`, and `commands`/`events`/`projections`/`event_handlers` only on an `Ash.Resource` via `AshCommanded.Commanded.Dsl`
-- [ ] **FOUND-04**: A resource-level transformer that reads its domain's DSL state is rejected or prevented, so the compile deadlock cannot be reintroduced
-- [ ] **FOUND-05**: A domain's generated Commanded application supervises every projector across its resources without manual registration
-- [ ] **FOUND-06**: In-repo rules for authoring and maintaining the Spark DSL are written down and enforceable. First rule: **generated code is thin wiring; logic lives in hand-written runtime modules.** A generated function clause should carry only the per-entity literals that vary and delegate to a normal module that can be unit-tested, stepped through, and read without mentally expanding a `quote`. Anything computable at macro-expansion time is computed there and `unquote`d as a literal, never reassembled at runtime. Then: section/entity structure, "prefer a verifier over a transformer when you only need to validate", the `ModuleName.Info` introspection convention, deriving values from `Transformer.get_persisted/2` rather than reconstructing them by module-name surgery, and the `{:spark_behaviour, _}` / `{:spark_function_behaviour, _, _}` escape-hatch types in place of hand-rolled `is_function`/`is_atom` branching
-- [ ] **FOUND-07**: Generated module source can be rendered and reviewed — a `mix ash_commanded.dump` task writes every generated module to formatted Elixir, and committed golden renders for a canonical fixture resource are diffed in CI so a change in generated output is a reviewable diff rather than a silent one
+Must land before the first component, because step 4 of the method depends on it.
 
-### Test Infrastructure
+- [ ] **FOUND-01**: `mix ash_commanded.dump <Module>` renders a DSL-using module's generated code as formatted Elixir source
+- [ ] **FOUND-02**: The renderer defaults to the AST as written by the transformer, before `Module.create/3`
+- [ ] **FOUND-03**: The renderer can also render post-compile from BEAM `debug_info`, behind a flag
+- [ ] **FOUND-04**: Golden renders of generated output are committed and diffed in CI, failing the build on unreviewed change
+- [ ] **FOUND-05**: A developer can regenerate golden files with a single documented command
+- [ ] **FOUND-06**: A check fails the build when any generated function clause exceeds ~10 lines in the rendered output
+- [ ] **FOUND-07**: A check fails the build when any `quote` block in the library exceeds 40 lines
+- [ ] **FOUND-08**: A check fails the build when values computable at macro-expansion time survive into rendered output as runtime work (the `:erlang.++` class of defect)
+- [ ] **FOUND-09**: A check fails the build when transformer code calls `Code.string_to_quoted!`/`eval_string` to build AST from strings
+- [ ] **FOUND-10**: A check fails the build when a module name is derived by `Module.split`/`Module.concat` surgery rather than from persisted state
+- [ ] **FOUND-11**: Structural duplicate detection runs across generator modules and reports clones Credo's built-in check misses
+- [ ] **FOUND-12**: Rule 9 ("no double-handling") is carried as an explicit reviewer checklist item, since no mechanical check exists for it
+- [ ] **FOUND-13**: `usage_rules` is a dev dependency and the library publishes generated LLM-facing usage rules
+- [ ] **FOUND-14**: `AGENTS.md` documents idiomatic Elixir, DSL conventions, transformer ordering and testing expectations, using `core` as the worked reference
+- [ ] **FOUND-15**: `AGENTS.md` includes the Spark API reference so implementers reach for built-in machinery before hand-rolling it
+- [ ] **FOUND-16**: CI runs the suite against the current Elixir/OTP release plus the previous two minors
+- [ ] **FOUND-17**: `lib/` is reorganised into `resource/` and `domain/` trees, each with its own `transformers/`, `verifiers/` and `info.ex`
+- [ ] **FOUND-18**: A shared module-creation helper sets explicit `file:`/`line:` metadata so generated-code errors point somewhere useful
 
-- [x] **TEST-01**: No production code branches on `Mix.env()` — module creation and Ash action execution behave identically in test and production
-- [x] **TEST-02**: A developer can write a test asserting that an invalid DSL is rejected at compile time with a specific error message
-- [x] **TEST-03**: The test suite exercises generated aggregate, projector, router and event-handler modules as real compiled modules
-- [x] **TEST-04**: The test suite exercises real Ash create/update/destroy execution rather than mocked return values
-- [ ] **TEST-05**: Every verifier has tests covering both a valid DSL that is accepted and an invalid DSL that is rejected
-- [x] **TEST-06**: Event store state is isolated between tests, with no leakage across async tests
+### Commands
 
-### Event Identity and Versioning
+- [ ] **CMD-01**: A user can declare a command with a name and fields, and get a generated struct with typespecs
+- [ ] **CMD-02**: A user can map a command to a named Ash action
+- [ ] **CMD-03**: A user can override the generated command module's name
+- [ ] **CMD-04**: A user can nominate the identity field used for aggregate routing
+- [ ] **CMD-05**: Declaring two commands with the same name fails at compile time
+- [ ] **CMD-06**: Declaring a command field that is not a resource attribute fails at compile time, naming the field
+- [ ] **CMD-07**: Referencing an action that does not exist on the resource fails at compile time, naming the action
+- [ ] **CMD-08**: `AshCommanded.Resource.Info` exposes a resource's declared commands without reading DSL state directly
+- [ ] **CMD-09**: The rendered command module is reviewed and approved against the size gates
 
-- [ ] **TYPE-01**: A developer can declare an explicit event type string independent of the event module's path
-- [ ] **TYPE-02**: The library provides a `Commanded.EventStore.TypeProvider` that honours declared event type strings in both directions
-- [ ] **TYPE-03**: A stored event whose type resolves to no loaded module degrades to a logged sentinel instead of raising and killing the subscription
-- [ ] **TYPE-04**: A developer can declare ordered upcast transforms for an event, compiled into a single `upcast/2` implementation, giving the chaining Commanded does not provide natively
-- [ ] **TYPE-05**: Upcasting is verified against a store containing events persisted in an earlier shape, not only against synthetic structs
+### Events
+
+- [ ] **EVT-01**: A user can declare an event with a name and fields, and get a generated struct with typespecs
+- [ ] **EVT-02**: A user can override the generated event module's name
+- [ ] **EVT-03**: Declaring two events with the same name fails at compile time
+- [ ] **EVT-04**: Declaring an event field that is not a resource attribute fails at compile time, naming the field
+- [ ] **EVT-05**: `AshCommanded.Resource.Info` exposes a resource's declared events
+- [ ] **EVT-06**: The rendered event module is reviewed and approved against the size gates
+
+### Application and Routers
+
+Planned as one coupled unit: the ordering defect spans both, and neither can be proven working alone.
+
+- [ ] **APP-01**: A user can declare a Commanded application on an `Ash.Domain` and get a generated application module
+- [ ] **APP-02**: Router generation fires for every domain that declares commands — the confirmed defect is fixed
+- [ ] **APP-03**: A domain-level transformer reads each resource's persisted command state via `Ash.Domain.Info.resources/1`, with no module-name surgery
+- [ ] **APP-04**: The generated application compiles without the `__registered_commands__/0 is undefined` failure
+- [ ] **APP-05**: A user can dispatch a command through the generated router and observe the aggregate acting on it
+- [ ] **APP-06**: A user can configure event store, pubsub, registry and supervision through the DSL
+- [ ] **APP-07**: Projectors are discovered and supervised automatically, replacing the unfinished TODO
+- [ ] **APP-08**: The quarantined `commanded_application_integration_test.exs.phase2-blocked` is restored, its stale `Code.ensure_loaded?` guard deleted, and it genuinely exercises application generation
+- [ ] **APP-09**: `test/` is swept for the same `Code.ensure_loaded?` pattern already removed from `lib/`
+- [ ] **APP-10**: A design note records that compile ordering comes from an on-demand compiler block, and that bidirectional resource/domain reads risk deadlock
+- [ ] **APP-11**: `AshCommanded.Domain.Info` exposes the domain's application configuration
+- [ ] **APP-12**: The rendered application and router modules are reviewed and approved against the size gates
 
 ### Aggregates
 
-- [ ] **AGG-01**: A developer can declare preconditions that reject a command based on aggregate state, returning `{:error, reason}`
-- [ ] **AGG-02**: A developer can declare aggregate state fields that are not derived from resource attributes, including maps and collections
-- [ ] **AGG-03**: A single command can emit multiple events
-- [ ] **AGG-04**: A developer can supply a function or module reference for command handling where declaration is insufficient
-- [ ] **AGG-05**: Aggregate lifespan is configurable from the DSL
+- [ ] **AGG-01**: `AshCommanded.Aggregate.__using__/1` exists as a hand-written front door, and generated aggregates delegate to it
+- [ ] **AGG-02**: Aggregate execution logic lives in a plain runtime module that can be unit-tested without compiling a DSL
+- [ ] **AGG-03**: A generated aggregate's `execute/2` and `apply/2` clauses carry only per-entity literals
+- [ ] **AGG-04**: A user can express an invariant that rejects a command based on current aggregate state
+- [ ] **AGG-05**: A user can declare aggregate state that is not a resource attribute, such as a collection
+- [ ] **AGG-06**: A user can express aggregate lifespan (`after_event`, `after_command`, `after_error`)
+- [ ] **AGG-07**: A command returning no event, one event, a list of events, or an error is handled per Commanded's contract
+- [ ] **AGG-08**: The rendered aggregate for a one-command, one-event resource is under a documented size budget, reviewed and approved
+- [ ] **AGG-09**: `AshCommanded.Aggregate.Info` is the single lookup point for per-command configuration
 
 ### Projections
 
-- [ ] **PROJ-01**: Projection changes can be computed from the event, its metadata and the current record
-- [ ] **PROJ-02**: Projections are idempotent under at-least-once redelivery
-- [ ] **PROJ-03**: A developer can supply a function or module reference for projection logic where declaration is insufficient
-- [ ] **PROJ-04**: Projection writes compose transactionally with Ash actions, proven by an integration test rather than assumed
+- [ ] **PROJ-01**: A user can declare a projection mapping an event to an Ash action with static changes
+- [ ] **PROJ-02**: A user can compute changes from the event via a function
+- [ ] **PROJ-03**: A projection referencing an unknown event fails at compile time
+- [ ] **PROJ-04**: A projection writing an unknown attribute fails at compile time
+- [ ] **PROJ-05**: The latent `Ash.run_action(changeset, action)` defect is fixed and covered by a test that would have caught it
+- [ ] **PROJ-06**: A user can assert on a projected Ash record after a real dispatch, with the cross-process ETS visibility limitation resolved or documented
+- [ ] **PROJ-07**: The rendered projector module is reviewed and approved against the size gates
 
-### Event Handlers and Dispatch
+### Event Handlers and Process Managers
 
-- [ ] **HAND-01**: Event handler subscription options (`start_from`, `subscribe_to`, `consistency`) are declarable in the DSL
-- [ ] **HAND-02**: Command dispatch options — consistency, timeout, and causation/correlation metadata — pass through from the DSL to Commanded
+- [ ] **HDLR-01**: A user can declare an event handler that runs a side effect without updating the resource
+- [ ] **HDLR-02**: A user can declare a process manager coordinating across aggregates
+- [ ] **HDLR-03**: A user can choose `:strong` or `:eventual` consistency per handler
+- [ ] **HDLR-04**: Handler errors are surfaced through Commanded's error callbacks rather than swallowed
+- [ ] **HDLR-05**: Handlers, projectors and process managers generate distinct shapes rather than one generic base
+- [ ] **HDLR-06**: The rendered handler and process-manager modules are reviewed and approved against the size gates
 
-### Process Managers
+### Event Versioning
 
-- [ ] **SAGA-01**: A developer can declare a process manager, including its routing and state
-- [ ] **SAGA-02**: Process manager state is persisted and recovered per Commanded's semantics
-- [ ] **SAGA-03**: At least one example and test covers a process manager end to end
+- [ ] **EVOL-01**: A user can declare how a historical event shape maps to the current one
+- [ ] **EVOL-02**: Each historical event struct's generated `upcast/2` returns the **current** struct directly, never a single version hop
+- [ ] **EVOL-03**: Intermediate transformations declared across several versions are composed at generation time into one clause per historical struct
+- [ ] **EVOL-04**: A replay test proves an event written at the oldest declared version is correctly upcast to current
+- [ ] **EVOL-05**: The rendered upcaster implementation is reviewed and approved against the size gates
 
-### Snapshots
+### Snapshots, Middleware and Transactions
 
-- [ ] **SNAP-01**: Snapshot storage is a documented, pluggable behaviour
-- [ ] **SNAP-02**: A persistent Postgres-backed snapshot adapter ships with the library
-- [ ] **SNAP-03**: Snapshot configuration (`snapshot_every`, `snapshot_version`) is declarable from the DSL
+- [ ] **RUN-01**: Snapshot support targets `Commanded.Snapshotting`, generating configuration rather than a pluggable adapter behaviour
+- [ ] **RUN-02**: A user can declare `snapshot_every` and `snapshot_version` per aggregate
+- [ ] **RUN-03**: The fictional `Commanded.Aggregates.Aggregate.Snapshotter` behaviour is gone from the codebase
+- [ ] **RUN-04**: Middleware modules are verified against Commanded's real middleware contract, by an explicit verifier rather than a schema type
+- [ ] **RUN-05**: A user can attach middleware to command dispatch and observe it running in declaration order
+- [ ] **RUN-06**: Transaction coordination is covered by a test that exercises a real rollback
+- [ ] **RUN-07**: `IO.puts`/`IO.inspect` are gone from production paths, replaced by `Logger`
 
-### Code Quality
+### Documentation and Packaging
 
-- [x] **QUAL-01**: `:commanded` and `:eventstore` are declared dependencies in `mix.exs`
-- [x] **QUAL-02**: No `IO.puts` or `IO.inspect` in production paths; `Logger` is used throughout
-- [ ] **QUAL-03**: `GenerateAggregateModule` emits thin generated code — a generated `execute/2` clause is under ~10 lines and delegates to a runtime module, rather than inlining command execution, middleware, transaction and snapshot logic into every clause. Measured on the OUTPUT, not the generator: the module currently emits 541 generated lines across 11 `quote` blocks, one of which is 225 lines, while every other transformer's largest block is 31 lines and `generate_command_modules.ex`/`generate_event_modules.ex` emit 6. Splitting the generator into separate builder modules does not satisfy this — it relocates the emission without shrinking it. The duplication spans a macro boundary: the same concerns are implemented in both the generated body and `command_action_mapper.ex` (639 lines)
-- [ ] **QUAL-04**: `CommandActionMapper` (640 lines) is decomposed, with transaction and transformation concerns moved to their existing modules
-- [ ] **QUAL-05**: `Error` (514 lines) is reviewed and reduced or justified
-- [ ] **QUAL-06**: The three verifiers documented but absent — `ValidateCommandActions`, `ValidateCommandHandlers`, `ValidateCommandNameConflict` — are either implemented or removed from the documentation
+- [ ] **DOCS-01**: `CLAUDE.md` contains no claim that is not true of the code, including the three documented-but-absent verifiers
+- [ ] **DOCS-02**: `CLAUDE.md` and `AGENTS.md` are consistent with each other rather than divergent
+- [ ] **DOCS-03**: Declared dependency versions in documentation match `mix.exs` and `mix.lock`
+- [ ] **DOCS-04**: `spark.cheat_sheets` covers the domain extension as well as the resource extension
+- [ ] **DOCS-05**: The published package includes `documentation/` and `cheatsheets/`
+- [ ] **DOCS-06**: A documented testing story shows how to test commands, aggregates, projections and full event flows
+- [ ] **DOCS-07**: An end-to-end example runs on Commanded's in-memory adapter, fast enough for CI and docs
+- [ ] **DOCS-08**: Dependencies are bumped to current versions, including the stale `sourceror` pin
 
-### Examples and Documentation
+## Deferred to the Next Milestone
 
-- [ ] **DOCS-01**: A runnable end-to-end example application on Commanded's in-memory adapter, covering command through event, aggregate, projection and read model
-- [ ] **DOCS-02**: A runnable end-to-end example application on a Postgres-backed EventStore
-- [ ] **DOCS-03**: A testing guide showing how to test commands, aggregate invariants, projections, upcasting and full event flows
-- [ ] **DOCS-04**: Generated documentation and cheat sheets cover both the Resource and Domain extensions, and no documented feature is absent from the code
+Tracked, not in this roadmap.
 
-### Repository and Tooling
-
-- [ ] **REPO-01**: `usage_rules` is set up and a `usage-rules.md` is published with the package
-- [ ] **REPO-02**: An `AGENTS.md` documents DSL conventions, transformer ordering and testing expectations for coding agents
-- [x] **REPO-03**: Dependencies are current — Ash, Spark (`~> 2.6`, required by Ash), ExDoc — with Credo and Dialyxir added
-- [ ] **REPO-04**: `mix.exs` declares `elixir: "~> 1.18"` and CI runs a matrix across Elixir 1.18, 1.19 and 1.20 on their supported OTP releases
-- [x] **REPO-05**: CI runs format check, Credo, compile with warnings as errors, tests, Dialyzer and a docs build
-
-### Migration Tooling
-
-- [ ] **MIG-01**: A golden-trace harness replays real historical events through both the existing and generated implementations and asserts identical resulting state
-- [ ] **MIG-02**: A pre-cutover check verifies that every generated event's type string matches what is already persisted for that event
-- [ ] **MIG-03**: `core`'s cross-domain event-handler dependency graph is documented, so migration sequencing is chosen rather than assumed
-
-### core Migration
-
-- [ ] **MIG-04**: `identity` runs on AshCommanded, verified by golden trace
-- [ ] **MIG-05**: `integration` runs on AshCommanded, verified by golden trace
-- [ ] **MIG-06**: `data` runs on AshCommanded, verified by golden trace
-- [ ] **MIG-07**: `schema_definition` runs on AshCommanded, verified by golden trace
-- [ ] **MIG-08**: `workflow` runs on AshCommanded, verified by golden trace
-
-### Release
-
-- [ ] **REL-01**: AshCommanded 1.0 is published to hex.pm with migration notes from 0.2.0
-
-## v2 Requirements
-
-Deferred. Tracked but not in the current roadmap.
-
-### Distribution
-
-- **DIST-01**: Declarative configuration for distributed registries (Swarm, Horde)
-- **DIST-02**: Guidance and tests for multi-node deployment
-
-### Multitenancy
-
-- **TENANT-01**: Ash multitenancy integration for commands and projections
-
-### Storage
-
-- **STORE-01**: Additional snapshot adapters beyond Postgres
+- **MIG-01..05**: Migrate `identity`, `data`, `integration`, `schema_definition`, `workflow` onto AshCommanded
+- **REL-01**: Publish 1.0 to hex.pm once `core` is fully migrated
+- **EX-01**: End-to-end example on a Postgres-backed EventStore — proves the path `core` actually uses, but belongs with the migration it serves
 
 ## Out of Scope
 
 | Feature | Reason |
-| --------- | -------- |
-| Backwards compatibility with the published 0.2.0 DSL | Adoption is negligible; the aggregate and projection redesign cannot be done additively |
+|---------|--------|
+| Backwards compatibility with the published 0.2.0 DSL | Adoption is negligible and the aggregate/projection redesign cannot be done additively. Break freely on 0.x |
 | Non-Commanded event-sourcing backends | The library targets Commanded 1.4.x specifically |
-| Migrating `core` code that is not event-sourced | Only the CQRS/ES surface is in scope |
-| Ash multitenancy support | `core` uses none; building it untested against real usage is speculative. Deferred to v2 |
-| Multi-node / distributed registry configuration | `core` has no multi-node requirement; this is supervision-tree configuration, not DSL syntax. Deferred to v2 |
-| Maintaining a private fork | David holds upstream maintainer rights, so work lands in `accountex-org/ash_commanded` |
-| Reusing `ash-project`'s shared CI workflow | It assumes org-owned secrets and actions unavailable under `accountex-org` |
-
-## Open Questions
-
-Resolved during planning, not now.
-
-| Question | Affects | Decided by |
-| ---------- | --------- | ----------- |
-| Use `commanded_ecto_projections` or hand-roll idempotency in generated AST? | PROJ-02, PROJ-04 | Integration spike before the projection phase |
-| Does `core` use snapshots at all today? | SNAP-01..03 scope | Capability audit |
-| Aggregate precondition signature — does `(state, command) -> :ok \| {:error, reason}` fit every guard in `core`? | AGG-01 | Sampling `core`'s 13 aggregates during planning |
-| Should projector auto-discovery live in the domain transformer or a third later-compiled module? | FOUND-05 | Compile-order integration test |
-| How does `core`'s string-vs-atom key divergence (aggregates see string keys, projectors see atom keys after deserialization) affect generated code? | PROJ-01, TYPE-02 | Capability audit — `Core.EventTypeTranslator` documents the workaround |
+| Maintaining a private fork | Work lands upstream in `accountex-org/ash_commanded` |
+| A pluggable snapshot adapter interface | Commanded has no such extension point; the previous one was fiction behind a permanently-false guard |
+| A version-chain upcasting DSL | Commanded upcasts exactly once per event, never chained. A chain would compile, pass naive tests, and silently under-upcast real history |
+| Migrating `core` code that is not event-sourced | Only the CQRS/ES surface is in scope for the project at all |
 
 ## Traceability
 
-Every v1 requirement maps to exactly one phase. See `.planning/ROADMAP.md`.
+Populated during roadmap creation.
 
 | Requirement | Phase | Status |
-| ------------- | ------- | -------- |
-| FOUND-01 | Phase 2 | Pending |
-| FOUND-02 | Phase 2 | Pending |
-| FOUND-03 | Phase 2 | Pending |
-| FOUND-04 | Phase 2 | Pending |
-| FOUND-05 | Phase 5 | Pending |
-| FOUND-06 | Phase 2 | Pending |
-| FOUND-07 | Phase 2 | Pending |
-| TEST-01 | Phase 1 | Complete |
-| TEST-02 | Phase 1 | Complete |
-| TEST-03 | Phase 1 | Complete |
-| TEST-04 | Phase 1 | Complete |
-| TEST-05 | Phase 2 | Pending |
-| TEST-06 | Phase 1 | Complete |
-| TYPE-01 | Phase 3 | Pending |
-| TYPE-02 | Phase 3 | Pending |
-| TYPE-03 | Phase 3 | Pending |
-| TYPE-04 | Phase 3 | Pending |
-| TYPE-05 | Phase 3 | Pending |
-| AGG-01 | Phase 4 | Pending |
-| AGG-02 | Phase 4 | Pending |
-| AGG-03 | Phase 4 | Pending |
-| AGG-04 | Phase 4 | Pending |
-| AGG-05 | Phase 4 | Pending |
-| PROJ-01 | Phase 5 | Pending |
-| PROJ-02 | Phase 5 | Pending |
-| PROJ-03 | Phase 5 | Pending |
-| PROJ-04 | Phase 5 | Pending |
-| HAND-01 | Phase 6 | Pending |
-| HAND-02 | Phase 6 | Pending |
-| SAGA-01 | Phase 6 | Pending |
-| SAGA-02 | Phase 6 | Pending |
-| SAGA-03 | Phase 6 | Pending |
-| SNAP-01 | Phase 4 | Pending |
-| SNAP-02 | Phase 4 | Pending |
-| SNAP-03 | Phase 4 | Pending |
-| QUAL-01 | Phase 1 | Complete |
-| QUAL-02 | Phase 1 | Complete |
-| QUAL-03 | Phase 4 | Pending |
-| QUAL-04 | Phase 6 | Pending |
-| QUAL-05 | Phase 6 | Pending |
-| QUAL-06 | Phase 2 | Pending |
-| DOCS-01 | Phase 7 | Pending |
-| DOCS-02 | Phase 7 | Pending |
-| DOCS-03 | Phase 7 | Pending |
-| DOCS-04 | Phase 7 | Pending |
-| REPO-01 | Phase 7 | Pending |
-| REPO-02 | Phase 7 | Pending |
-| REPO-03 | Phase 1 | Complete |
-| REPO-04 | Phase 1 | Pending |
-| REPO-05 | Phase 1 | Complete |
-| MIG-01 | Phase 8 | Pending |
-| MIG-02 | Phase 8 | Pending |
-| MIG-03 | Phase 8 | Pending |
-| MIG-04 | Phase 9 | Pending |
-| MIG-05 | Phase 10 | Pending |
-| MIG-06 | Phase 11 | Pending |
-| MIG-07 | Phase 12 | Pending |
-| MIG-08 | Phase 13 | Pending |
-| REL-01 | Phase 13 | Pending |
+|-------------|-------|--------|
+| *(pending roadmap)* | — | — |
 
 **Coverage:**
 
-- v1 requirements: 57 total
-- Mapped to phases: 57
-- Unmapped: 0
+- Milestone requirements: 87 total
+- Mapped to phases: 0
+- Unmapped: 87 (roadmap not yet created)
 
 ---
-
-Requirements defined: 2026-09-11
-Last updated: 2026-09-11 after roadmap creation
+*Requirements defined: 2026-09-15*
