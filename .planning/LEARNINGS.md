@@ -261,8 +261,9 @@ test-only modules and a check that cries wolf gets disabled.
 immediately found the dead `perform_action/2` clauses (§3.7) that had existed in every generated
 projector since the library was written.
 
-**Rendering compiled modules back to source.** `scripts/`-worthy prototype lives at
-`render_generated.exs` (scratchpad, 2026-09-15 — **copy it into the repo before the session ends**).
+**Rendering compiled modules back to source.** Prototype committed at
+`scripts/render_generated.exs` (commit `1172c0e`). Run it with
+`mix run scripts/render_generated.exs <Module.Name> [...]`.
 `:beam_lib.chunks(path, [:debug_info])` returns `{:debug_info_v1, :elixir_erl, {:elixir_v1, map, _}}`
 whose `map.definitions` holds per-function Elixir AST; `Macro.to_string/1` + `Code.format_string!/1`
 render it. Caveat: this is post-macro-expansion, so `use X` appears as the functions it injected.
