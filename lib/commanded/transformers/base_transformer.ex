@@ -70,6 +70,10 @@ defmodule AshCommanded.Commanded.Transformers.BaseTransformer do
   pays one `Application.get_env/3` lookup and nothing else. A missing table cannot crash an
   ordinary compile (T-01-BI-02).
 
+  Delegates to `create_module/4` with no explicit location, which falls back to
+  `Macro.Env.location(env)` exactly as this function always has — every existing caller is
+  unaffected.
+
   ## Examples
 
       iex> create_module(MyApp.Commands.RegisterUser, quoted_ast, __ENV__)
@@ -77,8 +81,47 @@ defmodule AshCommanded.Commanded.Transformers.BaseTransformer do
   """
   @spec create_module(module(), Macro.t(), Macro.Env.t()) :: :ok
   def create_module(module_name, ast, env) do
+    create_module(module_name, ast, env, [])
+  end
+
+  @doc """
+  Same as `create_module/3`, but accepts an explicit `[file: ..., line: ...]` location that
+  replaces `Macro.Env.location(env)` in the underlying `Module.create/3` call.
+
+  This is FOUND-18: today, every generated module is compiled with the *transformer's* own
+  file and line (`Macro.Env.location(env)`, `env` being the calling transformer's `__ENV__`),
+  so a compile error inside generated code blames the transformer rather than the DSL
+  declaration that produced it — never where the fault actually is. Pass an explicit
+  location here to point a diagnostic at the file a developer can actually open and fix.
+
+  The recommended source for that location is `Spark.Dsl.Transformer.get_persisted(dsl_state,
+  :file)` — Spark automatically persists the DSL-using module's own file under `:file` for
+  every extension (`@persist {:file, __ENV__.file}`, set once per DSL module at `use
+  Ash.Resource`/`use Ash.Domain` time), so it is available to every transformer's `transform/1`
+  without deriving anything. A transformer that wants a specific `:line` too can pair it with
+  a line captured from the entity's own DSL declaration.
+
+  When `location` is `[]` (the default from `create_module/3`), behaviour is identical to
+  before this arity existed. `create_module/3`'s nine existing callers are unaffected; adopting
+  the explicit location is left to the transformers that choose to pass one.
+
+  ## Examples
+
+      iex> create_module(MyApp.Commands.RegisterUser, quoted_ast, __ENV__,
+      ...>   file: Spark.Dsl.Transformer.get_persisted(dsl_state, :file), line: 1)
+      :ok
+  """
+  @spec create_module(module(), Macro.t(), Macro.Env.t(), keyword()) :: :ok
+  def create_module(module_name, ast, env, location) do
     capture_ast(module_name, ast)
-    Module.create(module_name, ast, Macro.Env.location(env))
+
+    resolved_location =
+      case location do
+        [] -> Macro.Env.location(env)
+        _ -> location
+      end
+
+    Module.create(module_name, ast, resolved_location)
     :ok
   end
 

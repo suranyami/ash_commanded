@@ -109,8 +109,11 @@ defmodule AshCommanded.Commanded.Transformers.BaseTransformerTest do
 
       assert BaseTransformer.create_module(module_name, ast, __ENV__, location) == :ok
 
-      assert module_name.__info__(:compile) |> Keyword.fetch!(:source) |> to_string() ==
-               location[:file]
+      source = module_name.__info__(:compile) |> Keyword.fetch!(:source) |> to_string()
+      # The compiler resolves a relative :file to an absolute path, so assert the supplied
+      # location is what was named rather than requiring byte-identical strings.
+      assert String.ends_with?(source, location[:file])
+      refute source == __ENV__.file
     end
 
     test "create_module/3 keeps falling back to Macro.Env.location(env) unchanged (FOUND-18)" do
