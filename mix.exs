@@ -35,7 +35,11 @@ defmodule AshCommanded.MixProject do
       # Static analysis
       dialyzer: [
         ignore_warnings: ".dialyzer_ignore.exs",
-        plt_file: {:no_warn, "priv/plts/project.plt"}
+        plt_file: {:no_warn, "priv/plts/project.plt"},
+        # :mix ships callback info for `Mix.Task` and friends; without it in the PLT,
+        # Dialyzer treats `mix ash_commanded.dump`'s use of Mix.Task/Mix.raise/Mix.shell as
+        # unknown functions rather than actually checking them.
+        plt_add_apps: [:mix]
       ]
     ]
   end
