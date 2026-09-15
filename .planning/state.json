@@ -1,7 +1,7 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v0.3",
+  "milestone": "v0.3 — Library Rewrite",
   "phases": [
     {
       "number": "1",
@@ -40,9 +40,9 @@
     }
   ],
   "next": {
-    "command": "/gsd-plan-phase 1",
-    "label": "Plan Phase 1 — Foundation",
-    "reason": "Roadmap created; Foundation gates every component phase's approval step"
+    "command": "/gsd:progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-09-15T11:30:00.000Z"
+  "updated_at": "2026-09-15T03:24:54.028Z"
 }
