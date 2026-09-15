@@ -30,3 +30,6 @@ ash_commanded-*.tar
 /Claude.md
 
 **/.claude/settings.local.json
+
+# GSD per-session lock: holds a PID and session id, regenerated each run.
+.planning/milestone.lock

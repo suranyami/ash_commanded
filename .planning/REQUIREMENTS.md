@@ -163,17 +163,119 @@ Tracked, not in this roadmap.
 
 ## Traceability
 
-Populated during roadmap creation.
+Mapped by the roadmap created 2026-09-15. Every milestone requirement maps to exactly
+one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does not apply.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(pending roadmap)* | — | — |
+| FOUND-01 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-02 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-03 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-04 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-05 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-06 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-07 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-08 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-09 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-10 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-11 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-12 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-13 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-14 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-15 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-16 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-17 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-18 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| CMD-01 | Phase 2 — Commands and Events | Pending |
+| CMD-02 | Phase 2 — Commands and Events | Pending |
+| CMD-03 | Phase 2 — Commands and Events | Pending |
+| CMD-04 | Phase 2 — Commands and Events | Pending |
+| CMD-05 | Phase 2 — Commands and Events | Pending |
+| CMD-06 | Phase 2 — Commands and Events | Pending |
+| CMD-07 | Phase 2 — Commands and Events | Pending |
+| CMD-08 | Phase 2 — Commands and Events | Pending |
+| CMD-09 | Phase 2 — Commands and Events | Pending |
+| EVT-01 | Phase 2 — Commands and Events | Pending |
+| EVT-02 | Phase 2 — Commands and Events | Pending |
+| EVT-03 | Phase 2 — Commands and Events | Pending |
+| EVT-04 | Phase 2 — Commands and Events | Pending |
+| EVT-05 | Phase 2 — Commands and Events | Pending |
+| EVT-06 | Phase 2 — Commands and Events | Pending |
+| APP-01 | Phase 3 — Application and Routers | Pending |
+| APP-02 | Phase 3 — Application and Routers | Pending |
+| APP-03 | Phase 3 — Application and Routers | Pending |
+| APP-04 | Phase 3 — Application and Routers | Pending |
+| APP-05 | Phase 3 — Application and Routers | Pending |
+| APP-06 | Phase 3 — Application and Routers | Pending |
+| APP-07 | Phase 3 — Application and Routers | Pending |
+| APP-08 | Phase 3 — Application and Routers | Pending |
+| APP-09 | Phase 3 — Application and Routers | Pending |
+| APP-10 | Phase 3 — Application and Routers | Pending |
+| APP-11 | Phase 3 — Application and Routers | Pending |
+| APP-12 | Phase 3 — Application and Routers | Pending |
+| AGG-01 | Phase 4 — Aggregates | Pending |
+| AGG-02 | Phase 4 — Aggregates | Pending |
+| AGG-03 | Phase 4 — Aggregates | Pending |
+| AGG-04 | Phase 4 — Aggregates | Pending |
+| AGG-05 | Phase 4 — Aggregates | Pending |
+| AGG-06 | Phase 4 — Aggregates | Pending |
+| AGG-07 | Phase 4 — Aggregates | Pending |
+| AGG-08 | Phase 4 — Aggregates | Pending |
+| AGG-09 | Phase 4 — Aggregates | Pending |
+| PROJ-01 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| PROJ-02 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| PROJ-03 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| PROJ-04 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| PROJ-05 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| PROJ-06 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| PROJ-07 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| HDLR-01 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| HDLR-02 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| HDLR-03 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| HDLR-04 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| HDLR-05 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| HDLR-06 | Phase 5 — Projections, Event Handlers and Process Managers | Pending |
+| EVOL-01 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| EVOL-02 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| EVOL-03 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| EVOL-04 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| EVOL-05 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-01 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-02 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-03 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-04 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-05 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-06 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| RUN-07 | Phase 6 — Event Versioning, Snapshots, Middleware and Transactions | Pending |
+| DOCS-01 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-02 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-03 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-04 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-05 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-06 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-07 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
+| DOCS-08 | Phase 7 — Documentation, Packaging and the End-to-End Example | Pending |
 
 **Coverage:**
 
 - Milestone requirements: 87 total
-- Mapped to phases: 0
-- Unmapped: 87 (roadmap not yet created)
+- Mapped to phases: 87
+- Unmapped: 0
+- Orphaned (no phase): 0
+- Duplicated (more than one phase): 0
+
+**Per-phase totals:**
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 1 | Foundation — Rendering, Enforcement and Layout | 18 |
+| 2 | Commands and Events | 15 |
+| 3 | Application and Routers | 12 |
+| 4 | Aggregates | 9 |
+| 5 | Projections, Event Handlers and Process Managers | 13 |
+| 6 | Event Versioning, Snapshots, Middleware and Transactions | 12 |
+| 7 | Documentation, Packaging and the End-to-End Example | 8 |
+| — | **Total** | **87** |
 
 ---
 *Requirements defined: 2026-09-15*

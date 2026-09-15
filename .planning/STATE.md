@@ -2,11 +2,11 @@
 gsd_state_version: "1.0"
 milestone: v0.3
 milestone_name: Library Rewrite
-status: planning
-last_updated: "2026-09-15T00:32:57.593Z"
+status: roadmapped
+last_updated: "2026-09-15T11:30:00.000Z"
 last_activity: 2026-09-15
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,23 +17,42 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-11)
+See: .planning/PROJECT.md (updated 2026-09-15)
 
 **Core value:** `core`'s five event-sourced domains run in production on AshCommanded.
-**Current focus:** Phase 01 — Build Integrity
+**Current focus:** Phase 1 — Foundation: Rendering, Enforcement and Layout
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 1 — Foundation — Rendering, Enforcement and Layout (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-15 — Milestone v0.3 started
+Status: Roadmap created, awaiting phase planning
+Last activity: 2026-09-15 — Milestone v0.3 roadmap created (7 phases, 87/87 requirements mapped)
+
+Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/7 phases)
+
+**Phase numbering restarted at 1.** The previous 13-phase roadmap was discarded, not completed, and
+is archived at `.planning/milestones/archived-20260915-phases/`. Phase 01 "Build Integrity" from
+that roadmap *did* complete and its results are recorded in PROJECT.md → Validated and in
+`.planning/LEARNINGS.md`; it is not part of this roadmap's numbering.
+
+## Milestone Roadmap
+
+| Phase | Name | Requirements | Status |
+| ------- | ------ | -------------- | -------- |
+| 1 | Foundation — Rendering, Enforcement and Layout | 18 (FOUND-01..18) | Not started |
+| 2 | Commands and Events | 15 (CMD-01..09, EVT-01..06) | Not started |
+| 3 | Application and Routers | 12 (APP-01..12) | Not started |
+| 4 | Aggregates | 9 (AGG-01..09) | Not started |
+| 5 | Projections, Event Handlers and Process Managers | 13 (PROJ-01..07, HDLR-01..06) | Not started |
+| 6 | Event Versioning, Snapshots, Middleware and Transactions | 12 (EVOL-01..05, RUN-01..07) | Not started |
+| 7 | Documentation, Packaging and the End-to-End Example | 8 (DOCS-01..08) | Not started |
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed this milestone: 0
 - Average duration: —
 - Total execution time: 0.0 hours
 
@@ -48,17 +67,16 @@ Last activity: 2026-09-15 — Milestone v0.3 started
 - Last 5 plans: —
 - Trend: —
 
-Updated after each plan completion.
-**Per-Plan Metrics:**
+**Per-Plan Metrics (previous milestone, retained for velocity baseline):**
 
 | Plan | Duration | Tasks | Files |
-|------|----------|-------|-------|
-| Phase 01 P01 | 25min | 3 tasks | 2 files |
-| Phase 01 P03 | 25min | 3 tasks | 10 files |
-| Phase 01 P04 | 26min | 2 tasks | 8 files |
-| Phase 01 P05 | 40 min | 3 tasks | 9 files |
-| Phase 01 P06 | 2h10min | 3 tasks | 11 files |
-| Phase 01 P07 | 55min | 3 tasks | 32 files |
+| ------ | ---------- | ------- | ------- |
+| Prior Phase 01 P01 | 25min | 3 tasks | 2 files |
+| Prior Phase 01 P03 | 25min | 3 tasks | 10 files |
+| Prior Phase 01 P04 | 26min | 2 tasks | 8 files |
+| Prior Phase 01 P05 | 40min | 3 tasks | 9 files |
+| Prior Phase 01 P06 | 2h10min | 3 tasks | 11 files |
+| Prior Phase 01 P07 | 55min | 3 tasks | 32 files |
 
 ## Accumulated Context
 
@@ -67,62 +85,75 @@ Updated after each plan completion.
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Roadmap: 13 phases — 8 library completion (1-8), 5 `core` migration (9-13). Above the
-  `standard` granularity band because the dependency graph and the fixed migration order require it.
-- Roadmap: Migration order fixed as identity → integration → data → schema_definition → workflow.
-  `identity` first exercises upcasters and renames — the riskiest machinery — on the first attempt.
-- Roadmap: `QUAL-03` (decompose `GenerateAggregateModule`) sits in Phase 4 rather than a cleanup
-  phase, because adding AGG-01..03 means rewriting that module anyway.
-- Roadmap: `SAGA-01..03` (process managers) sit in Phase 6 and gate nothing — `core` uses no
-  process managers. They are 1.0 completeness, not a migration prerequisite.
-- [Phase 01]: Task 1 satisfied by orchestrator's pre-existing commit b481ae1; not re-created (D-27 sequencing preserved)
-- [Phase 01]: Task 2 package-legitimacy checkpoint approved by human with hex.pm evidence for all seven new dependencies before mix deps.get fetch
-- [Phase 01]: Removed pre-existing unused mix.lock entry (:inflex) to satisfy mix deps.unlock --check-unused gate
-- [Phase 01]: 01-03: snapshot_adapter.ex no longer declares @behaviour Commanded.Aggregates.Aggregate.Snapshotter — that module has never existed in Commanded 1.4.11
-- [Phase 01]: 01-03: removed dead self-referential import unquote(resource_module) from generated event handlers, exposed by unguarding module creation
-- [Phase 01]: 01-04: fixed a context-propagation defect present in all five CommandActionMapper execute_* paths — context set via set_context/2 after for_action/for_read arrives too late for declarative changes/validations/preparations, which run during changeset/query construction — Found via TDD RED phase while rewriting context_test.exs to assert on a real persisted change output instead of an echoed mapper return value; unreachable while the Mix.env() mocks were in place
-- [Phase 01]: D-14's literal Code.compile_string + assert_raise pattern does not work against this repo's Spark 2.7.2 (verifier errors from @after_verify are converted to warnings, not raised); replaced with Spark.Test.assert_dsl_error/refute_dsl_errors, shipped in this same Spark version to solve exactly this problem.
-- [Phase 01]: Router generation never fires under current Domain/Resource DSL split (found via probe); Task 3 substitutes a hand-written router against real generated command/aggregate modules; fix deferred to Phase 2 alongside FOUND-03/FOUND-04
-- [Phase 01]: private?:true ETS makes cross-process Ash record visibility impossible after a real Commanded dispatch; router-dispatch tests assert via dispatch(returning: :aggregate_state) instead of Ash.get!/2
-- [Phase 01]: SC5 correction: coordinator found intermittent full-suite failures (meck's :cover-server race) my 2-run/6-seed verification missed; removed :meck entirely from the suite (2 files), re-verified via 35 consecutive full-suite runs
-- [Phase 01]: Fixed generate_projector_modules.ex and generate_event_handler_modules.ex compiler warnings at the source (prune unused action clauses; correct Ash API dispatch) rather than suppressing — D-26 requires warnings-as-errors cleared inside this phase, not deferred
-- [Phase 01]: Used per-file inline Credo disables naming the exact ROADMAP phase (2/4/5/6) that resolves each structural-debt file, instead of blanket .credo.exs disables — D-21 requires every disable to carry a reason; per-file scoping keeps the check active everywhere else
+- **Roadmap (2026-09-15): 7 phases, numbering restarted at 1.** Above the `standard` granularity
+  band (4-6) because Foundation is a hard precondition, the six-step method is per-component, and
+  the user's fixed component order constrains grouping. Three compressions applied against the
+  natural ten-category split.
+- **Roadmap: commands and events share Phase 2.** Same generated shape (struct + typespecs from a
+  field list). Commands land and are approved first — they are the first exercise of the
+  render-and-approve loop and the point at which the method itself is judged.
+- **Roadmap: application and routers are one phase (Phase 3).** The confirmed defect spans both and
+  the application cannot be demonstrated working without a router. Follows REQUIREMENTS.md's APP
+  grouping; supersedes the research document's alternative of grouping routers with event handlers.
+- **Roadmap: projections, event handlers and process managers share Phase 5.** HDLR-05 requires the
+  three to generate *distinct* shapes — only judgeable with all three rendered side by side.
+- **Roadmap: documentation is the last phase, not the first.** Reconciling `CLAUDE.md` before the
+  rewrite would be invalidated by the rewrite itself.
+- [Prior Phase 01]: D-14's literal `Code.compile_string` + `assert_raise` pattern does not work
+  against Spark 2.7.2 (verifier errors from `@after_verify` become warnings, not raises); use
+  `Spark.Test.assert_dsl_error/refute_dsl_errors` instead.
+- [Prior Phase 01]: `private?: true` ETS makes cross-process Ash record visibility impossible after
+  a real Commanded dispatch; router-dispatch tests assert via `dispatch(returning: :aggregate_state)`.
+- [Prior Phase 01]: `:meck` removed entirely from the suite after an intermittent `:cover`-server
+  race; re-verified over 35 consecutive full-suite runs. Keep the suite mock-free.
+- [Prior Phase 01]: Per-file inline Credo disables naming the exact resolving phase, not blanket
+  `.credo.exs` disables. **These citations now point at archived phase numbers and must be
+  re-pointed as each file is rewritten.**
 
 ### Pending Todos
 
-None yet.
+- Re-point the 15 inline Credo disables: each cites a phase number from the archived 13-phase
+  roadmap. Update the citation as each file is rewritten under the new numbering.
 
 ### Blockers/Concerns
 
-- **Phase 1 blocks everything.** Four transformers (`generate_aggregate_module.ex:141`,
-  `generate_event_handler_modules.ex:99`, `generate_main_router_module.ex:128`,
-  `generate_projector_modules.ex:113`) skip real module creation under `mix test` by default, and
-  `CommandActionMapper` returns hardcoded mocks at five sites. No test written before TEST-01..04
-  land can fail for a real reason.
-- **Event-type identity is irreversible if got wrong.** Once new events are written under a new
-  module path with no `TypeProvider` bridging the old strings, un-mixing the two schemes in a live
-  append-only log becomes a data-migration project. Phase 3 must land before Phase 9.
-- **Five open questions carried into planning** (from REQUIREMENTS.md):
-  - `commanded_ecto_projections` vs hand-rolled idempotency — Phase 5 (PROJ-02, PROJ-04)
-  - Does `core` use snapshots today? — Phase 4 (SNAP-01..03 scope)
-  - Aggregate precondition signature fit across `core`'s 13 aggregates — Phase 4 (AGG-01)
-  - Projector auto-discovery location: domain transformer or third module — Phase 5 (FOUND-05)
-  - String-vs-atom key divergence after deserialization — Phases 3 and 5 (TYPE-02, PROJ-01)
-- **Documentation drift.** `CLAUDE.md` documents three verifiers that do not exist. Treat existing
-  documentation as aspirational until verified (closed by QUAL-06 in Phase 2).
-- **In-flight branch.** `fix-application-generation` carries the Domain/Resource split. Fold it into
-  Phase 2 rather than restarting it.
+- **Phase 1 gates everything.** No Elixir tool measures macro-emitted code. Until
+  `mix ash_commanded.dump` and the golden-render harness exist, step 4 of the per-component method
+  ("render and get human approval") cannot happen, and FOUND-06/07/08 have nothing to enforce.
+- **Deadlock, not missing state, is the compile-order risk.** Domain transformers reading resource
+  persisted state is settled and safe (Phase 3). But ordering comes from an on-demand compiler
+  block in `persisted!/3`, so any future design where a *resource* transformer reads back from its
+  *domain* can hang the parallel compiler rather than error. Check explicitly before introducing
+  any bidirectional read.
+- **Chained upcasting is a trap.** `Commanded.Event.Upcaster.upcast/2` is called exactly once per
+  stored event, never re-dispatched on its own result. A per-version-hop chain compiles, passes
+  naive tests, and silently under-upcasts real history — recoverable only by re-deriving read
+  models from the event store. Phase 6, EVOL-02/03.
+- **Two latent defects carried in, neither with a compile signal.**
+  `generate_projector_modules.ex:359` calls `Ash.run_action(changeset, action)` — arity 2 exists so
+  it compiles clean but matches no clause (Phase 5, PROJ-05). And the quarantined
+  `commanded_application_integration_test.exs.phase2-blocked` still carries a stale
+  `Code.ensure_loaded?` guard; `lib/` was swept for that pattern, `test/` was not (Phase 3,
+  APP-08/09).
+- **Documentation drift.** `CLAUDE.md` documents three verifiers that do not exist and three stale
+  dependency versions. Treat every factual claim in it as unverified until Phase 7 closes it.
+- **In-flight branch.** `fix-application-generation` carries the Domain/Resource split. The split
+  itself is correct and compiles; router generation never fires under it. Phase 3 owns the fix.
+  Revert `workflow.use_worktrees: false` once the branch merges.
 
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
-|----------|------|--------|-------------|-----------|
-| *(none)* | -    | -      | -           | -         |
+| ---------- | ------ | -------- | ------------- | ----------- |
+| Migration | MIG-01..05 — migrate `identity`, `data`, `integration`, `schema_definition`, `workflow` | Deferred | 2026-09-15 | v0.3 → next |
+| Release | REL-01 — publish 1.0 to hex.pm | Deferred | 2026-09-15 | v0.3 → next |
+| Example | EX-01 — end-to-end example on Postgres EventStore | Deferred | 2026-09-15 | v0.3 → next |
 
 ## Session Continuity
 
-Last session: 2026-09-14T05:45:59.208Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-09-15T11:30:00.000Z
+Stopped at: Roadmap created for milestone v0.3 (7 phases)
+Next: `/gsd-plan-phase 1`
 Resume file: None

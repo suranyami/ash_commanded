@@ -5,74 +5,44 @@
   "phases": [
     {
       "number": "1",
-      "name": "Build Integrity",
-      "status": "in_progress"
+      "name": "Foundation — Rendering, Enforcement and Layout",
+      "status": "pending"
     },
     {
       "number": "2",
-      "name": "Deterministic Generation and Compile-Time Rejection",
+      "name": "Commands and Events",
       "status": "pending"
     },
     {
       "number": "3",
-      "name": "Event Identity and Versioning",
+      "name": "Application and Routers",
       "status": "pending"
     },
     {
       "number": "4",
-      "name": "Aggregate Expressiveness and Lifecycle",
+      "name": "Aggregates",
       "status": "pending"
     },
     {
       "number": "5",
-      "name": "Projection Expressiveness",
+      "name": "Projections, Event Handlers and Process Managers",
       "status": "pending"
     },
     {
       "number": "6",
-      "name": "Event Handlers, Dispatch and Process Managers",
+      "name": "Event Versioning, Snapshots, Middleware and Transactions",
       "status": "pending"
     },
     {
       "number": "7",
-      "name": "Examples, Documentation and Agent Rules",
-      "status": "pending"
-    },
-    {
-      "number": "8",
-      "name": "Migration Tooling",
-      "status": "pending"
-    },
-    {
-      "number": "9",
-      "name": "Migrate identity",
-      "status": "pending"
-    },
-    {
-      "number": "10",
-      "name": "Migrate integration",
-      "status": "pending"
-    },
-    {
-      "number": "11",
-      "name": "Migrate data",
-      "status": "pending"
-    },
-    {
-      "number": "12",
-      "name": "Migrate schema_definition",
-      "status": "pending"
-    },
-    {
-      "number": "13",
-      "name": "Migrate workflow and publish 1.0",
+      "name": "Documentation, Packaging and the End-to-End Example",
       "status": "pending"
     }
   ],
   "next": {
-    "command": "/gsd:discuss-phase",
-    "label": "Discuss the first phase",
-    "reason": "Project initialized — plan your first phase"
+    "command": "/gsd-plan-phase 1",
+    "label": "Plan Phase 1 — Foundation",
+    "reason": "Roadmap created; Foundation gates every component phase's approval step"
   },
-  "updated_at": "2026-09-15T00:32:57.595Z"
+  "updated_at": "2026-09-15T11:30:00.000Z"
 }
