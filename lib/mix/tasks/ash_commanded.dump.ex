@@ -213,12 +213,7 @@ defmodule Mix.Tasks.AshCommanded.Dump do
 
     results =
       Enum.map(entries, fn {module_name, ast} ->
-        body =
-          module_name
-          |> Render.to_source(ast)
-          |> Render.normalize_paths()
-          |> ensure_trailing_newline()
-
+        body = render_body(module_name, ast)
         golden = golden_path(fixture_dir, module_name)
 
         if write? do
@@ -233,8 +228,29 @@ defmodule Mix.Tasks.AshCommanded.Dump do
     end
   end
 
+  defp render_body(module_name, ast) do
+    module_name
+    |> Render.to_source(ast)
+    |> Render.normalize_paths()
+    |> ensure_trailing_newline()
+  end
+
   defp ensure_trailing_newline(text) do
     if String.ends_with?(text, "\n"), do: text, else: text <> "\n"
+  end
+
+  @doc false
+  # Test-support seam only (test/ash_commanded/golden_render_test.exs): renders exactly one
+  # generated module through the identical pipeline `--write` uses, so the golden-render test
+  # and the mix task cannot silently disagree about what a "fresh render" is.
+  @spec render_module_for_test(module(), module()) :: String.t()
+  def render_module_for_test(target, only) do
+    Mix.Task.run("compile")
+
+    case capture_entries(target, only) do
+      [{^only, ast}] -> render_body(only, ast)
+      [] -> raise "no captured module matched #{inspect(only)} under #{inspect(target)}"
+    end
   end
 
   defp golden_path(fixture_dir, module_name) do

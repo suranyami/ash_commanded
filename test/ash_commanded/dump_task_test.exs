@@ -83,6 +83,81 @@ defmodule AshCommanded.DumpTaskTest do
     assert String.trim(beam_output) != ""
   end
 
+  describe "diff and --write against the committed CreateWidget golden (D-04, D-07, D-11)" do
+    @golden Path.join([
+              "test",
+              "golden",
+              "parity_widget",
+              "AshCommanded.TestSupport.Parity.Commands.CreateWidget.golden"
+            ])
+
+    setup do
+      original = File.read!(@golden)
+      on_exit(fn -> File.write!(@golden, original) end)
+      {:ok, original: original}
+    end
+
+    test "a bare invocation prints a per-line diff and budget deltas, and exits non-zero, when the committed golden differs",
+         %{original: original} do
+      {_header, body} = AshCommanded.Dump.Golden.split_header(original)
+
+      mutated_body = String.replace(body, "id", "identifier")
+      File.write!(@golden, "# gsd-budget: clause_max=0 module_lines=5\n" <> mutated_body)
+
+      assert_raise Mix.Error, fn ->
+        Mix.Task.rerun("ash_commanded.dump", [@target, "--only", @only_command])
+      end
+
+      output = collect_shell_messages()
+      assert output =~ "clause_max"
+      assert output =~ "->"
+      assert output =~ "- " or output =~ "+ "
+    end
+
+    test "--write accepts a hold and rewrites the header down to the true measured value",
+         %{original: original} do
+      {_header, body} = AshCommanded.Dump.Golden.split_header(original)
+      File.write!(@golden, "# gsd-budget: clause_max=99 module_lines=99\n" <> body)
+
+      run_task!([@target, "--write", "--only", @only_command])
+
+      updated = File.read!(@golden)
+      assert updated =~ "# gsd-budget: clause_max=0 module_lines=5"
+    end
+
+    test "--write refuses a growth, names the golden path, and writes nothing",
+         %{original: original} do
+      {_header, body} = AshCommanded.Dump.Golden.split_header(original)
+      File.write!(@golden, "# gsd-budget: clause_max=0 module_lines=1\n" <> body)
+
+      assert_raise Mix.Error, fn ->
+        Mix.Task.rerun("ash_commanded.dump", [@target, "--write", "--only", @only_command])
+      end
+
+      unchanged = File.read!(@golden)
+      assert unchanged =~ "module_lines=1"
+      refute unchanged =~ "module_lines=5"
+    end
+  end
+
+  test "a fresh golden is written for a module with no committed golden yet, and no golden is left uncommitted after cleanup" do
+    fixture_dir = Path.join(["test", "golden", "parity_widget"])
+    golden = Path.join(fixture_dir, "AshCommanded.TestSupport.Parity.Events.WidgetCreated.golden")
+    refute File.exists?(golden)
+
+    on_exit(fn -> File.rm(golden) end)
+
+    run_task!([
+      @target,
+      "--write",
+      "--only",
+      "AshCommanded.TestSupport.Parity.Events.WidgetCreated"
+    ])
+
+    assert File.exists?(golden)
+    assert File.read!(golden) =~ "# gsd-budget: clause_max="
+  end
+
   # Compiles a bare Erlang module with no :debug_info chunk (Elixir always injects one; a
   # hand-built Erlang form list compiled with no options does not), so `--beam` has a real,
   # loaded, BEAM-backed module to fail gracefully against.
