@@ -270,3 +270,22 @@ None - no external service configuration required.
 ---
 _Phase: 01-foundation-rendering-enforcement-and-layout_
 _Completed: 2026-09-15_
+
+## Self-Check: PASSED
+
+- All 11 key files confirmed present on disk (`lib/ash_commanded/dump/golden.ex`,
+  `lib/ash_commanded/dump/render.ex`, `lib/ash_commanded/dump/lint.ex`,
+  `test/ash_commanded/golden_render_test.exs`, `test/golden/README.md`, all 5 committed
+  `test/golden/parity_widget/*.golden` files, and this SUMMARY.md).
+- All 6 task/plan commits confirmed present in git log (`0cc34dd`, `c7cc8f4`, `b242008`,
+  `d584e0d`, `de8824a`, `4c7dcaa`).
+- Plan-level `<verification>` re-run: `mix check` exits 0; `MIX_ENV=test mix test` reports 215
+  tests, 0 failures (well above the required 176+); `./scripts/compile_parity.sh` exits 0 under
+  both `MIX_ENV=dev` and `MIX_ENV=test`; a bare `mix ash_commanded.dump
+  AshCommanded.TestSupport.Parity.Widget` exits 0 with no output (nothing stale); a full
+  `--write` run afterward leaves `git diff -- test/golden/` clean.
+- All task-level `<acceptance_criteria>` re-verified passing (`beam_lib`/`strict:`/`write`
+  greps, `Mix.Task.rerun` grep, `canonical_version_only`/`D-12` greps in `test_helper.exs` and
+  `golden_render_test.exs`, README existence + content grep, `Lint`/`@spec` greps, golden count
+  ≥5, every `EXPECTED_MODULES` entry has a golden, staged-phase citations present and their
+  phases live in `ROADMAP.md`).
