@@ -42,5 +42,65 @@ defmodule AshCommanded.Commanded.Transformers.BaseTransformerTest do
       assert Code.ensure_loaded?(module_name)
       assert module_name.test_function() == :it_works
     end
+
+    test "does not capture AST into ETS when :capture_ast? is unset (D-06)" do
+      table = :ash_commanded_dump_capture
+      :ets.new(table, [:named_table, :public, :set])
+      on_exit(fn -> safe_delete_table(table) end)
+
+      module_name = Module.concat(["AshCommanded", "Test", "NoCaptureModule"])
+
+      ast =
+        quote do
+          def value, do: :no_capture
+        end
+
+      assert BaseTransformer.create_module(module_name, ast, __ENV__) == :ok
+      assert :ets.lookup(table, module_name) == []
+    end
+
+    test "captures the module name and AST into the named ETS table when :capture_ast? is true (D-06)" do
+      table = :ash_commanded_dump_capture
+      :ets.new(table, [:named_table, :public, :set])
+      Application.put_env(:ash_commanded, :capture_ast?, true)
+
+      on_exit(fn ->
+        Application.delete_env(:ash_commanded, :capture_ast?)
+        safe_delete_table(table)
+      end)
+
+      module_name = Module.concat(["AshCommanded", "Test", "CapturedModule"])
+
+      ast =
+        quote do
+          def value, do: :captured
+        end
+
+      assert BaseTransformer.create_module(module_name, ast, __ENV__) == :ok
+      assert [{^module_name, captured_ast}] = :ets.lookup(table, module_name)
+      assert captured_ast == ast
+    end
+
+    test "capturing with the flag true does not crash when the named ETS table is missing (T-01-BI-02)" do
+      safe_delete_table(:ash_commanded_dump_capture)
+      Application.put_env(:ash_commanded, :capture_ast?, true)
+      on_exit(fn -> Application.delete_env(:ash_commanded, :capture_ast?) end)
+
+      module_name = Module.concat(["AshCommanded", "Test", "MissingTableModule"])
+
+      ast =
+        quote do
+          def value, do: :missing_table
+        end
+
+      assert BaseTransformer.create_module(module_name, ast, __ENV__) == :ok
+      assert module_name.value() == :missing_table
+    end
+  end
+
+  defp safe_delete_table(table) do
+    :ets.delete(table)
+  rescue
+    ArgumentError -> :ok
   end
 end
