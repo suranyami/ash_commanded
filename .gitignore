@@ -33,3 +33,7 @@ ash_commanded-*.tar
 
 # GSD per-session lock: holds a PID and session id, regenerated each run.
 .planning/milestone.lock
+
+# Editor-local settings and GSD per-dispatch runtime state.
+.cursor/
+.gsd/
