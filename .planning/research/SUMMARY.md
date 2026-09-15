@@ -1,226 +1,237 @@
-# AshCommanded Research Summary
+# Project Research Summary
 
-**Project:** AshCommanded — Spark DSL extension for Ash Framework, bringing CQRS and Event Sourcing via Commanded  
-**Domain:** Elixir hex library + production event-sourced application migration  
-**Researched:** 2026-09-11  
-**Confidence:** HIGH (stack/architecture/pitfalls verified against source; features synthesized from Commanded API + `core`'s measured patterns)
-
----
+**Project:** AshCommanded v0.3 Library Rewrite
+**Domain:** Elixir/Spark DSL extension (CQRS/Event Sourcing code generation for Ash Framework)
+**Researched:** 2026-09-15
+**Confidence:** HIGH overall, with several MEDIUM-confidence advisory items. The one architectural question the research left open was resolved experimentally by the orchestrator — see "THE COMPILE-ORDER QUESTION" below.
 
 ## Executive Summary
 
-AshCommanded is a Spark DSL extension that generates the boilerplate half of a CQRS/Event Sourcing system built on Commanded 1.4.8 — commands, events, aggregates, projectors, and routers that would otherwise be written by hand, one file at a time. The library has structural pieces in place (command/event/aggregate/projector generation, router wiring, nine verifiers) but is missing three critical capabilities required to migrate `core`'s production event-sourced code: declarative event versioning (no upcasting DSL), aggregate invariants and non-attribute state (the two things `core`'s 1,822 LOC of aggregate code expresses), and projection expressiveness sufficient to absorb 3,523 LOC of "mostly real logic" projector code. The net win from this library is asymmetric but real: 132 of 163 event-sourcing files are pure boilerplate (commands + events, 1,053 LOC total); absorbing those eliminates 80% of files while leaving the 5,345 LOC carrying genuine business logic to be expressed via DSL escape hatches (function callbacks) rather than generated or deleted. No domain can migrate without **both** a custom `TypeProvider` (to decouple new event module paths from historical event-type strings) and the aggregate-invariants DSL capability — these are load-bearing prerequisites, not polish items.
+AshCommanded's v0.3 rewrite is a code-generation library correcting itself against its own audit: the previous generation layer let the aggregate generator balloon to 861 lines/225-line quote blocks because Commanded supplies `__using__` macros for routers, event handlers and applications but not for aggregates, so all the missing machinery got hand-inlined into emitted AST instead of a runtime module. Every research thread converges on the same fix shape — write `AshCommanded.Aggregate.__using__/1` as a first-class, hand-authored front door (precedent: `GenServer`, `AshOban.DefineActionWorkers`), keep generated clauses to a single pattern-match delegating into hand-written, unit-testable runtime modules, and enforce this mechanically by rendering emitted code to text (`mix ash_commanded.dump`) and running Credo/`ex_dna` checks against the *rendered output*, not generator source — because no existing Elixir tool measures macro-emitted code size or shape. The renderer is therefore not a convenience item; it is the precondition for enforcing three of the eleven rewrite rules and for the entire "render and approve" per-component review method.
 
-The library's most dangerous pitfall is event-type identity binding: the default Commanded `TypeProvider` couples the serialized event type string to the Elixir module name; a module-path mismatch silently breaks deserialization of 68 historical event types in `core`'s production Postgres store. Three other pitfalls are live (transformer ordering silently drops modules; tests skip module creation by default so test suite doesn't exercise generated code; event store state leaks across tests) and require foundational fixes **before** feature work. The recommended roadmap is: (1) fix these four foundation issues and land the Domain/Resource DSL split already in flight; (2) build event versioning and aggregate-invariants DSL sections; (3) close projection-expressiveness gaps; (4) then migrate domains 1-5 sequentially with golden-trace verification against real historical event data.
+The recommended approach: build the renderer and golden-file harness first (Foundation phase), add `.Info` modules everywhere (there are currently zero, despite being a stated rule), split `lib/` into resource/domain/runtime directories mirroring `ash_graphql`'s mature layout, and rewrite the aggregate generator around a hand-written `Runtime`/`Info` pair exactly as AshOban does for scheduled workers. Two of the eleven rewrite rules (DRY-detection and the size/shape gate) have solid off-the-shelf or cheaply-buildable tooling; one rule ("no double-handling") has **no mechanical check at all** and must remain a human code-review discipline, stated plainly rather than papered over.
 
----
+The largest remaining risk is the single-pass nature of Commanded's event upcaster: a naive version-chain upcasting DSL will silently under-upcast old events on replay. This is judged the highest-value DSL design constraint in the whole research set because a mistake here is expensive (re-derive read models from the event store) rather than a quick patch.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Stack research confirms current dependency versions are safe; minimal bumps needed. Key decisions:
+All stack recommendations are dev/test-only tooling; no new runtime dependencies. `ex_dna` (Credo plugin, AST-based structural clone detection) is a genuine off-the-shelf answer to the DRY rule and should replace Credo's built-in `DuplicatedCode` check (Type-I-only, known gaps with macro-heavy code). `sourceror`'s pin should be bumped from `~> 1.8` to `~> 1.12` (already a dependency). For golden-file/snapshot testing, **do not adopt** `mneme`/`assert_value`/`snapshy` — all embed the expected value as a literal inside the test file, unworkable for 300+-line renders that need to be reviewable in a normal PR diff; hand-roll a plain file-based golden harness instead (2-4 hours, ExUnit + `File.read!`/`write!`, no new dependency). Custom Credo checks (grep-style, using `Credo.Code.prewalk/2`) are the cheap, precise mechanism for two anti-patterns: `Code.string_to_quoted!`/`eval_string` calls in transformer code, and `Module.concat` fed by `Module.split` (module-name surgery).
 
-- **Elixir `~> 1.18` floor** (current 1.20; project constraint is "previous two minors"). No breaking changes exist between 1.18 and 1.20 affecting this library.
-- **OTP 27 primary CI job, 1.18+25 for floor check, 1.20+29 for forward-compat** — OTP 27 is common to all three supported Elixir minors and matches `core`'s runtime exactly.
-- **Ash `~> 3.0` (current 3.33.3), Spark `~> 2.6` (not 2.3; Ash itself now requires 2.6+), Commanded `~> 1.4`** — last is critical: currently undeclared despite generated code referencing Commanded macros at compile time. Fix by adding as a hard runtime dependency.
-- **Dev tooling bumps:** ex_doc (0.37→0.38+), add credo (1.7), add dialyxir (1.4), keep mock.
-- **CI matrix:** 5 jobs (Elixir 1.18.5+OTP25, 1.18.5+OTP27, 1.19.6+OTP27, 1.20.4+OTP27 primary, 1.20.4+OTP29). Format → Credo → compile-with-warnings-as-errors → test → dialyzer → docs.
+**Core technologies:**
 
-See STACK.md for full rationale including CI yaml and `usage_rules` setup.
+- `ex_dna` 1.5.1 — structural AST clone detection — the one rewrite rule with a genuine off-the-shelf answer; MEDIUM-HIGH confidence, verify its Elixir/OTP floor at adoption time (not independently confirmed)
+- `credo` 1.7.18 — already a dependency; host for all custom in-repo checks via `.credo.exs` `requires:` glob
+- `sourceror` 1.12.2 — AST-shape traversal for custom checks (quote-block extraction, unquote-ratio counting); bump the stale `~> 1.8` pin
+- Hand-rolled golden-file harness — not a library; the standard pattern for large, PR-reviewable generated-code diffs
 
-### Expected Features
+**No tool exists** for measuring emitted macro output size/shape directly, or for the "no double-handling" rule (a data-flow ownership question outside AST-shape matching). Both require the renderer to exist first, then either a small stdlib-only script (size/shape) or human code review (double-handling) — state this plainly rather than presenting a check that doesn't exist.
 
-FEATURES.md maps nine Commanded capabilities against `core`'s real measured needs:
+### Expected Features (DSL surface / Spark API capabilities)
 
-**TABLE STAKES (all gate `core` migration):**
+Spark 2.7.2 (the version actually resolved — **not** 2.3.5 as stale docs claim) provides substantial machinery the previous implementation didn't use:
 
-1. **Event upcasting DSL** — `core` already uses `Commanded.Event.Upcaster`. Zero support today. Complexity: **MEDIUM-HIGH**.
-2. **Aggregate invariants + multi-event support** — `core`'s 1,822 LOC is "genuine invariants + dispatch plumbing." Complexity: **MEDIUM**.
-3. **Non-attribute aggregate state** — `core` aggregates hold `members: %{}` not on resource. Complexity: **MEDIUM-HIGH**.
-4. **Production snapshot storage** — Currently ETS-only. Complexity: **LOW** for config; **MEDIUM** for adapter.
-5. **Event handler subscription options** (`start_from`, `subscribe_to`, `consistency`) — Complexity: **LOW-MEDIUM**.
-6. **Projection read-before-write + `after_update` + function-of-(event,current-record)** — 3,523 LOC projectors. Complexity: **HIGH**.
-7. **Full dispatch option passthrough** — Verification task. Complexity: **LOW-MEDIUM**.
+**Must have (already-available Spark mechanisms the rewrite should adopt, not reinvent):**
 
-**FEATURE DEPENDENCIES (strict ordering):**
-- Event versioning convention before/alongside upcaster DSL
-- Non-attribute-state with invariants  
-- Domain/Resource split before everything else
-- Projection transactional safety verified before migration
+- `identifier:` on an Entity turns on automatic duplicate-name checking — replaces hand-written `ValidateCommandNames`/`ValidateEventNames`
+- `singleton_entity_keys` — automatic "at most one" checking, no custom verifier needed
+- `use Spark.InfoGenerator` — generates `.Info` module accessors for free; AshCommanded currently has **zero** `.Info` modules despite this being a stated rewrite rule
+- Spark auto-prepends `VerifyEntityUniqueness` and `VerifySectionSingletonEntities` to every extension — some planned hand-written verifiers are already redundant
+- `Spark.Formatter` plugin for deterministic section ordering in generated/hand-written DSL bodies
 
-See FEATURES.md for MVP definition, differentiators, and complete feature landscape.
+**Should have (differentiators / correctness-critical DSL design):**
+
+- Declarative event upcasting that composes intermediate transformations at generation time into one `upcast/2` clause per historical struct type, each returning the *current* struct directly — because Commanded's `Upcaster.upcast/2` is called exactly once per event, never chained (verified at all 5 call sites)
+- `{:spark_function_behaviour, ...}` schema type for `changes(fn event -> ... end)`-style DSL ergonomics in projections (the exact mechanism Ash itself uses)
+
+**Caveat/gotcha, not a feature to defer:** `{:behaviour, module}` and `{:spark_behaviour, ...}` schema types do **not** verify the supplied atom actually implements the behaviour — only `is_atom/1` is checked. If AshCommanded needs "this module must implement `AshCommanded.Middleware`" enforced, that must be an explicit verifier calling `Spark.implements_behaviour?/2`, not the schema type.
+
+**Defer:** `top_level?` section flag (removing a layer of nesting on `application`) — legitimate simplification, not required for correctness.
 
 ### Architecture Approach
 
-AshCommanded generates code at compile time via `Module.create/3`. Three critical insights:
+Every mature Ash extension inspected (`ash_graphql`, `ash_json_api`, `ash_oban`, `ash_authentication`) encodes the resource/domain DSL boundary directly in the directory structure (`resource/{dsl.ex,info.ex,transformers/,verifiers/}` and `domain/{...}` as siblings), not just in extension registration — plausibly part of why AshCommanded's domain router transformer ended up attached to the wrong extension in the first place. The recommended `lib/` layout mirrors this split, adds an `aggregate.ex` + `aggregate/{runtime.ex,info.ex,snapshotting.ex}` triad for the new hand-written aggregate front door, and moves the renderer to `mix/tasks/`.
 
-**1. Transformer ordering is fragile.** Spark's sort depends on explicit `before?/after?`, not list position. Dead references exist (`ExtractCommands` in `after?` clause but doesn't exist). 6 of 13 transformers declare no ordering. Result: silent missing generation. **Fix required:** total-order list, generate every `after?/1`, make violations errors.
+**Major components:**
 
-**2. Resource/Domain boundary is one-way read.** Domain reads Resource (Ash forces order); Resource never reads Domain (deadlock risk). `fix-application-generation` implements this correctly and must land first.
+1. **`AshCommanded.Aggregate` (`__using__/1` front door)** — accumulates command-to-event mappings via `Module.register_attribute(accumulate: true)`, materializes thin `execute/2`/`apply/2` clauses once via `@before_compile`, following the exact five-part anatomy already proven by Commanded's own `Router`/`EventHandler`/`Application` macros (deferred codegen, `@behaviour`, accumulator attribute, `defoverridable` defaults, heavy logic never inlined in `quote`)
+2. **`AshCommanded.Aggregate.Runtime`** — hand-written, plain, unit-testable module owning identity checks, middleware invocation, error wrapping — everything that used to be inlined per-clause
+3. **`AshCommanded.Aggregate.Info` / per-extension `.Info` modules** — the ONE place that knows how to look up per-command configuration; replaces runtime AST/list reassembly with a single lookup, closing the complete `.Info` gap (zero exist today)
+4. **Domain-level router/application transformers** — must move from the resource extension (where they run once per resource, unable to see sibling resources) to the domain extension. The compile-order mechanism that makes this safe is settled below.
 
-**3. Code generation via `quote` + `Module.create/3` is correct.** Commanded dispatches by module name expecting behaviours — modules must be real. Igniter/Sourceror is for scaffolding, not recurring DSL modules.
+### Critical Pitfalls
 
-**Major components:** DSL sections → 13 Transformers → 9 Verifiers → Generated modules. Two oversized files needing decomposition: `GenerateAggregateModule` (861 LOC → 4 builders) and `CommandActionMapper` (640 LOC → 5 executors).
+1. **Router/application generation never fires (confirmed defect)** — `Commanded.Commands.CompositeRouter`'s `router/1` macro calls `router_module.__registered_commands__()` at macro-expansion time, requiring the router module already compiled; the current domain transformer runs during the domain's own ordinary compile pass with no such guarantee. Fix: generate router and application from the same transformer's sequential `Module.create/3` calls, or have the domain transformer read each resource's persisted state directly.
+2. **Chained upcast assumption** — `Commanded.Event.Upcaster.upcast/2` is called exactly once per stored event, never re-dispatched on its own result. A per-version-hop upcaster chain will silently under-upcast old events on replay — the highest-value DSL design constraint found, and the most expensive to recover from (requires re-deriving read models from the event store, not a code fix).
+3. **Reintroducing a fictional snapshot adapter behaviour** — `Commanded.Aggregates.Aggregate.Snapshotter` has never existed in any Commanded version; real snapshotting is `Commanded.Snapshotting`, an internal, non-pluggable mechanism configured via a plain map (`snapshot_every`/`snapshot_version`) at the application-config level. Generate a config fragment, not an adapter behaviour.
+4. **Runtime AST reassembly of compile-time-known values** — the confirmed instance (six nested `:erlang.++/2` calls building `[transforms: [], validations: []]` on every dispatch) is invisible from reading generator source and visible only in rendered output — the direct justification for the renderer/golden-render requirement.
+5. **Module-name surgery instead of holding the atom already in scope** — `Module.concat` built from string-split re-concatenation is invisible to the Elixir compiler's dependency tracker, causing stale-BEAM recompilation bugs; always derive from `Transformer.get_persisted/2`.
 
-See ARCHITECTURE.md for verified patterns, component boundaries, and build-order implications.
+## THE COMPILE-ORDER QUESTION — RESOLVED EXPERIMENTALLY
 
-### Critical Pitfalls (Top 5)
+This section originally recorded an unresolved conflict between two research documents. The orchestrator settled it by experiment on 2026-09-15. Both the conflict and the resolution are recorded, because the reasoning is reusable.
 
-1. **Event-type string bound to module name** — Default `TypeProvider` couples serialized event type to module name. Mismatch silently breaks deserialization of 68 historical event types in `core`'s Postgres store. **Fix:** Build explicit `TypeProvider` (MUST precede migration).
+### The conflict as researched
 
-2. **Transformer ordering silent failures** — Wrong/missing `before?/after?` runs against empty state, silently produces nothing. **Fix:** Total-order convention, integration test asserting every generated module has declared content.
+- **FEATURES.md's position:** mark the domain transformer `after_compile?() -> true`, which Spark defers execution into `@after_verify` — a phase guaranteed to run after every module in the compilation unit has finished compiling. Cites `deps/spark/lib/spark/dsl.ex:470-474`, `deps/spark/lib/spark/dsl/extension.ex:693-699,521-529`, and Ash's own `Ash.Domain.Verifiers.ValidateRelatedResourceInclusion` as precedent (note: that precedent is a *verifier*, read-only by contract — using `after_compile?` on a *transformer* that must also `Module.create/3` is a different, less-precedented case).
+- **ARCHITECTURE.md's position:** no deferral needed. Claimed `Ash.Domain.Dsl`'s `resource` entity (typed `{:spark, Ash.Resource}`, no `no_depend_modules` opt-out) forces every listed resource to compile before any domain transformer runs, via `Spark.Dsl.Extension.expand_alias/2` creating compile-time dependency edges.
 
-3. **Compile-time cross-module introspection deadlocks** — Resource transformer calling `Ash.Domain.Info` creates circular dependency. **Fix:** Domain/Resource split + rule: never call Info on non-self.
+### Source verification — ARCHITECTURE.md's stated mechanism is wrong
 
-4. **Verifier gaps** — Three documented verifiers absent. DSL compiles, fails at runtime. **Fix:** Audit against `core`, implement missing, rejection tests with message assertions.
+1. `Spark.Dsl.Extension.EntityOption.value_and_function/6` (`deps/spark/lib/spark/dsl/extension/entity_option.ex`) consults the option's declared TYPE only for the `:quoted` case (`Macro.escape`). Dependency creation is gated by a three-branch `cond`: `field in modules` -> `expand_alias/2` (creates the edge), `field in no_depend_modules` -> `expand_alias_no_require/2` (explicit opt-out), `true` -> value returned **unexpanded**, no edge at all. The identical `cond` appears for entity positional args at `extension.ex:1483-1490`.
+2. `Ash.Domain.Dsl`'s `resource` entity (`deps/ash/lib/ash/domain/dsl.ex:130-146`) declares `modules: []` and no `no_depend_modules` key. `:resource` matches neither branch and falls to `true ->`.
+3. There is no value-level `defp validate_type({:spark, _}, key, value)` clause in `deps/spark/lib/spark/options/options.ex` that would force compilation during validation. (`validate_type({:spark, module})` at line 1830 validates the type *declaration*, not a value.)
 
-5. **Contrived tests** — Four transformers skip module creation in test by default. Test suite doesn't exercise generated code. **Fix:** Remove skip as default, add real-generation test tier.
+### The experiment
 
-See PITFALLS.md for all 13 pitfalls (including upcasting bugs, idempotency, consistency, test isolation, incremental migration, behavior verification) with recovery strategies.
+A minimal probe was compiled under `MIX_ENV=test` with three modules in **separate files**, so compile order was decided by the dependency graph rather than top-to-bottom evaluation:
 
----
+- `Probe.Ext` — a Spark extension with one ordinary (non-`after_compile?`) domain transformer
+- `Probe.Widget` — an `Ash.Resource` with an ETS data layer
+- `Probe.Domain` — an `Ash.Domain` listing that resource
+
+The transformer called `Spark.Dsl.Extension.get_persisted(resource, :primary_key)` **first**, before any `Code.ensure_compiled/1` or `Code.ensure_loaded?/1` — an initial version of the probe called `ensure_compiled` first and was discarded, because that call can itself force compilation and would have manufactured the result it measured. `:primary_key` was chosen deliberately: `get_persisted(resource, :module, _)` short-circuits for atoms and would have proved nothing.
+
+**Result:**
+
+```text
+=== PROBE: domain transformer for Probe.Domain ===
+resources seen: [Probe.Widget]
+  Probe.Widget
+    get_persisted(:primary_key) [measured first] = {:ok, [:id]}
+    module_loaded? [after]                       = true
+=== PROBE END ===
+```
+
+### Verdict
+
+**ARCHITECTURE.md's conclusion is CORRECT; its stated reason is not.** An ordinary domain-level transformer can read resource-level persisted state directly. No `after_compile?` deferral is required.
+
+**The real mechanism** is `persisted!/3` at `deps/spark/lib/spark/dsl/extension.ex:149`:
+
+```elixir
+defp persisted!(resource, key, default) do
+  resource.persisted(key, default)
+rescue
+  ...
+end
+```
+
+It is a **remote function call on the resource module**. Inside Elixir's parallel compiler, a remote call to a module still being compiled causes the compiler to block until that module is available. So the ordering is guaranteed on demand at call time, not by a declared dependency edge — which is why ARCHITECTURE.md could reach the right answer from the wrong premise.
+
+### Consequences for design
+
+- The domain transformer approach is viable and is the recommended design. `after_compile?() -> true` remains a documented fallback but is not needed.
+- **Deadlock is the risk to watch, not missing state.** Because ordering comes from an on-demand compiler block, a genuine cycle would hang rather than error: if a *resource*-level transformer ever needs to call into its *domain*, and the domain transformer calls back into the resource, the parallel compiler can deadlock. The probe confirmed that Ash's `use Ash.Resource, domain: Probe.Domain` back-reference does **not** create such a cycle. Any future design that has resource transformers reading domain state must be checked against this explicitly.
+- PITFALLS.md separately recommends Application and Routers be planned as **one coupled unit**, since the ordering defect spans both. This differs from the user's stated build order (application third, routers later) and should be flagged to the roadmapper. Note this recommendation stands on its own and is unaffected by the resolution above.
+
+## Also Surfacing (high-value findings that change planned work)
+
+- **No tool anywhere measures macro-*emitted* code.** Every static analysis tool (Credo, `ex_dna`, Dialyzer) operates on `.ex`/`.exs` source text as authored, never on expanded macro output. This makes the renderer (`mix ash_commanded.dump`) the *precondition* for enforcing three of the eleven rewrite rules, not a nice-to-have. STACK.md separately found **no tool at all** for the "no double-handling" rule — state this plainly; it is enforced only by human code review.
+- **Spark auto-prepends `VerifyEntityUniqueness` and `VerifySectionSingletonEntities`** to every extension (`extension.ex:459-461`) — this removes the need for some planned hand-written verifiers outright.
+- **`{:behaviour, module}` / `{:spark_behaviour, ...}` do NOT verify behaviour implementation** — only `is_atom/1` is checked at the schema-type level; any "must implement X" requirement needs an explicit verifier.
+- **`Commanded.Event.Upcaster` upcasts exactly once per event, never chained** — verified at `deps/commanded/lib/commanded/event/upcast.ex:15-21` and all five call sites. This is the single highest-value DSL design constraint found across all four documents.
+- **The router defect's exact mechanism**: `composite_router.ex:75-87` runs `for command <- unquote(router_module).__registered_commands__()` **inside a `quote` block** — a compile-time loop requiring the router already compiled, confirmed directly against source, not inferred.
+- **`Module.concat` from string surgery is invisible to the compiler's dependency-tracking mechanism** — the concrete, previously-unstated mechanism behind rewrite rule 4, which previously read as a style preference and is in fact a stale-BEAM correctness bug.
+- **AshCommanded has zero `.Info` modules** (`find lib -iname '*info*'` returns nothing) despite "introspection belongs in `ModuleName.Info`" already being a stated rewrite rule — a complete gap, not a partial one, and should be treated as foundational work landing alongside the renderer.
+- **Version correction, verified against `mix.exs`/`mix.lock`:** Spark resolves **2.7.2** (declared `~> 2.6`), Commanded resolves **1.4.11** (declared `~> 1.4`), Ash resolves **3.5.8**. `CLAUDE.md`'s "Spark 2.3.5 / Commanded 1.4.8 / Ash 3.5.9" is stale on all three axes. Any planning that assumes 2.3.5's Spark API is planning against a three-minor-version-old surface; e.g. `Ash.Domain.Info.depend_on_resources/1` — a macro older tutorials recommend for exactly this cross-module problem — is now `@deprecated`, "no longer necessary."
+- **PITFALLS.md recommends Application and Routers be planned as ONE coupled unit.** Flag explicitly to whoever sequences the roadmap.
 
 ## Implications for Roadmap
 
-Research suggests **4 Library Completion phases** then **5 Migration phases** (one per `core` domain). Feature dependencies are load-bearing.
+### Phase: Foundation
 
-### Library Completion Phase 1: Foundation
+**Rationale:** Every per-component "render and approve" step depends on the renderer existing first; several enforcement rules have literally no tool to check them until code is rendered to text.
+**Delivers:** `mix ash_commanded.dump`, golden-file harness (hand-rolled), custom Credo checks, `ex_dna` adopted for DRY, `.Info` module convention established, `Spark.Test` used for verifier-error testing, shared `Module.create/3` wrapper with explicit `file:`/`line:`.
+**Avoids:** Spurious warnings, lost caller environment, unintentional compile-dependency cascades.
+**Research flag:** Standard pattern, low research risk during planning.
 
-**Rationale:** Four blockers prevent everything that follows.
+### Phase: Commands, Events, then Application
 
-**Delivers:**
-- Fix transformer ordering (total-order, generate `after?/1`, integration test)
-- Finish Domain/Resource split (`fix-application-generation` lands)
-- Build explicit `Commanded.EventStore.TypeProvider` (default mapping)
-- Fix test infrastructure (remove skip-module-creation as default)
+**Rationale:** Cheapest components, proves the render-and-approve methodology before it meets aggregates/routers.
+**Delivers:** Commands/events unchanged in shape from today; Application component must resolve the router/application ordering defect using the now-settled domain-transformer mechanism.
+**Research flag:** Standard pattern. The compile-order question that previously gated this is resolved.
 
-**Addresses:** Pitfalls 1, 2, 3, 5 (silent failures, event-type mismatches, deadlocks, masked bugs)
+### Phase: Aggregates and Projections
 
----
+**Rationale:** Opens with the design question PROJECT.md itself poses: what is `AshCommanded.Aggregate.__using__/1`? Architecture research gives a complete, concrete answer.
+**Addresses:** Rewrite rules 1, 2, 6, 9 directly.
+**Research flag:** Standard pattern once the `__using__` design is fixed.
 
-### Library Completion Phase 2: DSL Capabilities (Table Stakes)
+### Phase: Routers, Event Handlers, Process Managers
 
-**Rationale:** Three DSL gaps prevent absorbing 1,822 LOC of aggregate logic.
+**Rationale:** Needs a domain transformer walking `Ash.Domain.Info.resources/1` and reading each resource's persisted state — the mechanism settled above.
+**Delivers:** Three distinct generated shapes rather than one generic base.
+**Research flag:** Plan jointly with Application, per PITFALLS.md's coupling recommendation.
 
-**Delivers:**
-- Event versioning DSL (ordered transforms, compile to `defimpl`)
-- Aggregate invariants (precondition hook, multi-event via `Multi`)
-- Aggregate non-attribute state (independent struct, reducers)
+### Phase: Declarative Event Versioning
 
-**Addresses:** Table stakes features 1, 2, 3 (gates all migrations)
+**Rationale:** An ES library with no schema-evolution story is incomplete; the single-dispatch-per-event fact is a HIGH-recovery-cost correctness trap.
+**Delivers:** A DSL composing intermediate transformations at generation time so each historical struct returns the current struct directly.
+**Research flag:** Needs a replay-based acceptance test; API itself is fully understood.
 
----
+### Phase: Snapshots, Middleware and Transaction Coordination
 
-### Library Completion Phase 3: Projection Expressiveness + Quality
-
-**Rationale:** Projections are 3,523 LOC; must get idempotency/consistency right. Quality work enables migrations.
-
-**Delivers:**
-- Projection read-before-write, `after_update` hook, function-of-(event,metadata,current-record)
-- Idempotency (redelivery tests, `projection_versions` pattern)
-- Event handler options in DSL
-- Dispatch option passthrough verification
-- Decompose oversized modules, missing verifiers, examples, testing story, persistent snapshots
-
-**Addresses:** Table stakes 4, 5, 6, 7; Pitfalls 4, 6, 7, 8, 10  
-**Highest-risk:** Projection transactional safety (Ash + `commanded_ecto_projections`). Needs integration test early.
-
----
-
-### Library Completion Phase 4: Migration Tooling
-
-**Delivers:**
-- Golden-trace harness (real Postgres events, replay both old/new, byte-identical check)
-- Migration checklist per domain (cross-domain audit, TypeProvider config)
-- Module-path mismatch verifier
-
-**Addresses:** Pitfalls 1, 12, 13 (event safety, incremental migration, behavior verification)
-
----
-
-### Migration Phases 1-5: Sequential Per Domain
-
-**Phases:** `identity` (test Phase 2), then `data`, `integration`, `schema_definition`, `workflow`.
-
-Each domain:
-- Migrate commands, events, aggregates, projectors onto DSL
-- Golden-trace verification against Postgres history
-- Cross-domain consumer audit
-- Deploy once behavior verified
-
-**Addresses:** Core value (163 files → ~60 files; 1,053 LOC boilerplate eliminated)
-
----
+**Rationale:** Retarget fictional/unverified surfaces onto Commanded's real, documented internals.
+**Delivers:** Snapshot config fragments (not an adapter behaviour); middleware verified against the real 3-callback contract.
+**Research flag:** Standard pattern, HIGH confidence.
 
 ### Phase Ordering Rationale
 
-1. **Foundation (Phase 1)** precedes all — test infrastructure and TypeProvider load-bearing.
-2. **DSL Capabilities (Phase 2)** before Projection work (Phase 3) — aggregates simpler, gate fewer dependencies.
-3. **Projection work (Phase 3)** includes examples/testing — needed before migrations validate.
-4. **Migration tooling (Phase 4)** depends on Phase 3 stability.
-5. **Migrations (Phases 5+)** sequential due to cross-domain dependencies.
-
----
+- Foundation must precede everything.
+- Commands/Events/Application-before-Aggregates matches the existing milestone plan.
+- Aggregates and Routers are the hardest components and should get the most roadmap attention.
+- Event versioning is sequenced to land before any real event data exists (i.e., before the deferred `core` migration).
 
 ### Research Flags
 
-**Phases requiring planning research:**
+Standard patterns, low research risk: **Foundation**, **Commands**, **Events**, **Application**, **Aggregates**, **Routers/Event Handlers/Process Managers**, **Declarative Event Versioning**, **Snapshots/Middleware**.
 
-- **Phase 1:** TypeProvider location (library default or `core`-specific?). Existing `Core.EventTypeTranslator` suggests a pattern.
-- **Phase 2:** Aggregate invariant function signature — sample `core`'s actual guards. Confirm `(state, command) -> :ok | {:error, reason}` fits all patterns.
-- **Phase 3:** Projection transactional composition (highest-risk dependency). Integration test of Ash + `commanded_ecto_projections`.
-- **Phase 4:** Cross-domain event-handler dependencies graph. Determines safe migration sequencing.
-
-**Phases with standard patterns (execute directly):**
-
-- **Phase 1:** Transformer ordering (Spark standard), Domain/Resource split (Ash pattern), test infrastructure (ExUnit standard).
-- **Phases 2-3:** Code generation via `quote` + `Module.create/3` (AshOban precedent, identical strategy).
-- **Phases 5+:** Execution once Phase 4 tooling exists.
-
----
+No component now requires a pre-planning research spike.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| **Stack** | HIGH | Verified hex.pm 2026-09-11; CI from `ash-project` precedent; Elixir/OTP official. No disputes. |
-| **Features** | HIGH | 1:1 mapped to Commanded hexdocs + `core` measured usage (163 files, LOC per category). Verified: no process managers, no multitenancy in `core`. |
-| **Architecture** | HIGH | Spark ordering traced through source. Domain/Resource boundary verified vs Ash semantics. Code-generation strategy validated vs AshOban. 3 transformer bugs documented. |
-| **Pitfalls** | MEDIUM-HIGH | 1-5 verified in source or omissions. 6-10 inferred from Commanded docs + event-sourcing patterns (MEDIUM). 12-13 inferred from append-only constraints (MEDIUM). Orchestrator verified 4 live bugs. |
+| Stack (enforcement tooling) | MEDIUM-HIGH | HIGH for off-the-shelf tools; explicitly flagged where no tool exists at all |
+| Features (Spark API reference) | HIGH | Every claim read directly from vendored source with file:line citations |
+| Architecture | HIGH | Precedent-reading is HIGH; the disputed compile-order claim was resolved by experiment — conclusion confirmed, stated mechanism corrected |
+| Pitfalls | HIGH | HIGH for all Commanded API claims; MEDIUM for restructuring guidance |
 
-**Overall: HIGH** — roadmap grounded in verified architecture, measured patterns, live bugs. Dependencies tightly constrained by Commanded semantics.
+**Overall confidence:** HIGH.
 
-### Gaps to Address During Planning
+### Gaps to Address
 
-1. **TypeProvider location** — Library default or domain-specific. Affects Phase 1 design.
-2. **Invariant function signature validation** — Sample `core` guards against proposed signature. If signature doesn't fit, Phase 2 DSL design adjusts.
-3. **Cross-domain dependencies graph** — Determines safe migration sequencing. May force domains to migrate together.
-4. **Snapshot adapter persistence** — Postgres? S3? Pluggable interface? Phase 3 requires decision.
-5. **Projection idempotency strategy** — Use `commanded_ecto_projections` macro or hand-roll? Affects generated AST.
-
----
+- **AshGraphQL/AshJsonApi's domain-aggregation approach was not independently source-verified** — cited for direction only, MEDIUM confidence.
+- **`ex_dna`'s Elixir/OTP floor was not independently confirmed** — verify at `mix deps.get` time.
+- **AshCommanded's own middleware modules' actual conformance to `@behaviour Commanded.Middleware` is unverified** — treat `CLAUDE.md` naming as unverified until confirmed.
+- **No mechanical check exists for "no double-handling" (Rule 9)** — must be carried into the roadmap as an explicit code-review checklist item.
+- **Compile deadlock risk** if a future design has resource-level transformers calling into their domain while domain transformers call back into resources — check explicitly before introducing any such bidirectional read.
 
 ## Sources
 
-### Primary — Verified Against Upstream (HIGH confidence)
+### Primary (HIGH confidence)
 
-- **Commanded 1.4.x API** — hexdocs + GitHub; upcasting, projections, aggregate API, dispatch, consistency
-- **Spark 2.3.5–2.4.1** — hexdocs + local `deps/spark`; transformer ordering, verifier semantics
-- **Ash 3.33.3** — hexdocs + `deps/ash`; resource/domain compilation, Info semantics
-- **Hex.pm package API** — Live 2026-09-11; versions and CHANGELOG breaking changes
+- `deps/spark` (hex 2.7.2, vendored) — `dsl.ex`, `dsl/extension.ex`, `dsl/transformer.ex`, `dsl/extension/entity_option.ex`, `dsl/entity.ex`, `dsl/section.ex`, `options/options.ex`, `info_generator.ex`, `cheat_sheet.ex`, `formatter.ex`, `test.ex`
+- `deps/ash` (hex 3.5.8) — `domain/dsl.ex`, `resource/dsl.ex`, `domain/info.ex`, `domain/verifiers/validate_related_resource_inclusion.ex`
+- `deps/commanded` (hex 1.4.11) — `commands/router.ex`, `commands/composite_router.ex`, `application.ex`, `event/handler.ex`, `event/upcaster.ex`, `event/upcast.ex`, `aggregates/aggregate.ex`, `aggregates/aggregate_lifespan.ex`, `snapshotting.ex`, `middleware/middleware.ex`, `assertions/event_assertions.ex`, `process_managers/process_manager.ex`
+- Orchestrator compile-order probe, 2026-09-15 (`MIX_ENV=test mix compile --force`, three-file fixture, since removed)
+- `work/core/deps/{ash_graphql,ash_authentication,ash_postgres,reactor}`
+- `ash-project/ash_json_api`, `ash-project/ash_oban` (GitHub, `main`, fetched via `gh api`)
+- `lucasvegi/Elixir-Code-Smells` catalogue (fetched 2026-09-15)
+- Credo/Sourceror/ex_dna official docs and hexdocs
 
-### Secondary — Measured Against Codebase (HIGH confidence)
+### Secondary (MEDIUM confidence)
 
-- **`core` event-sourced surface** — Measured 2026-09-11; 163 files / 6,398 LOC; patterns via grep
-- **AshCommanded live bugs** — Verified in source; transformer skips, dead references, absent verifiers, hardcoded mocks
+- AshGraphQL/AshJsonApi's schema-assembly-time aggregation strategy — not source-verified in this repo's `deps/`
+- `ex_dna`'s Elixir/OTP compatibility floor
 
-### Tertiary — Best-Practice Patterns (MEDIUM confidence)
+### Tertiary (LOW confidence, do not adopt without re-verification)
 
-- **Golden-trace tests** — Event-sourcing literature + `ash-project/ash` precedent
-- **Migration pitfalls** — Inferred from append-only-log design constraints
+- `approval`/`ApprovalTests.Elixir` maintenance status
+- `assert_value_elixir` current release date
 
 ---
-
-*Research completed: 2026-09-11*  
-*Ready for roadmap: yes, with Phase 1 scope decision needed*
+*Research completed: 2026-09-15*
+*Compile-order question resolved experimentally 2026-09-15; no pre-planning spike outstanding*

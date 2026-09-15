@@ -1,0 +1,78 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v0.3",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Build Integrity",
+      "status": "in_progress"
+    },
+    {
+      "number": "2",
+      "name": "Deterministic Generation and Compile-Time Rejection",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Event Identity and Versioning",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Aggregate Expressiveness and Lifecycle",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Projection Expressiveness",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Event Handlers, Dispatch and Process Managers",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Examples, Documentation and Agent Rules",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Migration Tooling",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Migrate identity",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "Migrate integration",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Migrate data",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Migrate schema_definition",
+      "status": "pending"
+    },
+    {
+      "number": "13",
+      "name": "Migrate workflow and publish 1.0",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
+  },
+  "updated_at": "2026-09-15T00:32:57.595Z"
+}

@@ -1,350 +1,745 @@
-# Architecture Research
+# Architecture Research — Mature Spark/Ash Extension Code Generation
 
-**Domain:** Spark DSL extension for Ash Framework (CQRS / Event Sourcing via Commanded)
-**Researched:** 2026-09-11
-**Confidence:** HIGH — every claim below is verified against actual source: Spark 2.4.1 (`lib/spark/dsl/{extension,transformer,verifier,entity,section}.ex`, installed locally at `~/development/projects/kestrel/deps/spark`, API-compatible with the project's pinned `~> 2.3`/2.3.5), and real Ash extensions read directly from `deps/` in sibling projects: `ash` (3.x, from `work/core`), `ash_graphql`, `ash_oban`, `ash_state_machine`, `ash_events`, `ash_authentication`. No claim in this document is inferred from hexdocs prose alone without cross-checking the shipped `.ex` file.
+**Domain:** Spark DSL / Ash extension architecture, applied to AshCommanded's aggregate-and-router rewrite
+**Researched:** 2026-09-15
+**Confidence:** HIGH — every claim below is grounded in source read directly (local `deps/` checkouts
+of `ash` 3.5.8, `ash_graphql`, `ash_authentication`, `ash_postgres`, `reactor`, `spark` 2.7.2,
+`commanded` 1.4.11, all resolved against `work/core`'s real lockfile; plus `ash_oban` and
+`ash_json_api` fetched live from `ash-project/*` on GitHub via `gh api` since they are not in any
+local `deps/`). File paths are given for everything so claims are independently checkable.
 
-## Standard Architecture
+**Libraries read, and how:**
 
-### System Overview — how a Spark/Ash extension actually compiles
-
-```text
-┌───────────────────────────────────────────────────────────────────────┐
-│  User module: `use Ash.Resource, extensions: [AshCommanded.Dsl]`      │
-│  or `use Ash.Domain, extensions: [AshCommanded.DomainDsl]`            │
-│  Body: `commanded do ... end` block                                   │
-└───────────────────────────┬─────────────────────────────────────────┘
-                             │ Spark.Dsl.Extension.prepare/1 imports section
-                             │ macros; each `command ... end` / `event ...`
-                             │ block builds a struct via Entity schema
-                             ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│  DSL STATE  — a single plain map, keyed by section path               │
-│  %{[:commanded, :commands] => %{entities: [%Command{}, ...]},         │
-│    [:commanded, :application] => %{opts: [otp_app: ..., ...]},        │
-│    persist: %{module: MyApp.User, ...}}                               │
-│  This map is the *only* channel between all of the below stages.      │
-└───────────────────────────┬─────────────────────────────────────────┘
-                             │ Spark.Dsl.Transformer.sort/1 merges the
-                             │ transformer lists of *every* extension on
-                             │ this module (Ash core + AshCommanded + any
-                             │ other extension) into one digraph, then
-                             │ topologically sorts by before?/after?
-                             ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│  TRANSFORMERS  (run in the sorted, straight-line order, each          │
-│  receiving the previous one's returned dsl_state)                     │
-│  Collect* → Generate* (Module.create/2 side effects here) → persist   │
-└───────────────────────────┬─────────────────────────────────────────┘
-                             │ transform/1 returns {:ok, dsl_state} | :ok
-                             │ | {:error, _} | :halt — errors abort compile
-                             ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│  VERIFIERS  (read-only; all run after all transformers; no ordering   │
-│  guarantee between verifiers unless declared — treat as unordered)    │
-└───────────────────────────┬─────────────────────────────────────────┘
-                             │ module finishes compiling; dsl_state is
-                             │ frozen and exposed as `resource.entities/1`,
-                             │ `resource.opt/1` etc. (persisted functions)
-                             ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│  RUNTIME  — `Spark.Dsl.Extension.get_entities(ResourceAtom, path)`    │
-│  now calls compiled functions on the module, not the map. Same API,   │
-│  different implementation, selected by pattern-matching on the first │
-│  argument (`%struct{}` / raw `map` / bare `atom`).                    │
-└───────────────────────────────────────────────────────────────────────┘
-```
-
-Source for every claim in this diagram:
-
-- `prepare/1` building imports from `extension.sections()`: `deps/spark/lib/spark/dsl/extension.ex:483-610`.
-- Global transformer merge + sort: `deps/spark/lib/spark/dsl.ex:470-473` — `Enum.flat_map(& &1.transformers()) |> Spark.Dsl.Transformer.sort()`. **This is not resource-local** — it merges every extension applied to the module, including Ash's own core transformers, `AshPostgres`'s, etc.
-- `run_transformers/4` straight-line reduce, one `transform/1` call per transformer, in the already-sorted order: `deps/spark/lib/spark/dsl/extension.ex:726-790`.
-- `get_entities/2` dual dispatch (map vs. struct vs. atom): `deps/spark/lib/spark/dsl/extension.ex:242-263`.
-
-([Spark.Dsl.Extension](https://hexdocs.pm/spark/Spark.Dsl.Extension.html), [Spark.Dsl.Transformer](https://hexdocs.pm/spark/Spark.Dsl.Transformer.html), [Spark.Dsl.Entity](https://hexdocs.pm/spark/Spark.Dsl.Entity.html), [Spark.Dsl.Section](https://hexdocs.pm/spark/Spark.Dsl.Section.html), [Spark.Dsl.Verifier](https://hexdocs.pm/spark/Spark.Dsl.Verifier.html))
-
-### Component Responsibilities (Spark anatomy, answering Q1)
-
-| Component | Responsibility | Typical Implementation |
-| ----------- | ---------------- | ------------------------ |
-| `Spark.Dsl.Section` | Declares a nestable named block (`commanded do commands do ... end end`); carries `schema` (option validation, via `Spark.Options`/NimbleOptions) and `entities` (sub-constructors) and `sections` (further nesting) | A module attribute `%Spark.Dsl.Section{name: :commands, schema: [...], entities: [@command]}` referenced from the extension's `sections:` list |
-| `Spark.Dsl.Entity` | A DSL constructor that produces a struct instance (`command :foo do ... end` → `%Command{name: :foo, ...}`); validates its own `schema` at build time, supports `args` (positional), `auto_set_fields`, `transform` (post-build struct fixups), and recursive `entities:` for nesting (e.g. `route_to` nested inside `replay_override`, see `ash_events`) | `%Spark.Dsl.Entity{name: :command, target: Command, schema: CommandsSection.schema(), args: [:name]}` |
-| `Spark.Dsl.Extension` | The `use`-able module that wires `sections:`, `transformers:`, `verifiers:` together and generates the macros/imports for the DSL. Also carries the full runtime introspection API (`get_entities/2`, `get_opt/4`, `get_persisted/3`) | `use Spark.Dsl.Extension, sections: [...], transformers: [...], verifiers: [...]` — exactly what `AshCommanded.Commanded.Dsl` already does |
-| `Spark.Dsl.Transformer` | A compile-time step that reads and rewrites the whole `dsl_state` map; the only place with write access to DSL data and the only place code generation (`Module.create/3`) belongs | `use Spark.Dsl.Transformer`; implements `transform/1`, optionally `before?/1`, `after?/1`, `after_compile?/0` |
-| `Spark.Dsl.Verifier` | A read-only compile-time check that returns `:ok`/`{:error, _}`/`{:warn, _}`; cannot mutate `dsl_state`, exists purely to reject invalid DSL usage with a good error message | `use Spark.Dsl.Verifier`; implements `verify/1` |
-| `Spark.InfoGenerator` | Macro that auto-generates the boilerplate `Info` module (per-section option getters, per-section entity getters) from just `extension:` + `sections:` | `use Spark.InfoGenerator, extension: MyDsl, sections: [:commanded, :commands]` — **AshCommanded does not currently use this anywhere**; every info accessor (e.g. `AshCommanded.Commanded.Dsl.application/1`) is hand-written |
-
-Section nesting is literal struct nesting: `@commanded_section` (top level) has `sections: [@commands_section, @events_section, @projections_section, @event_handlers_section, @application_section]` — this is exactly what `lib/commanded/dsl.ex` already does, and it is the correct, idiomatic shape (confirmed against `deps/spark/lib/spark/dsl/section.ex:1-142`, which documents nested `sections` and per-nesting-level `get_entities([:parent, :child])` paths).
-
-**`get_entities/2`, compile time vs. runtime — the duality that matters for Q3:**
-
-- **Compile time** (inside a transformer/verifier currently running for *this* module): `Spark.Dsl.Transformer.get_entities(dsl_state, path)` (or the `Spark.Dsl.Extension.get_entities/2` delegate, which pattern-matches to the same code when given a raw map) reads directly out of the in-progress map — no other module needs to be compiled. This is always safe.
-- **Runtime, or compile time from a *different* module** (e.g., a domain transformer wanting a resource's DSL state): `Spark.Dsl.Extension.get_entities(ResourceAtom, path)` matches the `resource` clause at `extension.ex:254-263`, which calls `resource.entities(path)` — a real function call on a real module. **This requires `ResourceAtom` to already be compiled.** If it isn't (e.g., it's compiling in parallel, or there's a genuine cycle), this either raises `UndefinedFunctionError`, blocks the compiler, or (with `Code.ensure_compiled/1`-guarded call sites) silently returns `{:error, :unavailable}`. There is no dynamic "wait for it" semantics — Elixir's parallel compiler decides serialization order from *lexical* references (aliases, `Code.ensure_compiled!/1`), not from Spark's cooperation.
-
-## Recommended Project Structure
-
-This is not a generic web-app layer split — it is the actual shape the library should converge on, derived from where the current code already diverges from that shape (`GenerateAggregateModule`, `CommandActionMapper`) and from how comparable Ash extensions are organized.
-
-```text
-lib/commanded/
-├── dsl.ex                          # Ash.Resource extension: sections + transformer/verifier lists only
-├── domain_dsl.ex                   # Ash.Domain extension: sections + transformer/verifier lists only
-├── info.ex                         # NEW — `use Spark.InfoGenerator` for the Resource extension
-├── domain_info.ex                  # NEW — `use Spark.InfoGenerator` for the Domain extension
-├── sections/                       # schema + entity declarations only (no logic)
-├── command.ex / event.ex / ...     # entity target structs (pure data)
-├── transformers/
-│   ├── generate_command_modules.ex
-│   ├── generate_event_modules.ex
-│   ├── generate_aggregate_module.ex       # orchestrator only: after?/2 + transform/1 + Module.create call
-│   ├── aggregate/                          # NEW — AST-builder helpers, one concern each, unit-testable
-│   │   ├── struct_builder.ex               #   moduledoc + defstruct + module skeleton
-│   │   ├── execute_clause_builder.ex        #   command → event AST (was 360 of the 861 lines)
-│   │   ├── apply_clause_builder.ex          #   event → state AST
-│   │   └── snapshot_clause_builder.ex       #   snapshot_state/2, restore/2 etc. (was 215 lines)
-│   ├── generate_projector_modules.ex
-│   ├── generate_domain_router_module.ex
-│   ├── generate_main_router_module.ex
-│   └── generate_commanded_application.ex   # domain-only; reads resources via Ash.Domain.Info.resources/1
-├── verifiers/
-├── action_mapping/                 # NEW — split out of the 640-line CommandActionMapper
-│   ├── command_action_mapper.ex    #   orchestrator: map_to_action/4, infer_action_type/1
-│   ├── executors/                  #   one module per Ash action type, common behaviour
-│   │   ├── create.ex
-│   │   ├── update.ex
-│   │   ├── destroy.ex
-│   │   ├── read.ex
-│   │   └── custom.ex
-│   └── (transactional_map_to_action/3 moves into lib/commanded/transaction.ex — it already owns
-│         transaction concerns and CommandActionMapper should not duplicate that responsibility)
-├── parameter_transformer.ex        # absorbs transform_params/2, safely_transform_params/2,
-│                                    # safely_apply_advanced_transforms/2 currently duplicated
-│                                    # inside command_action_mapper.ex
-├── middleware/
-└── snapshot*.ex
-```
-
-### Structure Rationale
-
-- **`transformers/aggregate/` and `action_mapping/executors/`:** both existing 800+/600+ line files already have clean internal seams — they are single files containing 4-5 functions that don't share state beyond the DSL data passed as arguments. Splitting along those existing function boundaries (see "Component Boundaries" decomposition below) costs nothing in behavior and everything in reviewability; this is a pure refactor, not a redesign.
-- **`info.ex` / `domain_info.ex` via `Spark.InfoGenerator`:** every comparable extension surveyed (`ash_events`, and Ash core itself) generates its `Info` module this way (`deps/ash_events/lib/event_log/event_log.ex:152-157`: `use Spark.InfoGenerator, extension: AshEvents.EventLog, sections: [:event_log, :replay_overrides]`). AshCommanded hand-writes accessors like `AshCommanded.Commanded.Dsl.application/1` instead — this is boilerplate the framework already eliminates.
-- **Transaction logic staying in one module:** `CommandActionMapper.transactional_map_to_action/3` exists alongside a dedicated `AshCommanded.Commanded.Transaction` module — that is duplicated ownership of one concern (transaction boundaries) and should be resolved by deletion, not addition.
-
-## Architectural Patterns
-
-### Pattern 1: Total-order transformer list, backed by explicit `before?/after?` pairwise declarations (Q2)
-
-**What:** Spark's actual ordering algorithm (`deps/spark/lib/spark/dsl/transformer.ex:305-380`, `sort/1`) builds a `:digraph`, adds an edge `left → right` whenever `left.before?(right)` or `right.after?(left)` is true, then topologically walks it. Crucially, **this merge happens across every extension applied to the same module**, not just within AshCommanded's own list (`deps/spark/lib/spark/dsl.ex:470-473`: `extensions |> Enum.flat_map(& &1.transformers()) |> Transformer.sort()`). If a resource has both `AshCommanded.Dsl` and, say, `AshPostgres.DataLayer` or a future extension applied, all of their transformers land in one digraph together.
-
-**When to use:** every transformer that reads data another transformer writes (which, in a codegen pipeline, is nearly all of them) must declare its dependency explicitly via `after?/1` — never rely on the transformer's position in the `transformers:` list of `use Spark.Dsl.Extension`.
-
-**Trade-offs:** explicit `after?/before?` is more boilerplate per transformer, but it is the only mechanism that survives (a) reordering the list, (b) another extension being added to the same resource, (c) a future contributor adding a transformer in the "wrong" list position.
-
-**Failure modes, verified from the sort algorithm itself:**
-
-1. **Silent tie-break by original list position, not an error.** `walk_rest/3` (`transformer.ex:351-379`) first looks for a vertex with no in-edges (a valid "ready to run" transformer); if none exists (every remaining transformer has *something* depending on it, i.e. a true cycle among 3+ nodes), it falls back to picking whichever vertex has the smallest index in the *original, unsorted* transformer list and force-removes it from the graph. **A genuine ordering cycle across ≥3 transformers does not raise a compile error — it silently resolves to an order controlled by an accident of list position**, which can then produce a working build today and a subtly-wrong one after an unrelated file is reordered. This is the sharpest failure mode to guard against with tests, not just declarations.
-2. **Contradictory pairwise declarations are explicitly tolerated, not rejected.** If `A.before?(B)` and `A.after?(B)` are both true (or, symmetrically, `B` claims both about `A`), the algorithm's `cond do left_before_right? && left_after_right? -> :ok` branch (`transformer.ex:325-327`) just does nothing — no edge, no error, no warning. The comment in the source calls this out directly: *"some modules have `def after?(_), do: true` … Same with `def before?(_), do: true"* — i.e. a common but sloppy pattern (declare "I go after everything, unless it also explicitly goes after me") that Spark deliberately allows to no-op rather than reject.
-3. **Errors from `transform/1` itself abort the whole compile with a raised `Spark.Error.DslError`, attributed to the calling module** (`extension.ex:726-741`) — this is well-behaved and not a hazard, but means a transformer that raises instead of returning `{:error, _}` loses the nice `DslError` formatting.
-
-**Current-codebase evidence this is already a live risk, not theoretical (grep of every `before?/after?` in `lib/commanded/transformers/*.ex`):**
-
-- `CollectParameterTransforms.after?/1` and `CollectParameterValidations.after?/1` both declare `after?(AshCommanded.Commanded.Transformers.ExtractCommands), do: true` — **`ExtractCommands` does not exist anywhere in the codebase and is not in the `transformers:` list in `dsl.ex`.** This `after?` clause is dead: since `ExtractCommands` is never in the sorted set, the edge is never added, and these two transformers' *actual* ordering is determined purely by list position in `dsl.ex` (they happen to already be listed first, so this has not yet caused a bug — but it is exactly the fragile-by-accident state Pattern 1 warns against).
-- Only 7 of the 13 registered transformers declare any `before?/after?` at all (`GenerateCommandModules`, `GenerateEventModules`, `GenerateAggregateModule`, `GenerateEventHandlerModules`, `GenerateProjectionModules`, `GenerateProjectorModules`, `GenerateDomainRouterModule`, `GenerateMainRouterModule`, `GenerateCommandedApplication` — the last only declares `after?(GenerateMainRouterModule)`, nothing about the resource-level transformers it actually depends on). `CollectTransactionOptions` declares neither.
-- The existing `lib/commanded/transformers/transformer_order.md` (read as required reading) already identifies this gap in 2024-era notes ("As we add more transformers, we should consider these dependencies…") but the plan was never carried out for most transformers.
-
-**Convention this project should adopt for its 13+ transformers:** don't hand-declare a sparse pairwise graph — declare a single canonical stage list once (e.g. in a shared `AshCommanded.Commanded.Transformers.Order` module: `@order [CollectParameterTransforms, CollectParameterValidations, CollectTransactionOptions, GenerateCommandModules, GenerateEventModules, GenerateProjectionModules, GenerateProjectorModules, GenerateEventHandlerModules, GenerateAggregateModule, GenerateDomainRouterModule, GenerateMainRouterModule]`) and generate every transformer's `after?/1` from "everything earlier in `@order`" via a shared `use` macro, rather than writing 13 bespoke `after?` bodies by hand. This turns "sparse, easy to leave stale" into "total order, mechanically derived," and directly fixes the dead `ExtractCommands` reference by construction (it can't reference a name that isn't in the canonical list).
-
-### Pattern 2: Resource-owns-its-DSL, Domain-reads-downward-only (Q3)
-
-**What:** the correct shape for the Resource/Domain split already underway on `fix-application-generation` is a strict one-directional dependency: **Domain transformers may read Resource DSL state; Resource transformers must never read Domain DSL state.** This is not a stylistic preference — it is what keeps the compile graph acyclic.
-
-- **Safe direction, verified:** `Ash.Domain.Info.resources/1` (`deps/ash/lib/ash/domain/info.ex:16-19`) is `Extension.get_entities([:resources]) |> Enum.map(& &1.resource)` — reading the *domain's own* already-parsed `resources do resource Foo end` entities. This is a compile-time-safe, zero-risk read because it never leaves the current module's `dsl_state` map. Historically Ash needed `Ash.Domain.Info.depend_on_resources/1` (a macro that force-`Code.ensure_compiled!/1`'d every listed resource) to make this safe to *combine with a subsequent per-resource call*; that macro is now `@deprecated "... This macro is no longer necessary"` (`deps/ash/lib/ash/domain/info.ex:187-189`) because Ash's `resource Foo` entity parsing itself now establishes `Foo` as a compile-time dependency of the domain (via alias expansion / `Spark.Dsl.Extension.expand_alias`), so by the time a domain transformer runs, every resource named in its `resources do end` block is guaranteed already compiled.
-- **What that licenses AshCommanded to do:** `GenerateCommandedApplication` (a domain transformer) may safely call `Ash.Domain.Info.resources(dsl_state)` to enumerate resource atoms, and then, for each one, call `Spark.Dsl.Extension.get_entities(resource_atom, [:commanded, :events])` / `[:commanded, :commands]` etc. — this is the correct way to auto-discover projectors/events across a domain's resources (directly addressing the open TODO at `generate_commanded_application.ex:115`). It works *because* the compile-order edge (resource before domain) already exists for free through Ash's own `resources` section.
-- **What must never happen:** a **Resource**-level AshCommanded transformer (anything registered in `dsl.ex`, not `domain_dsl.ex`) must never call `Ash.Domain.Info` functions, or `AshCommanded.Commanded.DomainDsl.Info` functions, against its own domain during its own compilation. Doing so creates the reverse edge (resource needs domain compiled) on top of the edge that already exists (domain needs resource compiled) — a genuine cycle. Concretely: today, `AshCommanded.Commanded.Dsl.application/1` (in `dsl.ex`) reads `[:commanded, :application]` off of *whatever module's* `dsl_state` is passed to it — as long as resource-level generated code (e.g. inside `GenerateAggregateModule` or `GenerateDomainRouterModule`) only ever calls this function with its **own** `dsl_state` (which is what "resource declares nothing about the domain except the bare atom `domain: MyApp.Domain`" implies), there is no cycle today. This constraint should be written down (in `AGENTS.md`/module docs) as an explicit rule, because it is easy to violate accidentally once someone wants "the resource's generated router to know the domain's event store module" and reaches for `Ash.Resource.Info.domain(resource) |> AshCommanded.Commanded.DomainDsl.Info.event_store()` inside a *resource* transformer.
-- **A more defensive alternative some Ash extensions choose instead:** `AshGraphql` does not put its cross-resource aggregation inside a `Domain` transformer at all. It has domain-level DSL entities for GraphQL-specific config, but the actual schema assembly (`AshGraphql.schemas/0`, `AshGraphql.Codegen`) runs in a **third, separately-compiled module** that the user writes explicitly (`use AshGraphql, domains: [MyApp.Domain1, MyApp.Domain2]` inside their own `MyApp.Schema` module, which by definition compiles after both domains and resources) — see `deps/ash_graphql/lib/ash_graphql.ex:131`, `resource/resource.ex:4247`, `domain/verifiers/verify_subscription_pubsub.ex:46`, all of which call `Ash.Domain.Info.resources/1` from *outside* any Domain-DSL transformer. This sidesteps the domain-transformer-reaches-into-resources hazard entirely by pushing the aggregation to a point in compilation guaranteed to be after everything else. **AshCommanded's `GenerateCommandedApplication` doing this work inside the domain's own transformer pipeline is more fragile than AshGraphQL's approach**, even though it currently works — it is worth at minimum a compile-order integration test (a domain + several resources compiled together, asserting the generated `Application`/router modules see every resource's projectors) to catch regressions, and worth considering, if the auto-discovery TODO proves troublesome, moving it to an explicit "assemble after everything" step analogous to AshGraphQL's pattern.
-
-### Pattern 3: Codegen only where the *runtime* library needs a named module implementing a real behaviour (Q4)
-
-**What, with the actual trade-off argued rather than asserted:**
-
-Two strategies exist in the wild for "the DSL should produce code":
-
-1. **`quote` + `Module.create/3` at compile time** (what AshCommanded already does, and what `AshOban` does for exactly the same reason).
-2. **Source-file generation via Igniter/Sourceror**, writing real `.ex` files to disk that the user then owns/edits/commits.
-
-**Evidence for which the Ash ecosystem actually uses for *this* kind of problem:**
-
-- `AshOban.Transformers.DefineActionWorkers` (`deps/ash_oban/lib/transformers/define_action_workers.ex:35-75`) does exactly what `GenerateAggregateModule` does: builds a module name from the resource + trigger name, then `Module.create(worker_module_name, quote do use Oban.Worker, ...; def perform(...) do ... end end, ...)`. The reason is structural, not stylistic: **`Oban.Worker` and `Commanded.Aggregate`/`Commanded.Commands.Router` are behaviours owned by a *different* runtime library, which dispatches to modules by name and expects them to export specific callbacks (`perform/1`, `execute/2`, `apply/2`).** There is no way to satisfy "Commanded calls `MyApp.UserAggregate.execute/2`" without a real, named, compiled module existing — an anonymous function or a data structure cannot stand in for it. Codegen here isn't a style choice, it's a hard requirement imposed by the library being integrated.
-- `AshStateMachine` (`deps/ash_state_machine/lib/`, all 16 files checked — **zero occurrences of `Module.create`**) takes the opposite approach for a different reason: state-machine behavior is expressed entirely through **existing Ash extension points** (`Ash.Resource.Change`, `Ash.Resource.Validation` modules provided by the library, parameterized at runtime by reading the DSL via `AshStateMachine.Info` — no new module needs to exist per resource, because Ash's own action pipeline is the "runtime dispatcher," and it already accepts data-configured changes/validations. No codegen is needed because nothing *external* to Ash requires a named module.
-- `AshGraphql` also generates **no modules per resource**. Types are registered as data inside the single, user-written `Absinthe.Schema` module via macros expanded at that module's own compile time (`object`, `field`, etc., called from inside `use AshGraphql`'s expansion) — again because Absinthe's own compile-time macros are the dispatch mechanism, and one already-compiling module can absorb arbitrarily many type definitions without needing N separate modules.
-
-**The actual trade-off, argued:**
-
-| | `quote` + `Module.create/3` (compile time) | Igniter/Sourceror-generated source files |
+| Library | Source | Depth |
 | --- | --- | --- |
-| Satisfies "Commanded needs a real named module with `execute/2`/`apply/2`" | Yes, directly — `Module.create/3` produces exactly this | Also yes, but only *after* the user runs a generator step and the file is compiled normally |
-| Debuggability / stack traces | `location: :keep` (used in both AshCommanded's and AshOban's generators) makes stack traces point at the **DSL declaration site** (the `commanded do ... end` block), not a synthetic file — this is usually *better* for the DSL author's own errors, but worse when the bug is in the *generated logic itself*, since there's no real file to open and set a breakpoint in | Stack traces point at a real file on disk the user can open, edit, and set breakpoints in directly |
-| Dialyzer | Generated modules exist as real `.beam` files at the same point in the pipeline either way — Dialyzer sees both identically once compiled. No difference here, contrary to a common assumption. | Same |
-| ExDoc / `@moduledoc`/`@doc` | Fully supported — both `AshCommanded.GenerateAggregateModule` and `AshOban`'s worker generator `unquote` real `@moduledoc`/`@doc` strings built from DSL data (verified: `generate_aggregate_module.ex:210` sets `@moduledoc unquote(moduledoc)`) | Also fully supported, no difference |
-| Developer inspection before compiling | None — the user cannot see the generated code without adding tooling (`IEx.Helpers.` introspection, or a debug flag that prints the quoted AST) | The user can `git diff` the generated file before/after a DSL change |
-| Keeping generated code in sync with DSL edits | Automatic — recompiling the resource regenerates the module; no drift is possible | Requires the user to re-run the generator and reconcile; drift (stale generated file vs. current DSL) is a real, reported failure mode of Igniter-based codegen in other ecosystems |
-| Appropriate when... | The generated artifact is *pure derived data* the user should never hand-edit (this describes 100% of what AshCommanded currently generates: command/event structs, aggregate execute/apply clauses, routers) | The generated artifact is a *starting point* the user is expected to customize afterward (an Igniter installer scaffolding a new resource file, a mix task like `ash_authentication.add_strategy` — not the recurring, DSL-driven regeneration this library needs) |
+| `ash` 3.5.8 | `work/core/deps/ash` | `domain/dsl.ex`, `resource/dsl.ex` (compile-dependency schema) |
+| `ash_graphql` (current, via `work/core` lockfile) | `work/core/deps/ash_graphql` | `domain/domain.ex`, `domain/info.ex`, `resource/info.ex`, `ash_graphql.ex`, transformers/verifiers, `test/verify_field_references_test.exs` (GitHub) |
+| `ash_authentication` (current) | `work/core/deps/ash_authentication` | `token_resource/transformer.ex` (entity-injection pattern) |
+| `ash_postgres` (current) | `work/core/deps/ash_postgres` | directory layout, migration/snapshot machinery |
+| `ash_json_api` (main branch) | GitHub via `gh api repos/ash-project/ash_json_api` | `domain/info.ex`, `domain/transformers/set_base_routes.ex`, `lib/ash_json_api/router.ex` |
+| `ash_oban` (main branch) | GitHub via `gh api repos/ash-project/ash_oban` | `lib/transformers/define_action_workers.ex` |
+| `reactor` (current) | `work/core/deps/reactor` | `reactor.ex`, `reactor/info.ex`, `reactor/builder.ex`, directory tree (non-Ash Spark DSL) |
+| `spark` 2.7.2 | `work/core/deps/spark` | `dsl.ex`, `dsl/extension.ex`, `dsl/transformer.ex`, `dsl/extension/entity_option.ex`, `info_generator.ex`, `test.ex` |
+| `commanded` 1.4.11 | `work/core/deps/commanded` (== AshCommanded's own `deps/commanded`) | `commands/router.ex`, `event/handler.ex`, `application.ex` — the three `__using__` macros AshCommanded's own generators already lean on |
 
-**Recommendation, with the "why":** keep `quote` + `Module.create/3` as the code-generation strategy for everything Commanded needs as a real dispatchable module (commands, events, aggregates, routers, the `Commanded.Application`) — this matches both what AshCommanded already does and the closest real precedent (`AshOban`), and is justified because Commanded, like Oban, requires named modules implementing its own behaviours. Reserve Igniter/Sourceror for what the project already lists as separate scope: **installer tasks** (`mix ash_commanded.install`, analogous to `ash_authentication.add_strategy` at `deps/ash_authentication/lib/mix/tasks/ash_authentication.add_strategy.ex`) that scaffold a *starting* resource file for a human to edit — never for the recurring aggregate/router/event generation itself. Do not introduce Igniter-based generation for the DSL-driven modules; it would be strictly worse on every axis in the table above for artifacts the user is never meant to hand-edit.
+`ash_phoenix` was checked for relevance and found not to add anything beyond what `ash_graphql`
+already establishes (it wraps changesets for LiveView forms; it does not generate Commanded-shaped
+modules). AshOban and AshJsonApi were not available locally and were fetched from GitHub directly;
+treat their citations as MEDIUM confidence relative to the HIGH confidence of the locally-compiled,
+version-pinned libraries, though nothing found from them was surprising or load-bearing on its own —
+they corroborate patterns already established from local sources.
 
-### Pattern 4: Escape hatches as typed schema options, not ad hoc `case`/`is_function` checks (Q5)
+---
 
-**What, with concrete source references:**
+## 1. The `__using__` front door pattern
 
-Spark's option validator (`Spark.Options`, `deps/spark/lib/spark/options/options.ex`) has first-class types built exactly for "let the user drop into hand-written code":
+### The precedent AshCommanded already depends on
 
-- **`{:behaviour, SomeBehaviour}`** (`options.ex:226`) — validates that the given value is a module implementing `SomeBehaviour`. Used by `AshEvents.EventLog`'s `event_log` section for `clear_records_for_replay: [type: {:behaviour, AshEvents.ClearRecordsForReplay}]` and `advisory_lock_key_generator: [type: {:behaviour, AshEvents.AdvisoryLockKeyGenerator}, default: AshEvents.AdvisoryLockKeyGenerator.Default]` (`deps/ash_events/lib/event_log/event_log.ex:98-109`) — note the pattern of **shipping a sensible default implementation module alongside the behaviour**, so the escape hatch only needs to be reached for when the default is wrong.
-- **`{:spark_behaviour, Behaviour}`** (`options.ex:218`, validated at `options.ex:1406-1438`) — like `{:behaviour, _}` but additionally accepts `{module, opts}` tuples (`validate_type({:spark_behaviour, module}, key, {module, opts})`), i.e. "a module, optionally parameterized with its own options at the DSL call site." This is the idiomatic shape for AshCommanded's existing pluggable snapshot adapter (`snapshot_store`) and would also be the correct type for a pluggable middleware entry, rather than accepting a bare atom and hand-validating it.
-- **`{:spark_function_behaviour, Behaviour, {FunctionWrapperModule, arity}}`** (`options.ex:222`) — accepts *either* a module implementing `Behaviour`, *or* a bare anonymous function of the given arity, which Spark auto-wraps into a synthetic module implementing `Behaviour` on the caller's behalf via `FunctionWrapperModule`. This is the exact, already-half-implemented shape of AshCommanded's `projection :x do changes(fn event -> ... end) end` and `event_handlers`' `action fn event, _metadata -> ... end` — currently these are validated ad hoc rather than through this Spark primitive, meaning they get none of the automatic elixir_sense/autocomplete support Spark provides for real uses of this type.
+AshCommanded's own generators for events handlers, routers and the application already delegate to
+Commanded's `__using__` macros. Reading them directly (not just knowing they exist) shows the exact
+shape a well-designed `__using__/1` takes, and it is the same shape three times over:
 
-**Concrete pattern to adopt:** every DSL option in AshCommanded that currently accepts "a function OR a module" via hand-rolled `is_function/is_atom` branching (projection `changes`, event handler `action`, command `param_mapping`, middleware entries, snapshot adapter) should be re-typed through `{:spark_behaviour, _}` or `{:spark_function_behaviour, _, _}` in its `schema/0`. This is not a new capability — it changes *where* the escape-hatch validation logic lives, from bespoke code scattered across `Projection`, `EventHandler`, `CommandActionMapper`, and `ParameterTransformer`, to one declarative line in each entity's schema, gaining consistent error messages and doc generation for free.
+**`Commanded.Commands.Router`** (`deps/commanded/lib/commanded/commands/router.ex:230-272`):
 
-## Data Flow
-
-### Compile-time flow (DSL → generated modules)
-
-```text
-User's `commanded do ... end` block
-    ↓ (Entity.build/struct construction, immediate, per-entity validation only)
-dsl_state map: [:commanded, :commands] → [%Command{}, ...], etc.
-    ↓ (Collect* transformers — pure reads + `persist/3` writes; no codegen)
-CollectParameterTransforms / CollectParameterValidations / CollectTransactionOptions
-    ↓ (Generate* transformers — reads dsl_state, calls Module.create/3 as a *side effect*,
-    ↓  then persists e.g. the generated module name back into dsl_state for the next stage)
-GenerateCommandModules → GenerateEventModules → GenerateProjectionModules →
-GenerateProjectorModules → GenerateEventHandlerModules → GenerateAggregateModule →
-GenerateDomainRouterModule → GenerateMainRouterModule → GenerateCommandedApplication
-    ↓ (Verifiers — read-only, no dsl_state mutation, all run after the last transformer)
-ValidateCommandFields / ValidateCommandNames / ValidateEventFields / ... (9 total)
-    ↓
-Resource/Domain module finishes compiling; generated modules exist as real .beam files
+```elixir
+defmacro __using__(opts) do
+  quote do
+    import unquote(__MODULE__)
+    @before_compile unquote(__MODULE__)
+    @behaviour Router
+    Module.register_attribute(__MODULE__, :registered_commands, accumulate: true)
+    Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
+    Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
+    @default_dispatch_opts [...]
+    @default_middleware [...]
+    @registered_identities %{}
+  end
+end
 ```
 
-**Direction is one-way and append-only within a single resource's compilation:** every transformer only ever reads what an earlier transformer wrote into the same `dsl_state` map (via `persist/3` or `add_entity/replace_entity`) — there is no "later transformer changes earlier transformer's output" pattern anywhere in Spark, by construction (`transform/1` always receives and returns the *whole* map, threaded through `Enum.reduce_while`).
+The body of the `use`-ing module then calls plain macros (`dispatch`, `identify`, `middleware`)
+which do nothing but `@registered_commands {command_module, opts}` — accumulate into a module
+attribute. All the real work happens in `__before_compile__/1`
+(`router.ex:497-535`), which runs once, after the accumulation is complete, and materializes ONE
+small `defp do_dispatch(%@command_module{} = command, opts)` clause per registered command:
 
-**Cross-module direction (the Domain/Resource split, Q3) is strictly downward:** Domain transformers may read Resource dsl_state (via the compiled-module form of `get_entities/2`, after Ash's own `resources do resource Foo end` parsing has already forced compile ordering); Resource transformers must never read Domain dsl_state. See Pattern 2 above for the concrete hazard if this is violated.
-
-### Runtime flow (command dispatch)
-
-```text
-Command struct built by user code
-    ↓
-Router.dispatch/1  (generated by GenerateDomainRouterModule / GenerateMainRouterModule)
-    ↓
-Middleware chain (CommandMiddlewareProcessor → user-declared middleware, in declared order)
-    ↓
-CommandActionMapper.map_to_action/4
-    ↓ (param transform via ParameterTransformer, validation via ParameterValidator)
-Ash action execution (optionally wrapped by Transaction)
-    ↓
-{:ok, record} or {:error, Error.t()}
+```elixir
+defmacro __before_compile__(_env) do
+  quote generated: true do
+    def __registered_commands__ do
+      Enum.map(@registered_commands, fn {command_module, _opts} -> command_module end)
+    end
+    ...
+    for {command_module, command_opts} <- @registered_commands do
+      @aggregate Keyword.fetch!(command_opts, :aggregate)
+      @command_module command_module
+      defp do_dispatch(%@command_module{} = command, opts) do
+        alias Commanded.Commands.Dispatcher
+        ...
+        Dispatcher.dispatch(%Payload{...})
+      end
+    end
+  end
+end
 ```
 
-This runtime path is orthogonal to the compile-time flow above — it only depends on the *generated modules*, not on `dsl_state`, which no longer exists at runtime except through the persisted `entities/1`/`opt/1` accessor functions.
+This is rewrite rule #1 and #3, verbatim, in the library AshCommanded already vendors: **the
+generated clause is a pattern match on the command struct plus a handful of `@`-injected literals,
+and the entire dispatch mechanics live in `Commanded.Commands.Dispatcher`, a hand-written runtime
+module.** Nothing about consistency, retries, telemetry or timeout handling is inlined into the
+per-command clause. `Commanded.Event.Handler` (`deps/commanded/lib/commanded/event/handler.ex:695-804`)
+and `Commanded.Application` (`deps/commanded/lib/application.ex:172-`) follow the identical shape:
+`@before_compile` + `@behaviour` + `defoverridable` for the handful of callbacks a user is allowed to
+customize (`init/1`, `after_start/1`, `before_reset/0`), with everything else supplied by the macro.
 
-## Component Boundaries — decomposition of the two oversized modules (Q6)
+**Anatomy of a well-designed `__using__/1`, distilled from all three:**
 
-### `GenerateAggregateModule` (861 lines → orchestrator + 4 focused builders)
+1. `@before_compile unquote(__MODULE__)` — defers code generation from "as the body executes" to
+   "once, after the body has finished accumulating state." This is the mechanism that lets a DSL body
+   call several small macros (`dispatch`, `identify`) in any order and still produce one coherent
+   compiled artifact.
+2. `@behaviour X` — declares the contract in a way Dialyzer and the compiler can check, independent of
+   whether every callback is actually implemented (paired with `@optional_callbacks`).
+3. `Module.register_attribute(__MODULE__, :foo, accumulate: true)` — the accumulator that macros
+   called in the body write into.
+4. `defoverridable a: 1, b: 0` on a set of DEFAULT implementations supplied by `__using__` itself —
+   the same pattern as `GenServer`'s own `use GenServer` (default `handle_info/2`, `terminate/2`,
+   etc., all `defoverridable`). This is what lets a using-module override only what it cares about.
+5. Heavy logic never appears inside the `quote` block emitted by `__using__` or `__before_compile__`
+   at all — it is a plain function call into a runtime module (`Commanded.Commands.Dispatcher`,
+   `Commanded.Event.Handler.parse_config!/2`, etc.) that can be read, unit-tested and stepped through
+   without mentally expanding a macro.
 
-Reading the file's actual function boundaries (`lib/commanded/transformers/generate_aggregate_module.ex`), the seams already exist as private functions; they are simply not yet separate modules:
+### AshGraphql's variant: `__using__` as the compile-time SCHEMA ASSEMBLY point, not per-resource codegen
 
-| Current function | Lines (approx.) | Proposed home |
-| --- | --- | --- |
-| `transform/1`, `after?/1` | 82-153 | Stays in `GenerateAggregateModule` (the transformer itself — this is the only part that needs to be a `Spark.Dsl.Transformer`) |
-| `build_aggregate_module_ast/…` (moduledoc, `defstruct`, module skeleton assembly) | 161-232 | `AshCommanded.Commanded.Transformers.Aggregate.StructBuilder` — pure function: `(resource_name, fields, moduledoc) -> quoted_ast` |
-| `generate_execute_functions/4` | 232-590 (**~360 lines, 40%+ of the file**) | `AshCommanded.Commanded.Transformers.Aggregate.ExecuteClauseBuilder` — pure function: `(commands, events, command_modules, event_modules) -> [quoted_clause]`; this is the single highest-value split since it's the largest, most independently testable unit |
-| `generate_apply_functions/2` | 591-646 | `AshCommanded.Commanded.Transformers.Aggregate.ApplyClauseBuilder` |
-| `generate_snapshot_functions/1` | 647-861 (**~215 lines, another 25%**) | `AshCommanded.Commanded.Transformers.Aggregate.SnapshotClauseBuilder` — this is a genuinely separate *feature* (snapshotting) bolted onto the aggregate generator; splitting it also makes it trivial to skip entirely when `snapshotting: false`, rather than generating and then discarding dead clauses |
+`AshGraphql.__using__/1` (`deps/ash_graphql/lib/ash_graphql.ex:65-401`) is a different, and equally
+important, variant: it is not attached to a DSL-generated module at all. It is what a HUMAN writes
+(`use AshGraphql, domains: [MyApp.Accounts, MyApp.Blog]`) in their own hand-authored Absinthe schema
+module. Its body does real work directly inside `quote bind_quoted: [...]`, including
+`defmodule Module.concat([__MODULE__, domain, AshTypes])` (a nested, dynamically-named submodule
+implementing the `Absinthe.Schema.Notation` pipeline-modifier for each domain) and an
+`Enum.each(ash_resources, &Code.ensure_compiled!/1)` (line 168) that forces every resource to be a
+fully compiled module before schema assembly proceeds. This is the answer to "how does AshGraphql
+avoid the compile-order problem for domain-level artifacts" for the RUNTIME/rendering half of its
+architecture — see §3 for the compile-time-transformer half, which uses a different, narrower
+mechanism.
 
-Each builder module becomes a pure `data -> Macro.t()` function with no `Spark.Dsl.Transformer` behaviour of its own — meaning each is unit-testable with plain ExUnit assertions on the returned AST (`assert {:def, _, _} = ...` or `Macro.to_string/1` snapshot comparisons) without needing to compile a fake resource through the whole Spark pipeline. This directly serves the PROJECT.md gap "tests largely assert that transformers ran rather than that DSL misuse is rejected" — small pure builders are what make true unit tests of the *generated code shape* possible.
+### Implication for AshCommanded
 
-### `CommandActionMapper` (640 lines → orchestrator + executor family + merge into existing modules)
+AshCommanded already has three generators (event handler, router, application) that get this right
+by riding Commanded's own `__using__` macros. The ONE generator that doesn't (`GenerateAggregateModule`)
+is broken for exactly the reason PROJECT.md and LEARNINGS.md identify: **there is no
+`Commanded.Aggregates.Aggregate` behaviour or `__using__` macro to lean on**, so the fix is not to
+find one in Commanded — there isn't one — but to WRITE one, in AshCommanded's own namespace, using
+the same five-part anatomy above. §2 gives the concrete design.
 
-| Current function | Lines (approx.) | Proposed home |
-| --- | --- | --- |
-| `map_to_action/4`, `execute_action_internal/…`, `infer_action_type/1` | 94-357 | Stays as the `CommandActionMapper` orchestrator — this is the actual public API surface |
-| `transactional_map_to_action/3` | 304-333 | **Delete from here; merge into `AshCommanded.Commanded.Transaction`**, which already exists and already owns "wrap command execution in a transaction." Two modules currently share this one responsibility. |
-| `transform_params/2` (4 clauses), `safely_transform_params/2`, `safely_apply_advanced_transforms/2`, `safely_apply_preprocessor/3`, `safely_apply_postprocessor/3` | 358-434 | **Merge into `AshCommanded.Commanded.ParameterTransformer`**, which already exists (`lib/commanded/parameter_transformer.ex`) and already owns "transform command fields to action params." This is duplicated ownership, not a new boundary. |
-| `execute_create/4`, `execute_update/5`, `execute_destroy/4`, `execute_read/5`, `execute_custom/4` | 471-640 (**~170 lines, one function per Ash action type**) | `AshCommanded.Commanded.ActionExecutors.{Create,Update,Destroy,Read,Custom}` — five small modules behind a shared `AshCommanded.Commanded.ActionExecutor` behaviour (`@callback execute(resource, action_name, params, context) :: {:ok, record} or {:error, Error.t()}`). This is also the natural point to expose a`{:spark_behaviour, ActionExecutor}` escape hatch (Pattern 4) for a command that needs an execution strategy the library doesn't special-case. |
+---
 
-After this split, `command_action_mapper.ex` shrinks from 640 lines spanning five concerns to roughly 150-200 lines doing exactly one thing (map a command to the right executor and invoke it), matching the project's own 200-400-line target.
+## 2. The aggregate-shaped problem: designing `AshCommanded.Aggregate.__using__/1`
 
-## Suggested Build Order Implications
+### Precedent for "generate a module against a plain callback contract, no framework `use` macro"
 
-Sequencing that follows from everything above, for the roadmap:
+Two real precedents were found for this exact shape — a target callback contract that the underlying
+library does NOT wrap in a `use` macro, so the DSL author must supply one:
 
-1. **Land the total-order transformer convention (Pattern 1) before anything else touches `transformers/`.** Every subsequent phase (event versioning, aggregate invariants, projector auto-discovery) adds *more* transformers; retrofitting ordering discipline onto 20 transformers is much more expensive than establishing it now onto 13, and the dead `ExtractCommands` reference should be deleted or resolved as part of this same pass since it's a pre-existing correctness gap, not new work.
-2. **Land the Domain/Resource one-directional-read rule (Pattern 2) as part of finishing `fix-application-generation`**, before the projector auto-discovery TODO (`generate_commanded_application.ex:115`) is implemented — auto-discovery is precisely the feature that will tempt a reach across the resource/domain boundary, so the rule needs to exist first, ideally enforced by a verifier that rejects any resource-level transformer calling `Ash.Domain.Info`/`DomainDsl.Info` functions, or at minimum documented in `AGENTS.md` before that code is written.
-3. **Decompose `GenerateAggregateModule` and `CommandActionMapper` (Q6) before adding aggregate invariants/non-attribute state or declarative event upcasting** — both of those Active requirements extend exactly the two files that are already oversized (aggregate invariants add more `execute_clause` logic; event upcasting adds logic that belongs in `GenerateEventModules`/`ExecuteClauseBuilder`-adjacent code). Splitting first means new logic lands in a 100-200 line focused module instead of growing the existing 861/640-line files further.
-4. **Adopt `Spark.InfoGenerator` and the `{:spark_behaviour, _}}`/`{:spark_function_behaviour, _, _}` escape-hatch types (Patterns 4) opportunistically, module by module, without a dedicated phase** — these are low-risk, additive, mechanical changes (replace hand-written `Info` accessors; retype existing "function or module" options) that can ride along with whichever phase happens to touch each module, but should be done before the documented testing story and `usage_rules`/`AGENTS.md` work, since both of those need to describe the *final* escape-hatch shape, not the current ad hoc one.
-5. **Documentation generation (Q7) is a trailing, not leading, concern** — `mix spark.cheat_sheets --extensions AshCommanded.Commanded.Dsl` (the current `mix.exs` alias, `mix.exs:168`) **already omits `AshCommanded.Commanded.DomainDsl`** and will keep doing so silently until the alias is updated; this should be fixed in the same phase that lands the Domain/Resource split (item 2), not deferred to the documentation-reconciliation phase, since otherwise the domain-level `application` section will have zero generated cheat-sheet coverage for however many phases pass in between.
+1. **Elixir's own `GenServer`** (stdlib, not a dep, but definitive precedent every Elixir engineer
+   already accepts as idiomatic): `use GenServer` supplies default `init/1`, `handle_call/3`,
+   `handle_cast/2`, `handle_info/2`, `code_change/3`, `terminate/2` — all `defoverridable` — against
+   the RAW `@behaviour GenServer` callbacks, which have no inherent "use macro" at the OTP layer
+   (`:gen_server` is an Erlang behaviour, not an Elixir one). This is precisely AshCommanded's
+   situation: Commanded's aggregate is the "raw behaviour," and AshCommanded needs to be the layer
+   that adds the `use`.
+2. **`AshOban.Transformers.DefineActionWorkers`** (`ash_oban` GitHub,
+   `lib/transformers/define_action_workers.ex:60-90`) generates a *new* module per scheduled action
+   via `Module.create/3`, whose body does `use unquote(worker), priority: ..., queue: ...` (where
+   `worker` is `Oban.Worker` or `Oban.Pro.Worker`) followed by ONE `def perform(%Oban.Job{args: args})`
+   clause. Oban.Worker *does* have a `use` macro, so this isn't a no-`use`-available case, but it is
+   the most directly relevant precedent for the OTHER half of the aggregate problem: **what a
+   generated clause looks like when it needs a large amount of per-trigger configuration it does not
+   want to inline as a literal.** Rather than inlining every field of the `scheduled_action` struct
+   into the quoted body, the generated `perform/1` does:
 
-## Documentation Generation for Humans and Agents (Q7)
+   ```elixir
+   def perform(%Oban.Job{args: args} = job) do
+     scheduled_action =
+       AshOban.Info.oban_scheduled_action(unquote(resource), unquote(scheduled_action.name))
+     tenants = scheduled_action.list_tenants || AshOban.Info.oban_list_tenants!(unquote(resource))
+     ...
+   end
+   ```
 
-- **Cheat sheets** (`mix spark.cheat_sheets`, `deps/spark/lib/mix/tasks/spark.cheat_sheets.ex`) are generated *per extension module*, driven purely from `Section`/`Entity` `describe`/`schema`/`examples` metadata already present in the DSL declaration — meaning better cheat sheets are a side effect of writing better `describe:`/`examples:` fields on the existing sections, not separate documentation work. AshCommanded's `mix.exs` already wires `"gen.docs": ["spark.cheat_sheets", "docs"]` and includes the one cheat sheet file it currently generates as an ExDoc `extras:` entry (`mix.exs:84,104`) — the mechanism is sound; it just needs the second extension added once `DomainDsl` exists as its own module, and the `--extensions` flag updated to `AshCommanded.Commanded.Dsl,AshCommanded.Commanded.DomainDsl`.
-- **`usage_rules`** (the dev-only dependency already used by `core`, `~> 1.2`, per `work/core/mix.exs:84`) generates an `usage-rules.md` + `usage-rules/` directory of LLM-oriented, terse "how to use this library correctly" facts distinct from human-facing ExDoc prose — this is the mechanism the PROJECT.md Active list already earmarks ("Add `usage_rules` (dev-only) and generate LLM-facing usage rules for the library"). It is additive to, not a replacement for, cheat sheets: cheat sheets document DSL *syntax*, usage rules document *conventions and gotchas* (e.g., "never call Domain.Info from a resource transformer," "declare `after?` explicitly rather than relying on list order" — i.e., exactly the two hazards this document identifies as needing to be written down before they're forgotten).
-- **`AGENTS.md`** (also an Active PROJECT.md item) is where the transformer-ordering convention (Pattern 1) and the Domain/Resource read-direction rule (Pattern 2) belong as explicit, standing rules for future contributors and coding agents — these are exactly the two rules in this document most likely to be silently violated by someone (human or agent) adding the next transformer without reading the full history.
+   Only small, genuinely-static values (`priority`, `queue`, `max_attempts`, the resource module, the
+   trigger's `:name` atom) are `unquote`'d as literals into the `use Oban.Worker` options and the
+   `Info` lookup key. Everything structurally larger (the full trigger config, `list_tenants`,
+   `shared_context`) is fetched BACK OUT of the DSL at runtime via `AshOban.Info.oban_scheduled_action/2`
+   — a cheap keyed lookup, not a re-derivation. **This is the resolution to the tension between
+   rewrite rule #2 ("compute at macro-expansion time, unquote as literal") and the anti-pattern the
+   audit found** (six nested `:erlang.++/2` calls reassembling `[transforms: [], validations: []]` at
+   runtime in `evidence-generated-aggregate.txt:101-110`): the old code was reassembling a value that
+   was BOTH static AND already available as a literal, at runtime, for no reason. The AshOban
+   precedent shows the legitimate alternative to over-inlining is not "compute everything at
+   compile-time" — it's "compute the SMALL identifying key at compile time, and let the runtime
+   module ask the `.Info` module for the rest, once, by that key." Both are compliant with the rule;
+   re-deriving a value that is already sitting fully-formed in a variable is what the rule forbids.
 
-## Anti-Patterns
+### Concrete design: `AshCommanded.Aggregate.__using__/1`
 
-### Anti-Pattern 1: Relying on `transformers:` list order instead of `before?/after?`
+Given both precedents, the shape that fits Commanded's actual contract (`execute/2`, `apply/2`, no
+`@behaviour` in Commanded itself — confirmed in LEARNINGS.md §4: "Aggregates are plain modules with
+`execute/2` and `apply/2` — no `use` macro, no callbacks") is:
 
-**What people do:** add a new transformer to the end of the `transformers:` list in `dsl.ex`/`domain_dsl.ex` and trust that Spark preserves that order.
-**Why it's wrong:** Spark *does* preserve original list order, but only as the tie-break of last resort inside `walk_rest/3`, and only within transformers that have no declared relationship to each other. The moment another extension's transformers get merged into the same digraph (Pattern 1), or a genuine 3-way ordering cycle exists among *this* library's own transformers, list position stops being a reliable signal — and the failure is silent, not a compile error.
-**Do this instead:** every transformer that reads state another transformer writes declares `after?/1` for that specific dependency (or, per the recommended convention, generates it mechanically from one shared ordered list).
+```elixir
+defmodule AshCommanded.Aggregate do
+  @moduledoc """
+  The `__using__` front door for generated aggregate modules. Commanded has no
+  aggregate behaviour to lean on (unlike Router/EventHandler/Application, which
+  supply their own `use` macros) — this module is that missing piece, written
+  once, by hand, so every generated aggregate is thin wiring over it.
+  """
 
-### Anti-Pattern 2: A resource-level transformer or verifier reaching into its own domain's DSL state at compile time
+  @callback execute(state :: struct(), command :: struct()) ::
+              {:ok, struct()} | {:error, term()} | struct() | [struct()]
+  @callback apply(state :: struct(), event :: struct()) :: struct()
+  @optional_callbacks execute: 2
 
-**What people do:** inside a resource-level transformer (or the code it generates at compile time — not runtime), call something equivalent to `Ash.Resource.Info.domain(dsl_state) |> AshCommanded.Commanded.DomainDsl.Info.event_store()` to "know" domain-level configuration while generating resource-level code.
-**Why it's wrong:** this is the reverse of the only safe direction (Pattern 2) — Domain-reads-Resource is safe because Ash's own `resources do resource Foo end` parsing already forces `Foo` to compile before its domain; there is no equivalent mechanism forcing a Domain to compile before its Resources, so the resource transformer would be calling `Extension.get_entities(domain_atom, path)` on a module that is, at best, not yet compiled, and at worst mid-compilation on another module in a genuine cycle with this one.
-**Do this instead:** resource-level generated code that needs domain-level facts (event store module, application module name) should resolve them **at runtime** via `Ash.Resource.Info.domain(resource)` (which only needs the domain *atom*, not its compiled DSL state) followed by a plain, static naming convention (e.g. `Module.concat([domain, "Application"])`) rather than a compile-time DSL introspection call — exactly mirroring how the existing generated routers already reference `<DomainPrefix>.Router`/`<AppPrefix>.Router` by convention rather than by reading domain DSL state from inside resource compilation.
+  defmacro __using__(opts) do
+    resource = Keyword.fetch!(opts, :resource)
 
-### Anti-Pattern 3: Growing `GenerateAggregateModule`/`CommandActionMapper` further instead of splitting first
+    quote location: :keep, bind_quoted: [resource: resource] do
+      @before_compile AshCommanded.Aggregate
+      @behaviour AshCommanded.Aggregate
+      @ash_commanded_resource resource
 
-**What people do:** add aggregate invariants, non-attribute state, or event upcasting logic as more clauses inside the existing 861-line `generate_execute_functions/4` or more branches inside the existing 640-line `CommandActionMapper`.
-**Why it's wrong:** both files already mix 4-5 independently-testable concerns in one module (Q6); adding more logic to the biggest existing function in each file compounds the exact debt PROJECT.md already flags, and makes the eventual split strictly harder (more entangled state, more call sites to update at once).
-**Do this instead:** split first (see Component Boundaries above), then add new logic to the newly-focused module it actually belongs to (aggregate invariants → `ExecuteClauseBuilder`; event upcasting → likely a new `GenerateEventModules`-adjacent concern, not `GenerateAggregateModule` at all).
+      import AshCommanded.Aggregate, only: [command: 2, command: 3]
+      Module.register_attribute(__MODULE__, :ash_commanded_commands, accumulate: true)
 
-## Integration Points
+      @doc false
+      def __ash_commanded_resource__, do: @ash_commanded_resource
+    end
+  end
 
-### External Libraries
+  @doc "Declares one command→event mapping. Called from the DSL-generated module body."
+  defmacro command(command_module, event_module, opts \\ []) do
+    quote do
+      @ash_commanded_commands {unquote(command_module), unquote(event_module), unquote(opts)}
+    end
+  end
 
-| Library | Integration Pattern | Notes |
-| --------- | --------------------- | ------- |
-| Commanded 1.4.8 | Generated modules (`Aggregate`, `Router`, `Application`) implement Commanded's own behaviours/macros directly — Commanded is the reason codegen (Pattern 3) is required at all | Version-pinned; any Commanded API change to `execute/2`/`apply/2` shapes ripples into `ExecuteClauseBuilder`/`ApplyClauseBuilder` |
-| Ash 3.x | AshCommanded's resource extension is *one of potentially several* extensions on the same `Ash.Resource` — its transformers are merged into Ash's own global sort (Pattern 1); generated code calls Ash actions via `Ash.Changeset`/`Ash.create`/etc. | Never assume AshCommanded's transformers are the only ones running against a given resource |
-| Spark 2.3.x/2.4.x | The entire DSL/transformer/verifier/entity mechanism | Locally verified against Spark 2.4.1; API used (`Extension`, `Transformer`, `Verifier`, `Entity`, `Section`, `InfoGenerator`, `Options` types) is stable across 2.3.x–2.4.x |
+  defmacro __before_compile__(_env) do
+    quote generated: true do
+      resource = @ash_commanded_resource
 
-### Internal Boundaries
+      for {command_module, event_module, _opts} <- @ash_commanded_commands do
+        def execute(%__MODULE__{} = state, %unquote(command_module){} = command) do
+          # Small, resource-scoped runtime lookup — NOT a re-derivation of a
+          # literal that was already known. See AshOban precedent above.
+          config = AshCommanded.Aggregate.Info.command(unquote(resource), unquote(command_module))
+          AshCommanded.Aggregate.Runtime.execute(state, command, unquote(event_module), config)
+        end
+      end
 
-| Boundary | Communication | Notes |
-| ---------- | --------------- | ------- |
-| Resource DSL ↔ Domain DSL | One-directional: Domain transformers read Resource `dsl_state` via `Ash.Domain.Info.resources/1` + `Spark.Dsl.Extension.get_entities/2`; never the reverse (Pattern 2, Anti-Pattern 2) | This is the single most important boundary in the whole library and the one most likely to be violated by a future contributor solving "the resource needs to know its domain's event store" |
-| Transformers ↔ Verifiers | Transformers run first and may mutate `dsl_state`; verifiers run after all transformers, are read-only, and have no defined ordering relative to each other unless declared | Don't put correctness-affecting logic in verifier order; verifiers should be independent of each other |
-| `CommandActionMapper` ↔ `ParameterTransformer` / `Transaction` | Currently overlapping (duplicated `transform_params`/`transactional_map_to_action` logic); should become strictly "CommandActionMapper delegates to, never duplicates, these two modules" (Component Boundaries, Q6) | Fix as part of the decomposition, not a separate effort |
+      def apply(%__MODULE__{} = state, event) do
+        AshCommanded.Aggregate.Runtime.apply(state, event)
+      end
+
+      defoverridable execute: 2, apply: 2
+    end
+  end
+end
+```
+
+What this buys, compared to the 333-line rendered artifact in `evidence-generated-aggregate.txt`:
+
+- The generated `execute/2` clause is one pattern match plus TWO function calls — comparable in size
+  to Commanded's own `do_dispatch/2` clause, and structurally identical to it.
+- `AshCommanded.Aggregate.Runtime` (a plain, hand-written, unit-testable module — analogous to
+  `Commanded.Commands.Dispatcher`) owns identity checking, middleware invocation, snapshot threshold
+  logic, and error wrapping — everything that used to be inlined per-clause in
+  `generate_aggregate_module.ex`'s 225-line `quote` block.
+- `AshCommanded.Aggregate.Info.command/2` (a `.Info` module, see §5) is the ONE place that knows how
+  to look up per-command configuration (`transforms`, `validations`, identity field) — by resource and
+  command module, at runtime, cheaply. No six-deep `:erlang.++/2` concatenation of empty lists is ever
+  emitted, because nothing is being reassembled: it's a single map/struct lookup.
+- `defoverridable execute: 2, apply: 2` means a resource author can hand-write a clause for one
+  command (an escape hatch for genuinely bespoke aggregate logic) without losing the generated
+  clauses for every other command — exactly the `GenServer` pattern.
+
+**What belongs where:**
+
+| Concern | Lives in |
+| --- | --- |
+| Per-command dispatch clause shape (`execute/2` matching on command struct) | Generated aggregate module (`Module.create/3` output), via `AshCommanded.Aggregate.__using__/1` + `__before_compile__/1` |
+| Identity checks, middleware pipeline invocation, event construction, error wrapping | `AshCommanded.Aggregate.Runtime` — hand-written, plain module, unit-testable with no macro expansion involved |
+| "What are this resource's commands/events/config" | `AshCommanded.Aggregate.Info` — reads persisted DSL state (see §5); this is what replaces the runtime `:erlang.++` reconstruction |
+| Snapshot threshold/version logic | A third hand-written module (`AshCommanded.Aggregate.Snapshotting`, given LEARNINGS.md's finding that Commanded's real snapshotting is `Commanded.Snapshotting`, an internal, non-pluggable mechanism configured via a plain map — not a behaviour AshCommanded needs to satisfy per-aggregate at all) |
+| Struct definition (`defstruct`, `@type t`) | Generated, same as today — this part of the old generator was never the problem |
+
+---
+
+## 3. Domain-aggregates-resources: the exact mechanism, with the compile-order answer
+
+This is the highest-value section: it explains precisely why the old `GenerateCommandedApplication` /
+`GenerateMainRouterModule` / `GenerateDomainRouterModule` fail, and gives an implementable fix backed
+by Spark's own compile-time-dependency machinery — not a workaround, the INTENDED mechanism.
+
+### Three real precedents, and they are not identical
+
+**AshGraphql** (queries/mutations/subscriptions declared AT THE DOMAIN LEVEL): the domain-level
+`queries`/`mutations` sections (`deps/ash_graphql/lib/domain/domain.ex:20-32`) reuse the SAME entity
+definitions as the resource-level ones, but with `resource` prepended as an explicit DSL ARGUMENT,
+typed `{:spark, Ash.Resource}` (`domain.ex:27-28`):
+
+```elixir
+schema: Keyword.put(&1.schema, :resource, type: {:spark, Ash.Resource}, doc: "...")
+```
+
+Every validating transformer that reads these back (`AshGraphql.Domain.Transformers.ValidateActions`,
+`AshGraphql.Domain.Transformers.RequireKeysetForRelayQueries`,
+`deps/ash_graphql/lib/domain/transformers/validate_actions.ex:12`,
+`require_keyset_for_relay_queries.ex:12`) declares `def after_compile?, do: true`. This defers their
+execution from ordinary compile-time (which runs `@extensions |> ... |> Enum.reject(& &1.after_compile?())`,
+`deps/spark/lib/spark/dsl/extension.ex:698`) to Elixir's `@after_verify` hook
+(`deps/spark/lib/spark/dsl.ex:457-474`), which fires only once ALL modules in the compilation unit
+have finished generating bytecode — the built-in Elixir mechanism specifically designed to let a
+module inspect ANOTHER module's exported functions without creating a hard compile-time dependency
+(and therefore without risking a cycle). These transformers exist for VALIDATION (raising
+`Spark.Error.DslError` if an action doesn't exist), not for building the artifact itself.
+
+The actual SCHEMA ASSEMBLY (the domain-spanning artifact) happens in a completely different place: a
+THIRD, hand-written module (`use AshGraphql, domains: [...]`, see §1) whose `__using__` runs when
+THAT module compiles — ordinary Elixir file-compile order, forced explicit by
+`Enum.each(ash_resources, &Code.ensure_compiled!/1)` (`ash_graphql.ex:168`). AshGraphql sidesteps the
+domain-reads-resources compile-order problem for its primary artifact by NOT building it inside any
+Ash.Domain/Ash.Resource transformer at all.
+
+**AshJsonApi** (routes declared per-resource, domain only carries a `router:` option and top-level
+`base_route`s): `AshJsonApi.Router.__using__/1` (`lib/ash_json_api/router.ex`, fetched from GitHub)
+is written by the human, exactly like AshGraphql's schema module, and its `formatted_routes/1`
+function walks `router.domains() |> Enum.flat_map(&Ash.Domain.Info.resources/1) |> Enum.flat_map(fn
+resource -> AshJsonApi.Resource.Info.routes(resource) end)` — but crucially this function runs at
+RUNTIME (called by `mix phx.routes` tooling and by `verified_route?/2`), not at compile time, and
+actual HTTP dispatch is NOT compiled into per-route function clauses at all: `plug(:dispatch)` /
+`match(_, to: AshJsonApi.Controllers.Router, init_opts: @opts)` forwards every request to one generic
+controller that resolves domain/resource/route by inspecting the request path against
+`Ash.Domain.Info.resources/1` + `AshJsonApi.Resource.Info.routes/1` on demand. AshJsonApi avoids the
+domain-reads-resources compile-order problem entirely for routing: there IS no compile-time-generated
+domain router artifact. `AshJsonApi.Domain.Transformers.SetBaseRoutes`
+(`domain/transformers/set_base_routes.ex`) is the one domain-level transformer that DOES read
+resource-adjacent state at ordinary (non-`after_compile?`) compile time — but note what it reads: it
+flattens `AshJsonApi.Domain.Info.routes(dsl)`, i.e., entities declared ON THE DOMAIN'S OWN dsl_state
+(`base_route`/`route` blocks), not another module's persisted state. It never needs to reach into a
+resource module at transform time.
+
+**AshOban** sidesteps the problem a third way: `domain` is a plain DSL OPTION persisted directly on
+the SAME resource the trigger/scheduled_action is declared on
+(`AshOban.Info.oban_domain!(dsl)` in `define_action_workers.ex:41` reads the CURRENT dsl, not a
+cross-module one). There is no cross-resource aggregation step for AshOban's worker generation at all.
+
+### The mechanism that actually resolves AshCommanded's problem
+
+None of the three examples above needed to reach into ANOTHER module's persisted DSL state at
+ordinary transform time — which is exactly what AshCommanded's router generation needs to do (combine
+per-resource command→aggregate mappings into ONE domain-level Commanded router). The tool for that
+case exists in Spark and Ash already uses it, just not where you'd read the generator names to expect:
+
+**`Ash.Domain.Dsl`'s own `resources` section forces a genuine, asymmetric compile-time dependency.**
+Read directly at `deps/ash/lib/ash/domain/dsl.ex:134-157`:
+
+```elixir
+@resource %Spark.Dsl.Entity{
+  name: :resource,
+  target: ResourceReference,
+  args: [:resource],
+  modules: [],
+  schema: [
+    resource: [type: {:spark, Ash.Resource}, required: true],
+    ...
+  ]
+}
+```
+
+There is NO `no_depend_modules: [:resource]` override here. Contrast with
+`deps/ash/lib/ash/resource/dsl.ex:1089`, the resource's OWN `code_interface` section, which declares
+its `domain:` back-reference with `no_depend_modules: [:domain]` explicitly, specifically to avoid the
+reverse edge (a resource that named its domain would otherwise force the domain to compile first,
+creating exactly the cycle a naive reading might expect).
+
+**What `type: {:spark, Ash.Resource}` without the opt-out actually does**, traced to
+`deps/spark/lib/spark/dsl/extension/entity_option.ex:8-31` and
+`deps/spark/lib/spark/dsl/extension.ex:1716-1728`: any DSL argument typed as a module is passed
+through `Spark.Dsl.Extension.expand_alias/2`, which calls `Macro.expand` with a synthetic
+`function: {:module_info, 0}` context on the `env` — the idiom that makes the Elixir compiler register
+a genuine compile-time dependency edge on that module, the same class of edge an ordinary `alias
+Foo, as: Bar; Bar.some_call()` would create. `expand_alias_no_require/2` (used when `no_depend_modules`
+lists the field) walks the AST WITHOUT that trick, resolving aliases by hand — no dependency edge, no
+forced ordering.
+
+**The consequence, verified against real Ash source, not inferred:** because `resource Foo` inside a
+domain's `resources do ... end` block is declared with a plain `{:spark, Ash.Resource}` type and no
+opt-out, **`Foo` (and everything ITS OWN transformers produced via `Module.create/3` — command
+modules, event modules, aggregate modules, persisted state) is guaranteed to be a fully compiled
+module before ANY transformer belonging to the domain — core Ash or an extension like
+`AshCommanded.Commanded.DomainDsl` — runs.** This forcing happens during entity/option construction,
+which precedes ALL transformer execution for ALL extensions attached to the domain module (confirmed
+at `deps/spark/lib/spark/dsl/extension.ex:672-702`: option validation happens, THEN
+`transformers_to_run` is computed and executed). No `after_compile?: true` deferral is needed for this
+case — `after_compile?` is for validating cross-module state that ISN'T guaranteed by a hard
+dependency (AshGraphql's case, where the domain-level `resource:` argument type ALSO forces the
+dependency, but the library still defers to `after_compile?` for its verifiers, likely out of an
+abundance of caution / consistency with resource-level verifiers that share the same module. AshCommanded
+does not need to copy that caution once the dependency is confirmed, though doing so anyway for
+VERIFIERS — as opposed to the generating transformer — costs nothing and is good practice).
+
+**Cross-module state is read back via `Spark.Dsl.Extension.get_persisted/3`, which works on a plain
+module atom, not just a live dsl_state map** (`deps/spark/lib/spark/dsl/extension.ex:282-298`):
+
+```elixir
+def get_persisted(resource, key, default \\ nil)
+def get_persisted(resource, key, default) when is_atom(resource), do: persisted!(resource, key, default)
+```
+
+...which bottoms out (`extension.ex:149-168`) in `resource.persisted(key, default)` — a genuine
+cross-module function call to a function every compiled Spark DSL module exports. This is safe
+PRECISELY BECAUSE of the dependency-forcing above: `resource` is already a loaded module with a
+`persisted/2` function by the time the domain's transformer calls it.
+
+### The concrete, implementable fix for AshCommanded's router
+
+1. **Resource-level** (already-correct pattern, keep it): `GenerateCommandModules` /
+   `GenerateEventModules` / the new aggregate generator run as ORDINARY resource transformers, and a
+   PERSISTER (Spark's third phase — runs after all of that resource's own transformers, writes only to
+   `dsl_state.persist`, per `deps/spark/lib/spark/dsl/transformer.ex:88-90`) stores a small, literal
+   list under a resource-scoped key, e.g. `Transformer.persist(dsl, :ash_commanded_commands,
+   [{CommandModule, EventModule, AggregateModule, opts}, ...])`.
+2. **Domain-level, NEW**: `AshCommanded.Commanded.DomainDsl` attaches an ORDINARY transformer (no
+   `after_compile?` needed) that:
+   - Reads the domain's own resource list — either via `Ash.Domain.Info.resources(domain_module)` if
+     called after the domain module is itself fully built, or, more idiomatically for a
+     same-extension transformer, via `Transformer.get_entities(dsl_state, [:resources])` to read the
+     `%Ash.Domain.Dsl.ResourceReference{}` list straight off the domain's own in-progress dsl_state
+     (this is what `AshGraphql.Domain.Transformers.ValidateActions` effectively parallels by reading
+     its OWN persisted entities, though those are domain-declared, not resource-declared).
+   - For each resource module in that list, calls
+     `Spark.Dsl.Extension.get_persisted(resource, :ash_commanded_commands, [])` — safe, per the
+     dependency proof above.
+   - Builds ONE consolidated list of `dispatch`/`identify` clauses and does
+     `Module.create(RouterModuleName, quoted_router_body, Macro.Env.location(__ENV__))`, where
+     `quoted_router_body` is `use Commanded.Commands.Router` followed by one `dispatch` call per
+     collected command (mirroring the `AshOban.Transformers.DefineActionWorkers` precedent for
+     `Module.create/3` usage, `define_action_workers.ex:60-90`).
+   - Then a second, DEPENDENT domain transformer (ordered `after?` the router-builder — Spark's
+     ordinary before?/after? sort, not `after_compile?`) creates the `Commanded.Application` module
+     with `router: RouterModuleName` — because THAT module was just created in the SAME compile pass,
+     by the domain's OWN transformer, ordering between the two is controlled by Spark's normal
+     transformer sort, not by cross-file compile order at all.
+3. **This is what was structurally wrong before**: per PROJECT.md's Falsified section, the old
+   `GenerateDomainRouterModule`/`GenerateMainRouterModule` were attached to
+   `AshCommanded.Commanded.Dsl` — the RESOURCE extension — so each one ran once per resource, in
+   isolation, with `Transformer.get_persisted(dsl, :module)` resolving to that ONE resource, never
+   able to see any other resource's commands, and never actually run as a true domain aggregation
+   step. The fix is not a workaround for a Spark limitation; it is moving the router-building
+   transformer to the extension it always should have been on (`DomainDsl`), where the resource-list
+   dependency Ash already establishes makes the read-back safe by construction.
+
+### Where the `after_compile?: true` mechanism SHOULD still be used in AshCommanded
+
+For pure validation that legitimately can't lean on the entity-typed dependency (e.g., a verifier that
+wants to double check a resource's command names haven't collided AFTER accounting for something only
+knowable once a sibling extension's transformer has also run, on modules not reachable via a plain
+`{:spark, Ash.Resource}`-typed argument) — follow `AshGraphql.Domain.Transformers.ValidateActions`'s
+`def after_compile?, do: true` exactly. It costs nothing extra to mark a pure-validation domain
+verifier this way defensively, and rewrite rule #5 ("prefer a verifier over a transformer when only
+validating") already points AshCommanded at verifiers for this class of check.
+
+---
+
+## 4. Module naming and creation
+
+**Derive names from real module references, never string surgery** (rewrite rule #4, and this is the
+literal defect LEARNINGS.md §4 calls out — `generate_aggregate_module.ex:235` re-split and
+re-concatenated a module name that was already correctly available at line 97 of the same file).
+Every precedent read does this the same way — build a list of atoms/aliases and `Module.concat/1`:
+
+- AshGraphql: `Module.concat([__MODULE__, domain, AshTypes])` (`ash_graphql.ex:202,398`) — schema
+  module, the actual `domain` MODULE (not its name as a string), and a fixed literal suffix.
+- AshOban: `module |> List.wrap() |> Enum.concat(["AshOban", "ActionWorker"]) |> Enum.concat([Macro.camelize(to_string(trigger.name))]) |> Module.concat()`
+  (`define_action_workers.ex:33-38`) — note even here, where a STRING is unavoidably involved (the
+  trigger's `:name` atom must become a CamelCase segment), the string operation
+  (`Macro.camelize/1`) is applied to a single atom-derived segment, never to an already-fully-qualified
+  module name being taken apart and reassembled.
+
+**Registration for introspection is via `Transformer.persist/3` + a matching `.Info` reader**, not by
+inventing a naming convention a caller must independently reconstruct. A resource that wants to know
+"what router module did the domain build for me" should call
+`AshCommanded.Commanded.DomainDsl.Info.router(domain)` (an `Extension.get_opt`/`get_persisted` read),
+never re-derive the name via `Module.concat([domain, "Router"])` at the call site.
+
+**For AshCommanded's aggregate/router/application generation, name derivation should follow the
+AshGraphql/AshOban shape:** `Module.concat([resource_module, "Aggregate"])` for the resource-scoped
+aggregate (or an explicit `aggregate_module:` DSL override, persisted and read back the same way), and
+`Module.concat([domain_module, "Router"])` / `Module.concat([domain_module, "Application"])` for the
+domain-scoped artifacts, each overridable via an explicit option in the same pattern
+`AshOban.DefineActionWorkers` uses (`scheduled_action.worker_module_name || module_name(module,
+scheduled_action)`, `define_action_workers.ex:19-20`) — compute a default, but always let an explicit
+DSL option win.
+
+---
+
+## 5. The `.Info` convention
+
+**What belongs in `.Info`:** every read of DSL-configured state that ANY other code (runtime, tests,
+other extensions, other transformers on a different module) needs. This includes both raw option
+reads (`Extension.get_opt/4`) and entity reads (`Extension.get_entities/2`), and — per rewrite rule #6
+— it is the ONLY sanctioned way to reach into a DSL module's configuration from outside its own
+transformer/verifier pipeline.
+
+**AshGraphql's `.Info` modules are hand-written, not generated**, and split cleanly along the
+Resource/Domain axis: `AshGraphql.Resource.Info` (`resource/info.ex`, 283 lines) and
+`AshGraphql.Domain.Info` (`domain/info.ex`, 62 lines) each expose ONLY functions, no macros, each a
+thin wrapper over `Spark.Dsl.Extension.get_opt/4` or `get_entities/2`, with defaults expressed as
+function-call defaults (e.g. `def authorize?(domain), do: Extension.get_opt(domain, [:graphql],
+:authorize?, true)`). Where a value can come from EITHER level (e.g. `queries/2` needs both the
+resource's own `graphql do queries do ... end end` entities AND the domain's `queries do get Resource,
+... end end` entities filtered down to that resource), `AshGraphql.Resource.Info.queries/2`
+(`resource/info.ex:11-24`) explicitly calls `AshGraphql.Domain.Info.queries/1` and concatenates — the
+`.Info` layer is where cross-level merging logic lives, not the transformers.
+
+**`AshJsonApi.Domain.Info`** (fetched from GitHub, `lib/ash_json_api/domain/info.ex`) is even more
+minimal — almost every function is a one-line `Extension.get_opt/4` call, confirming that for the
+common case (a straight option passthrough with a default), hand-writing `.Info` functions is
+reasonable, but `Spark.InfoGenerator` exists for exactly this and should be preferred where nothing
+beyond passthrough is needed.
+
+**`Spark.InfoGenerator`** (`deps/spark/lib/spark/info_generator.ex:1-45`) is the mechanical option:
+`use Spark.InfoGenerator, extension: MyDsl, sections: [:my_section]` auto-derives config functions,
+options functions and entity functions for every field/entity in the given sections. `Reactor.Info`
+(`deps/reactor/lib/reactor/info.ex:9`) uses exactly this — `use Spark.InfoGenerator, sections:
+[:reactor], extension: Reactor.Dsl` — and then hand-writes ONLY the one function that needs real
+logic beyond passthrough (`to_struct/1`, which assembles the runtime `%Reactor{}` from the generated
+entity accessors).
+
+**Recommendation for AshCommanded:** `AshCommanded.Commanded.Dsl.Info` (resource-level) and
+`AshCommanded.Commanded.DomainDsl.Info` (domain-level), split exactly like AshGraphql's
+Resource/Domain split, each starting from `use Spark.InfoGenerator, extension: ..., sections: [...]`
+for the mechanical accessors (`commands/1`, `events/1`, `projections/1`), with hand-written functions
+layered on top ONLY for genuine cross-cutting logic: `AshCommanded.Aggregate.Info.command/2` (the
+runtime lookup used in §2's `__using__` sketch) and a domain-level `router/1`/`application/1` that
+returns the `Module.concat`-derived (or overridden) module name, mirroring
+`AshJsonApi.Domain.Info.router/1`'s override-then-fallback shape. **Currently there is no `.Info`
+module anywhere in `lib/commanded/` at all** (confirmed: `find lib -iname "*info*"` returns nothing) —
+this is a complete gap against every precedent read, not a partial one, and should be treated as
+foundational work alongside the renderer, not an afterthought bolted on per-component.
+
+---
+
+## 6. Testing generated code
+
+**Three distinct, real techniques found, each suited to a different layer:**
+
+1. **Direct unit-testing of a verifier/transformer as a plain function against a hand-built or
+   mutated `dsl_state`** — bypassing compilation entirely. `AshGraphql.VerifyFieldReferencesTest`
+   (GitHub, `test/verify_field_references_test.exs:1-70`) defines a small real resource, grabs its
+   dsl_state via `BaseResource.spark_dsl_config()` (every compiled Spark DSL module exports this),
+   mutates one option with `Spark.Dsl.Transformer.set_option(dsl, [:graphql], :show_fields, [...])`,
+   and calls `VerifyFieldReferences.verify(dsl)` directly, asserting on the return value or wrapping
+   it in `assert_raise Spark.Error.DslError, ~r/.../, fn -> ... end`. This works because
+   `assert_raise` around a DIRECT function call is fine — LEARNINGS.md's "verifier errors are not
+   catchable with `assert_raise`" caveat applies only to errors raised through the REAL `@after_verify`
+   compile pipeline of an entire module, not to calling the verifier's `verify/1` as an ordinary
+   function in a test.
+2. **`Spark.Test`** (`deps/spark/lib/spark/test.ex`, current version — this project already
+   identified it in LEARNINGS.md §4 as the fix for the `assert_raise` gap) — `assert_dsl_error/1,2`,
+   `refute_dsl_errors/1`, via a per-process collector registered before the DSL module is DEFINED
+   (typically inside the test itself via `defmodule` in a `do...end` block passed to
+   `Spark.Test.dsl_errors/1`), for the case where you genuinely want to compile a MISCONFIGURED
+   module and assert on the resulting DslError — i.e., true compile-time-rejection testing of the full
+   pipeline, not just one verifier function.
+3. **Golden-render / snapshot testing of GENERATED ARTIFACTS is a real, production practice in this
+   ecosystem, not a novel idea AshCommanded is inventing** — `ash_postgres` ships
+   `mix ash_postgres.generate_migrations` (`deps/ash_postgres/lib/migration_generator/migration_generator.ex`)
+   which writes both a migration file AND a JSON "resource snapshot" (`priv/resource_snapshots/`) of
+   the resource's compiled schema state, and subsequent runs DIFF against that snapshot to decide what
+   changed — this is the same "render, commit, diff in CI" idea FOUND-07 (this project's `mix
+   ash_commanded.dump`) already proposes, just for a different generated artifact (SQL migrations
+   instead of Elixir AST). No SDL/schema snapshot test file was found in `ash_graphql`'s test suite
+   specifically (test dir listing checked directly via GitHub API), so AshGraphql does NOT snapshot
+   its Absinthe SDL output in CI — this is a place where AshCommanded's planned golden-render
+   discipline is MORE rigorous than the most mature sibling library, not less; treat it as a genuine
+   differentiator worth keeping, not over-engineering.
+
+**Naming convention for compile-time-rejection tests**: `ash_graphql`'s test suite names these files
+after the verifier they exercise — `verify_field_dependencies_test.exs`, `verify_field_references_test.exs`,
+`verify_filter_handlers_test.exs`, `verify_reserved_type_name_test.exs` — a 1:1 file-to-verifier
+mapping worth adopting directly, replacing the current
+`test/commanded/verifiers/event_handler_tests.exs`-style grouping (which LEARNINGS.md's Context
+section already flags as insufficient: "only checks that the verifier modules load").
+
+---
+
+## 7. Repo layout
+
+**Consistent top-level shape across every current-generation Ash-project library inspected**
+(`ash_graphql`, `ash_postgres`, `ash_authentication`, `reactor` — all four, checked directly via
+`find <dep> -maxdepth 1 -type d`):
+
+```text
+lib/
+documentation/       # guides, tutorials, topics — source for ExDoc + hex docs
+usage-rules/         # per-topic usage-rules fragments (ash_graphql, ash_postgres; the
+                      # `usage_rules` package AshCommanded's own PROJECT.md already plans to adopt)
+usage-rules.md        # top-level entry point / index into usage-rules/
+LICENSES/             # REUSE-spec SPDX license texts (every file carries an SPDX header)
+CHANGELOG.md
+```
+
+**`lib/` internal shape — the Resource/Domain split, taken directly from `ash_graphql/lib/`:**
+
+```text
+lib/
+  ash_graphql.ex                    # top-level __using__ (the schema-assembly front door, §1/§3)
+  resource/
+    resource.ex                     # AshGraphql.Resource — the resource-level Spark.Dsl.Extension
+    info.ex                         # AshGraphql.Resource.Info
+    mutation.ex, query.ex, subscription.ex, managed_relationship.ex   # entity target structs
+    transformers/
+      validate_actions.ex
+      validate_compatible_names.ex
+      require_keyset_for_relay_queries.ex
+      subscription.ex
+    verifiers/
+      verify_actions_public.ex
+      verify_field_references.ex
+      verify_filterable_fields.ex
+      ...
+  domain/
+    domain.ex                       # AshGraphql.Domain — the domain-level Spark.Dsl.Extension
+    info.ex                         # AshGraphql.Domain.Info
+    transformers/
+      validate_actions.ex
+      require_keyset_for_relay_queries.ex
+    verifiers/
+      verify_actions_public.ex
+      verify_subscription_pubsub.ex
+  graphql/                          # runtime machinery: resolver, error formatting, id translation
+    resolver.ex
+    errors.ex
+    id_translator.ex
+  subscription/                     # runtime machinery for the subscriptions feature specifically
+    notifier.ex, runner.ex, batcher.ex, config.ex, endpoint.ex
+```
+
+The pattern generalizes cleanly: **top-level directory per DSL surface** (`resource/`, `domain/`),
+each with its OWN `transformers/`, `verifiers/`, and `info.ex`; **separate top-level directories per
+runtime concern** that isn't tied to compile-time DSL processing at all (`graphql/`, `subscription/`
+are pure runtime — resolvers, error formatting — analogous to what `AshCommanded.Aggregate.Runtime`,
+`AshCommanded.Commands.Dispatcher`-equivalent modules, and the middleware pipeline already are or
+should become in AshCommanded).
+
+**Reactor's layout** (non-Ash Spark DSL, confirms the pattern generalizes beyond Ash extensions):
+`lib/reactor/dsl/` (entities + `Dsl.Build`), `lib/reactor/step/` (behaviour implementations —
+`compose/`, `switch/`, `map/`, `recurse/`, `around/`, `group/`, `anon_fn/` — one directory per
+built-in step KIND, each a plain runtime module implementing the `Reactor.Step` behaviour),
+`lib/reactor/error/` (a full exception hierarchy — `invalid/`, `internal/`, `unknown/`, `validation/`),
+`lib/reactor/builder/` (the programmatic, non-DSL construction API), `lib/reactor/info.ex` +
+`lib/reactor/dsl/info.ex` (two `.Info` modules — one for the DSL entities themselves, one that builds
+the runtime `%Reactor{}` struct from them via `Reactor.Info.to_struct/1`,
+`deps/reactor/lib/reactor/info.ex:17-27`). **Reactor's most important structural lesson for
+AshCommanded**: it demonstrates a Spark DSL need not generate ANY new modules via `Module.create/3`
+at all — `use Reactor` just accumulates DSL entities, and `Reactor.run/2` calls
+`Reactor.Info.to_struct(ReactorModule)` at RUNTIME to interpret those entities into an executable
+struct on demand. This is not directly applicable to AshCommanded's aggregate (Commanded's process
+model requires a real, named module it can `apply/2` against), but it IS the model for anything in
+AshCommanded that does NOT strictly need a generated module — e.g., projection dispatch tables,
+middleware ordering, or snapshot configuration could plausibly be "read via `.Info` at the point of
+use" rather than "baked into a generated module," per rewrite rule #11 ("tricky AST transformation is
+a smell").
+
+### Recommended `lib/` layout for AshCommanded
+
+Adapting the AshGraphql resource/domain split onto AshCommanded's actual DSL surfaces (commands,
+events, projections, event_handlers on the resource; application on the domain — per the
+already-in-flight `Dsl`/`DomainDsl` split noted in PROJECT.md):
+
+```text
+lib/
+  ash_commanded.ex                       # top-level module, if any cross-cutting __using__ is needed
+  ash_commanded/
+    resource/
+      dsl.ex                             # AshCommanded.Commanded.Dsl (renamed/kept as today)
+      info.ex                            # AshCommanded.Commanded.Resource.Info — commands/2, events/2, projections/2
+      entities/
+        command.ex, event.ex, projection.ex, event_handler.ex   # target structs (today's command.ex/event.ex/projection.ex)
+      sections/
+        commands_section.ex, events_section.ex, ...             # unchanged
+      transformers/
+        generate_command_modules.ex
+        generate_event_modules.ex
+        generate_aggregate_module.ex      # rewritten per §2 — thin, delegates to Aggregate.__using__
+        generate_projection_modules.ex
+        generate_projector_modules.ex
+        generate_event_handler_modules.ex
+        persist_commanded_commands.ex     # NEW — the persister §3 depends on (resource → domain handoff)
+      verifiers/
+        validate_command_names.ex, validate_command_fields.ex, ...   # unchanged, kept as verifiers not transformers
+    domain/
+      dsl.ex                             # AshCommanded.Commanded.DomainDsl
+      info.ex                            # AshCommanded.Commanded.Domain.Info — router/1, application/1
+      transformers/
+        generate_domain_router_module.ex  # rewritten per §3 — walks domain's own resource list, Module.create
+        generate_commanded_application.ex # rewritten per §3 — ordered after the router transformer
+      verifiers/
+        validate_router_completeness.ex   # candidate NEW verifier, after_compile?: true per §3's guidance
+    aggregate.ex                          # AshCommanded.Aggregate — the __using__ front door, §2
+    aggregate/
+      runtime.ex                          # AshCommanded.Aggregate.Runtime — hand-written, unit-tested directly
+      info.ex                             # AshCommanded.Aggregate.Info — per-command config lookup
+      snapshotting.ex                     # targets Commanded.Snapshotting per LEARNINGS.md §4, not the
+                                           # nonexistent Snapshotter behaviour
+    command_action_mapper.ex              # kept, this is genuine runtime machinery (already correctly separate)
+    middleware/                           # kept as-is — already the right shape (hand-written runtime modules)
+    error.ex                              # kept
+mix/
+  tasks/
+    ash_commanded.dump.ex                 # FOUND-07, the renderer — foundation, lands before component work
+documentation/                            # NEW, matches every sibling library — currently absent per
+                                           # PROJECT.md's open item "mix.exs files: omits documentation/"
+usage-rules/                              # NEW, matches ash_graphql/ash_postgres convention
+```
+
+**Rationale for the split, stated plainly:** the current flat `lib/commanded/transformers/` and
+`lib/commanded/verifiers/` directories mix resource-scoped and (attempted, broken) domain-scoped
+generators in the same namespace with no structural signal for which is which — which is plausibly
+part of why `GenerateDomainRouterModule` ended up attached to the wrong extension in the first place
+(PROJECT.md's Falsified section). Every mature sibling library encodes the resource/domain boundary in
+the DIRECTORY STRUCTURE, not just in extension registration, making "which compile-time guarantees
+apply to this transformer" legible from the file path alone.
+
+---
 
 ## Sources
 
-- [Spark.Dsl.Extension](https://hexdocs.pm/spark/Spark.Dsl.Extension.html) — verified against local source `deps/spark/lib/spark/dsl/extension.ex` (Spark 2.4.1, API-compatible with pinned 2.3.5)
-- [Spark.Dsl.Transformer](https://hexdocs.pm/spark/Spark.Dsl.Transformer.html) — verified against `deps/spark/lib/spark/dsl/transformer.ex`, including the `sort/1`/`walk_rest/3` ordering algorithm read line-by-line
-- [Spark.Dsl.Verifier](https://hexdocs.pm/spark/Spark.Dsl.Verifier.html) — verified against `deps/spark/lib/spark/dsl/verifier.ex`
-- [Spark.Dsl.Entity](https://hexdocs.pm/spark/Spark.Dsl.Entity.html) — verified against `deps/spark/lib/spark/dsl/entity.ex`
-- [Spark.Dsl.Section](https://hexdocs.pm/spark/Spark.Dsl.Section.html) — verified against `deps/spark/lib/spark/dsl/section.ex`
-- Spark.InfoGenerator, Spark.Options escape-hatch types (`{:behaviour, _}`, `{:spark_behaviour, _}`, `{:spark_function_behaviour, _, _}`) — verified against `deps/spark/lib/spark/info_generator.ex` and `deps/spark/lib/spark/options/options.ex`
-- `Ash.Domain.Info` (`resources/1`, `resource_references/1`, deprecated `depend_on_resources/1`) — verified against `deps/ash/lib/ash/domain/info.ex` (Ash 3.x, from `work/core/deps/ash`)
-- `AshOban.Transformers.DefineActionWorkers` — real `Module.create/3` + Commanded-analogous behaviour-satisfying codegen, `deps/ash_oban` (from `projects/lemonade_stand/deps/ash_oban`)
-- `AshStateMachine` — a real Ash extension with **zero** `Module.create` usage, confirming codegen is a choice driven by external-library requirements, not a default (`deps/ash_state_machine`, from `projects/lemonade_stand`)
-- `AshEvents.EventLog` — `{:behaviour, _}` escape-hatch schema types with shipped defaults, `Spark.InfoGenerator` usage, nested entity example (`deps/ash_events`, from `projects/lemonade_stand`)
-- `AshGraphql` — domain-resource aggregation deliberately pushed to a third, later-compiled module rather than a Domain transformer; SDL file generation via `__after_compile__`, not Igniter (`deps/ash_graphql`, from `work/core/deps/ash_graphql`)
-- `AshAuthentication` — strategy modules and the `mix ash_authentication.add_strategy` installer task as the precedent for where Igniter-style scaffolding *does* belong (`deps/ash_authentication`, from `work/core/deps/ash_authentication`)
-- This repository's own `lib/commanded/dsl.ex`, `lib/commanded/transformers/*.ex`, `lib/commanded/command_action_mapper.ex`, `lib/commanded/transformers/transformer_order.md`, `mix.exs`, `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STRUCTURE.md`, `.planning/PROJECT.md` — read directly, current as of 2026-09-11
+All sources are primary — real library source, read directly, not documentation:
+
+- `work/core/deps/ash/lib/ash/domain/dsl.ex` (compile-dependency schema for `resource:`)
+- `work/core/deps/ash/lib/ash/resource/dsl.ex` (contrasting `no_depend_modules: [:domain]`)
+- `work/core/deps/ash_graphql/lib/{domain,resource}/{domain.ex,resource.ex,info.ex}`
+- `work/core/deps/ash_graphql/lib/{domain,resource}/transformers/*.ex`, `verifiers/*.ex`
+- `work/core/deps/ash_graphql/lib/ash_graphql.ex` (the schema-assembly `__using__`)
+- `work/core/deps/ash_authentication/lib/ash_authentication/token_resource/transformer.ex`
+- `work/core/deps/ash_postgres/lib/migration_generator/migration_generator.ex` and directory layout
+- `work/core/deps/reactor/lib/reactor.ex`, `reactor/info.ex`, `reactor/builder.ex`, directory tree
+- `work/core/deps/spark/lib/spark/dsl.ex`, `dsl/extension.ex`, `dsl/transformer.ex`,
+  `dsl/extension/entity_option.ex`, `info_generator.ex`, `test.ex`
+- `work/core/deps/commanded/lib/commanded/commands/router.ex`, `commanded/event/handler.ex`,
+  `application.ex` (== AshCommanded's own vendored `deps/commanded`)
+- `ash-project/ash_json_api` (GitHub, `main`): `lib/ash_json_api/domain/info.ex`,
+  `lib/ash_json_api/domain/transformers/set_base_routes.ex`, `lib/ash_json_api/router.ex`
+- `ash-project/ash_oban` (GitHub, `main`): `lib/transformers/define_action_workers.ex`
+- `ash-project/ash_graphql` (GitHub, `main`): `test/verify_field_references_test.exs` (test file not
+  shipped in the hex package / local `deps/`)
+- This repo's own `.planning/evidence-generated-aggregate.txt` and `.planning/LEARNINGS.md` as the
+  baseline the above is measured against
 
 ---
-*Architecture research for: Spark DSL / Ash Framework CQRS-ES extension (`ash_commanded`)*
-*Researched: 2026-09-11*
+*Architecture research for: AshCommanded's code-generation rewrite (Spark/Ash extension design)*
+*Researched: 2026-09-15*

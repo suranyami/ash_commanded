@@ -1,8 +1,15 @@
 # Learnings — carried across the rewrite boundary
 
-**Written:** 2026-09-15, at the close of Phase 1 (Build Integrity), immediately before the decision
-to rewrite the library component by component rather than continue refactoring the inherited
-implementation.
+**Written:** 2026-09-15, at the close of the archived Phase 1 (Build Integrity), immediately before
+the decision to rewrite the library component by component rather than continue refactoring the
+inherited implementation.
+
+**Phase numbering note.** Every "Phase N" and "plan 01-NN" below refers to the *archived* roadmap,
+now at `.planning/milestones/archived-20260915-phases/`. Milestone v0.3 (Library Rewrite) restarts
+phase numbering at 1, so an unqualified "Phase 1" in this document is Build Integrity, not v0.3's
+first phase. Forward-looking instructions addressed to "Phase 2" in the archived
+`deferred-items.md` mean *whichever v0.3 phase owns that component* — they are carried into
+`PROJECT.md`'s Active list so they do not depend on a phase number to survive.
 
 **Purpose:** everything below was discovered by execution, not by reading. Most of it was invisible
 until guards, mocks and stubs were removed. A rewrite that re-discovers any of it has wasted the
@@ -12,7 +19,7 @@ phase. This document outlives the current ROADMAP.md and REQUIREMENTS.md.
 
 ## 1. Why the rewrite
 
-Phase 1 did not set out to evaluate the implementation; it set out to make the test suite capable of
+The archived Phase 1 did not set out to evaluate the implementation; it set out to make the test suite capable of
 failing. Doing so surfaced nine defects and one structural problem, and the structural problem is
 what changed the plan.
 
