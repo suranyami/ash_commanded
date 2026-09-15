@@ -1,0 +1,6 @@
+# gsd-budget: clause_max=0 module_lines=0
+defmodule AshCommanded.TestSupport.Parity.Commands.CreateWidget do
+  @moduledoc "Command for create widget a Widget"
+  @type t :: %__MODULE__{id: any(), label: any()}
+  defstruct [:id, :label]
+end
