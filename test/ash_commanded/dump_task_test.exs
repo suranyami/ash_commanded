@@ -60,11 +60,11 @@ defmodule AshCommanded.DumpTaskTest do
   test "--only narrows output to exactly one generated module; without it, every generated module is printed" do
     narrowed = run_task!([@target, "--only", @only_projector])
     assert narrowed =~ "defmodule AshCommanded.TestSupport.Parity.Projectors.WidgetProjector"
-    refute narrowed =~ "defmodule AshCommanded.TestSupport.Parity.Commands.CreateWidget"
+    refute narrowed =~ "defmodule #{@only_command}"
 
     everything = run_task!([@target])
     assert everything =~ "defmodule AshCommanded.TestSupport.Parity.Projectors.WidgetProjector"
-    assert everything =~ "defmodule #{@only_command}"
+    assert everything =~ "defmodule AshCommanded.TestSupport.Parity.WidgetAggregate"
   end
 
   test "an unrecognised flag is rejected rather than silently ignored" do
