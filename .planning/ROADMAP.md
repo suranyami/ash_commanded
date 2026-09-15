@@ -63,11 +63,21 @@ output that breaks the rewrite rules — so every later phase has something real
 **Plans:** 6 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 01-01-PLAN.md — Tracer: AST capture seam, `mix ash_commanded.dump`, one golden, the clause-size gate, and explicit file/line metadata (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md — Renderer expansion: `--beam`, `--write` ratchet, canonical-version golden diff, runtime-reassembly lint, full golden corpus (wave 2)
 - [ ] 01-03-PLAN.md — Static gates: two custom Credo checks, quote-block ceiling, structural clone detection and the clone report (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-04-PLAN.md — The big-bang namespace move: `resource/` and `domain/` trees, `.Info` modules, and the golden-diff neutrality proof (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 01-05-PLAN.md — Seeded-violation fixtures, the gate meta-test, phase-cited suppressions and the gate-evidence record (wave 4)
 - [ ] 01-06-PLAN.md — `usage-rules.md`, `AGENTS.md` and the first CI workflow with a three-leg matrix (wave 4)
 
