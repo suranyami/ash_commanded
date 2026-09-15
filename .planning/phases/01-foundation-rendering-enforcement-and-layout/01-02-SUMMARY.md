@@ -63,10 +63,12 @@ key-decisions:
   - "Task 2's instruction to update golden_budget_test.exs to call the shared Golden helper (rather than its own inline copy) was completed in Task 3's commit, not Task 2's — both touch the same file, and folding the refactor in with the lint addition avoided touching golden_budget_test.exs twice in a row for unrelated reasons."
 
 requirements-completed: [FOUND-01, FOUND-03, FOUND-04, FOUND-05, FOUND-06, FOUND-08]
-# FOUND-01 is also declared by 01-01 (summarized) — ready once this plan's SUMMARY lands.
-# FOUND-04 is also declared by 01-04 (not yet summarized) — stays Pending per the shared-ID gate.
-# FOUND-06 is also declared by 01-01 (summarized) and 01-05 (not yet summarized) — stays Pending.
-# FOUND-03, FOUND-05, FOUND-08 are declared only here — ready immediately.
+# Computed via `requirements.ready-ids` and marked via `requirements.mark-complete`:
+# FOUND-01, FOUND-03, FOUND-05 marked Complete (FOUND-01's only other declaring plan, 01-01,
+# is already summarized; FOUND-03 and FOUND-05 are declared only here).
+# FOUND-04 (also declared by 01-04, not yet summarized), FOUND-06 (also declared by 01-01 and
+# 01-05, the latter not yet summarized), and FOUND-08 (also declared by 01-05, not yet
+# summarized) stay Pending per the shared-ID gate.
 
 coverage:
   - id: D1
@@ -264,7 +266,7 @@ None - no external service configuration required.
 
 - `mix ash_commanded.dump` is now feature-complete for this milestone's foundation: both views, diff, write, ratchet, and refusal all work end-to-end against the real parity fixture.
 - The full golden corpus (6 modules, 3 staged) gives every later phase something real to render, diff, and approve against — Phase 2 (Commands and Events) is the first component rewrite to use it.
-- FOUND-01 is ready to mark Complete once this plan's SUMMARY lands (01-01, its only other declaring plan, is already summarized). FOUND-04 and FOUND-06 stay Pending — 01-04 and 01-05 (their other declaring plans) have not run yet.
+- FOUND-01, FOUND-03, and FOUND-05 are marked Complete in `REQUIREMENTS.md`. FOUND-04 (also declared by 01-04), FOUND-06 and FOUND-08 (both also declared by 01-05) stay Pending until their sibling plans run.
 - No blockers for 01-03 (Static gates: Credo checks, quote-block ceiling, structural clone detection) or 01-04 (the namespace move) proceeding.
 
 ---

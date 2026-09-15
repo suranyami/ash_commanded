@@ -25,11 +25,11 @@ complete until all six steps are done:
 
 Must land before the first component, because step 4 of the method depends on it.
 
-- [ ] **FOUND-01**: `mix ash_commanded.dump <Module>` renders a DSL-using module's generated code as formatted Elixir source
+- [x] **FOUND-01**: `mix ash_commanded.dump <Module>` renders a DSL-using module's generated code as formatted Elixir source
 - [x] **FOUND-02**: The renderer defaults to the AST as written by the transformer, before `Module.create/3`
-- [ ] **FOUND-03**: The renderer can also render post-compile from BEAM `debug_info`, behind a flag
+- [x] **FOUND-03**: The renderer can also render post-compile from BEAM `debug_info`, behind a flag
 - [ ] **FOUND-04**: Golden renders of generated output are committed and diffed in CI, failing the build on unreviewed change
-- [ ] **FOUND-05**: A developer can regenerate golden files with a single documented command
+- [x] **FOUND-05**: A developer can regenerate golden files with a single documented command
 - [ ] **FOUND-06**: A check fails the build when any generated function clause exceeds ~10 lines in the rendered output
 - [ ] **FOUND-07**: A check fails the build when any `quote` block in the library exceeds 40 lines
 - [ ] **FOUND-08**: A check fails the build when values computable at macro-expansion time survive into rendered output as runtime work (the `:erlang.++` class of defect)
@@ -168,11 +168,11 @@ one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does no
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-01 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-02 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
-| FOUND-03 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-03 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-04 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-05 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-05 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-06 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
 | FOUND-07 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
 | FOUND-08 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
