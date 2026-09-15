@@ -1,0 +1,17 @@
+# gsd-budget: clause_max=7 module_lines=16
+defmodule AshCommanded.TestSupport.Parity.Projections.WidgetCreated do
+  @moduledoc "Projection that handles widget_created events for Widget resources"
+  @doc "Applies the projection to the resource based on the received event.\n\n## Parameters\n\n- `event` - The event that triggered this projection\n- `resource` - The resource to apply changes to\n\n## Returns\n\nAn Ash changeset ready to be applied\n"
+  def apply(event, resource) do
+    changes = %{}
+
+    Ash.Changeset.new(resource)
+    |> Ash.Changeset.for_action(:create, changes)
+    |> Ash.Changeset.set_context(%{event: event})
+  end
+
+  @doc "Returns the action that should be performed on the resource.\n\n## Returns\n\nThe atom representing the Ash action to perform\n"
+  def action do
+    :create
+  end
+end

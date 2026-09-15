@@ -16,12 +16,29 @@ defmodule AshCommanded.DumpTaskTest do
   @target "AshCommanded.TestSupport.Parity.Widget"
   @only_projector "AshCommanded.TestSupport.Parity.Projectors.WidgetProjector"
   @only_command "AshCommanded.TestSupport.Parity.Commands.CreateWidget"
+  @fixture_golden_dir Path.join(["test", "golden", "parity_widget"])
+  @projector_golden Path.join(@fixture_golden_dir, "#{@only_projector}.golden")
 
+  # Task 3 (01-02) committed a golden for every module this fixture generates — but most of
+  # this file's tests predate the corpus and specifically want to observe the "no committed
+  # golden yet" behaviour (a bare invocation prints the full render). Backing up the whole
+  # fixture's golden directory, clearing it for the duration of each test, and restoring it
+  # afterward keeps those tests meaningful without leaving the real corpus mutated on disk.
   setup do
     original_shell = Mix.shell()
     Mix.shell(Mix.Shell.Process)
 
-    on_exit(fn -> Mix.shell(original_shell) end)
+    backup =
+      for path <- Path.wildcard(Path.join(@fixture_golden_dir, "*.golden")), into: %{} do
+        {path, File.read!(path)}
+      end
+
+    Enum.each(backup, fn {path, _content} -> File.rm!(path) end)
+
+    on_exit(fn ->
+      Mix.shell(original_shell)
+      Enum.each(backup, fn {path, content} -> File.write!(path, content) end)
+    end)
 
     :ok
   end
@@ -84,16 +101,17 @@ defmodule AshCommanded.DumpTaskTest do
   end
 
   describe "diff and --write against the committed CreateWidget golden (D-04, D-07, D-11)" do
-    @golden Path.join([
-              "test",
-              "golden",
-              "parity_widget",
-              "AshCommanded.TestSupport.Parity.Commands.CreateWidget.golden"
-            ])
+    @golden Path.join(@fixture_golden_dir, "#{@only_command}.golden")
 
+    # The file-level setup above already backed up and cleared every golden in this fixture's
+    # directory (including this one); regenerate CreateWidget's real committed content here,
+    # through the same --write path under test, so each test in this describe block starts
+    # from an actual, unmutated golden rather than a hand-duplicated copy of its body.
     setup do
+      Mix.Task.rerun("ash_commanded.dump", [@target, "--write", "--only", @only_command])
+      collect_shell_messages()
+
       original = File.read!(@golden)
-      on_exit(fn -> File.write!(@golden, original) end)
       {:ok, original: original}
     end
 
@@ -140,22 +158,13 @@ defmodule AshCommanded.DumpTaskTest do
     end
   end
 
-  test "a fresh golden is written for a module with no committed golden yet, and no golden is left uncommitted after cleanup" do
-    fixture_dir = Path.join(["test", "golden", "parity_widget"])
-    golden = Path.join(fixture_dir, "AshCommanded.TestSupport.Parity.Events.WidgetCreated.golden")
-    refute File.exists?(golden)
+  test "a fresh golden is written for a module with no committed golden yet" do
+    refute File.exists?(@projector_golden)
 
-    on_exit(fn -> File.rm(golden) end)
+    run_task!([@target, "--write", "--only", @only_projector])
 
-    run_task!([
-      @target,
-      "--write",
-      "--only",
-      "AshCommanded.TestSupport.Parity.Events.WidgetCreated"
-    ])
-
-    assert File.exists?(golden)
-    assert File.read!(golden) =~ "# gsd-budget: clause_max="
+    assert File.exists?(@projector_golden)
+    assert File.read!(@projector_golden) =~ "# gsd-budget: clause_max="
   end
 
   # Compiles a bare Erlang module with no :debug_info chunk (Elixir always injects one; a

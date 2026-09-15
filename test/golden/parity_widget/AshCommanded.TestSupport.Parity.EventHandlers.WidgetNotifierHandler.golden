@@ -1,0 +1,73 @@
+# gsd-budget: clause_max=38 module_lines=71
+# gsd-staged-until-phase: 5
+defmodule AshCommanded.TestSupport.Parity.EventHandlers.WidgetNotifierHandler do
+  (
+    @moduledoc "General purpose event handler for Widget events (Notifier)"
+    use Commanded.Event.Handler,
+      application: AshCommanded.TestSupport.Parity.Widget.CommandedApplication,
+      name: "Elixir.AshCommanded.TestSupport.Parity.WidgetNotifierHandler"
+  )
+
+  def handle(%AshCommanded.TestSupport.Parity.Events.WidgetCreated{} = event, metadata) do
+    results = [execute_action(event, :create) |> handle_response()]
+
+    case Enum.filter(results, fn
+           {:error, _} -> true
+           _ -> false
+         end) do
+      [] -> :ok
+      [error | _] -> error
+    end
+  end
+
+  defp execute_action(event, action_name) when is_atom(action_name) do
+    params = Map.from_struct(event)
+
+    case Ash.Resource.Info.action(AshCommanded.TestSupport.Parity.Widget, action_name) do
+      nil ->
+        {:error, {:unknown_action, action_name}}
+
+      %{type: :create} ->
+        AshCommanded.TestSupport.Parity.Widget
+        |> Ash.Changeset.for_create(action_name, params)
+        |> Ash.create()
+
+      %{type: :read} ->
+        AshCommanded.TestSupport.Parity.Widget
+        |> Ash.Query.for_read(action_name, params)
+        |> Ash.read()
+
+      %{type: :update} ->
+        case Ash.get(AshCommanded.TestSupport.Parity.Widget, Map.get(params, :id)) do
+          {:ok, record} -> record |> Ash.Changeset.for_update(action_name, params) |> Ash.update()
+          error -> error
+        end
+
+      %{type: :destroy} ->
+        case Ash.get(AshCommanded.TestSupport.Parity.Widget, Map.get(params, :id)) do
+          {:ok, record} ->
+            record |> Ash.Changeset.for_destroy(action_name, params) |> Ash.destroy()
+
+          error ->
+            error
+        end
+
+      %{type: :action} ->
+        AshCommanded.TestSupport.Parity.Widget
+        |> Ash.ActionInput.for_action(action_name, params)
+        |> Ash.run_action()
+    end
+  end
+
+  defp handle_response({:ok, _result}) do
+    :ok
+  end
+
+  defp handle_response({:error, reason}) do
+    {:error, reason}
+  end
+
+  defp handle_response(other) do
+    other
+  end
+end

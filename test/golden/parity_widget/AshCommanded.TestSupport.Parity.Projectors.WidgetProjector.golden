@@ -1,0 +1,34 @@
+# gsd-budget: clause_max=16 module_lines=32
+# gsd-staged-until-phase: 5
+defmodule AshCommanded.TestSupport.Parity.Projectors.WidgetProjector do
+  (
+    @moduledoc "Event handler that projects events onto the Widget resource"
+    use Commanded.Event.Handler,
+      application: AshCommanded.TestSupport.Parity.Domain.DomainApplication,
+      name: "Elixir.AshCommanded.TestSupport.Parity.WidgetProjector"
+  )
+
+  alias Ash.Changeset
+  alias Ash.Resource
+
+  def handle(%AshCommanded.TestSupport.Parity.Events.WidgetCreated{} = event, _metadata) do
+    with changeset <-
+           AshCommanded.TestSupport.Parity.Projections.WidgetCreated.apply(
+             event,
+             AshCommanded.TestSupport.Parity.Widget
+           ),
+         {:ok, result} <-
+           perform_action(
+             changeset,
+             AshCommanded.TestSupport.Parity.Projections.WidgetCreated.action()
+           ) do
+      {:ok, result}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp perform_action(changeset, :create) do
+    Ash.create(changeset)
+  end
+end

@@ -18,8 +18,8 @@ defmodule AshCommanded.Dump.Lint do
 
   Two shapes are detected:
 
-    * The compiled remote-call form, `:erlang.++/2` — visible after full macro expansion
-      (the post-compile `--beam` view).
+    * The compiled remote-call form, `:erlang` module's `++` function of arity 2 — visible
+      after full macro expansion (the post-compile `--beam` view).
     * The operator form, `left ++ right`, where either `left` or `right` is itself a literal
       list or keyword list in the AST — visible in the pre-`Module.create/3` view goldens
       actually store.

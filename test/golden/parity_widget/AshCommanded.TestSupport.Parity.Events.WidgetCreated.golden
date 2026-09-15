@@ -1,0 +1,6 @@
+# gsd-budget: clause_max=0 module_lines=5
+defmodule AshCommanded.TestSupport.Parity.Events.WidgetCreated do
+  @moduledoc "Event representing when a Widget widget created"
+  @type t :: %__MODULE__{id: any(), label: any()}
+  defstruct [:id, :label]
+end
