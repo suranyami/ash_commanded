@@ -20,6 +20,32 @@ work lands upstream rather than in a private fork.
 a library for removing event-sourcing boilerplate is only credible if it carries a real
 event-sourced system.
 
+## Current Milestone: v0.3 Library Rewrite
+
+**Goal:** Rewrite the generation layer component by component, so that every generated module is
+thin wiring over hand-written runtime modules — verified by rendering the actual output and
+approving it, not by reading the generator.
+
+**Target features:**
+- Foundation: a DSL-output renderer (`mix ash_commanded.dump`), golden renders diffed in CI,
+  `usage_rules` + AGENTS.md for idiomatic Elixir and testing, custom Credo checks enforcing the
+  generation anti-patterns, and an Elixir/OTP CI matrix
+- Commands, events and application rewritten first — the cheap components, where the
+  render-and-approve methodology gets proven
+- Aggregates and projections next, opening with the question the audit surfaced:
+  what is `AshCommanded.Aggregate.__using__/1`?
+- Routers, event handlers and process managers, including the cross-module state problem that
+  makes router generation fail today
+- Declarative event versioning, snapshots re-targeted at Commanded's real internals, middleware
+  and transaction coordination
+
+**Method (per component):** propose the DSL → write a usage example → build the transformer →
+**render the generated output and get human approval** → iterate → persisters and verifiers →
+comprehensive tests, suite green.
+
+**Not in this milestone:** `core`'s five-domain migration and the 1.0 publish. Both move to the
+next milestone, planned against a DSL that by then actually exists.
+
 ## Context
 
 **Why this exists.** `core` has accumulated 163 event-sourcing modules totalling ~6,398 LOC across
@@ -86,70 +112,113 @@ stated pain.
 
 ### Validated
 
-<!-- Inferred from existing code, 2026-09-11. Working today; must not regress. -->
+<!-- Shipped and confirmed by execution, not by reading. -->
 
-- ✓ Spark DSL extension on `Ash.Resource` exposing `commands`, `events`, `projections`, `event_handlers` — existing
-- ✓ Spark DSL extension on `Ash.Domain` exposing `application` — existing (in flight on `fix-application-generation`)
-- ✓ Command struct generation with typespecs (`GenerateCommandModules`) — existing
-- ✓ Event struct generation with typespecs (`GenerateEventModules`) — existing
-- ✓ Projection and projector module generation (`GenerateProjectionModules`, `GenerateProjectorModules`) — existing
-- ✓ Aggregate module generation with execute/apply (`GenerateAggregateModule`) — existing
-- ✓ Domain and main router generation (`GenerateDomainRouterModule`, `GenerateMainRouterModule`) — existing
-- ✓ Commanded application generation with projector supervision (`GenerateCommandedApplication`) — existing
-- ✓ Nine compile-time verifiers over command, event, event-handler and projection DSL — existing
-- ✓ Command middleware pipeline (base, logging, validation, processor) — existing
-- ✓ Parameter transformation and validation layers — existing
-- ✓ Transaction coordination via `Ecto.Multi` — existing
-- ✓ Snapshot support with pluggable adapter interface (ETS default) — existing
+**Build integrity (Phase 01, 2026-09-14)**
+
+- ✓ A test suite capable of failing — 176 tests, 0 failures, stable across 45+ consecutive
+  full-suite runs, zero mocking
+- ✓ Blocking quality gates — `mix check` = format + Credo (strict) + Dialyzer + Sobelow + test,
+  with `.credo.exs` and `.dialyzer_ignore.exs` checked in
+- ✓ Cross-environment visibility of generated code — `test/support/parity/` on the `:dev`
+  elixirc path plus `scripts/compile_parity.sh`
+- ✓ `:commanded` declared as a hard dependency; six `Code.ensure_loaded?` fictions removed from `lib/`
+- ✓ Context threaded through `for_action`/`for_read` so declarative changes actually receive it
+- ✓ `Ash.Query.for_read(:by_id)` corrected to `:read` in `command_action_mapper.ex`
+
+### Falsified
+
+<!-- Previously assumed working from reading the code; disproved by execution in Phase 01.
+     Recorded because the roadmap must not assume them. Full detail: .planning/LEARNINGS.md §3. -->
+
+- ✗ **Domain and main router generation** — never fires for any domain, in any configuration.
+  Both transformers are declared only on the resource extension and test a persisted `:module`
+  that is always the resource, never the domain. Corroborated twice, including from a fixture
+  under `test/support/` so compile order is not the variable.
+- ✗ **Commanded application generation** — raises `__registered_commands__/0 is undefined`: a
+  domain transformer invokes Commanded's `router/1` against a router the resource transformer has
+  not produced. Its integration test is quarantined as `...exs.phase2-blocked`.
+- ✗ **Snapshot pluggable adapter interface** — `Commanded.Aggregates.Aggregate.Snapshotter` has
+  never existed in any Commanded version. The `@behaviour` sat behind a permanently-false guard,
+  so the compiler never checked the four adapter functions against anything. Commanded's real
+  snapshotting is internal (`Commanded.Snapshotting`), configured per-aggregate via a plain map.
+- ✗ **Event-handler action dispatch** — generated code called `Ash.run_action/3`, which does not
+  exist. Fixed in 01-07. Still open: `generate_projector_modules.ex:359` calls
+  `Ash.run_action(changeset, action)` — arity 2 exists so it compiles with no warning, but the
+  arguments match neither clause. Latent, no compile signal.
+- ✗ **"Nine compile-time verifiers"** — `CLAUDE.md` documents three
+  (`ValidateCommandActions`, `ValidateCommandHandlers`, `ValidateCommandNameConflict`) that do not
+  exist in `lib/commanded/verifiers/`. Treat all `CLAUDE.md` factual claims as unverified.
+
+### Existing, unverified
+
+<!-- Present in the code and not disproved, but never exercised against a real path.
+     The rewrite replaces these rather than preserving them. -->
+
+- Spark DSL extensions on `Ash.Resource` (`commands`, `events`, `projections`, `event_handlers`)
+  and on `Ash.Domain` (`application`)
+- Command and event struct generation with typespecs
+- Projection and projector module generation
+- Aggregate module generation with execute/apply — 541 generated lines, largest `quote` block 225
+  lines against 6–31 for every other generator. This distribution is the reason for the rewrite.
+- Command middleware pipeline, parameter transformation and validation, `Ecto.Multi` transaction
+  coordination
 
 ### Active
 
-<!-- Hypotheses until shipped and validated. -->
+**Milestone v0.3 — Library Rewrite (this milestone)**
 
-**Library completion**
+*Foundation — must land before the first component, because the per-component approval step
+depends on it*
 
-- [ ] Land the Domain/Resource DSL split currently in flight on `fix-application-generation`
-- [ ] Audit the library against `core`'s real event-sourcing patterns and produce an explicit capability checklist
-- [ ] Declarative event versioning — express `Commanded.Event.Upcaster` through the DSL
-- [ ] Declarative aggregate invariants and preconditions (reject commands based on aggregate state)
-- [ ] Aggregate state that is not derived from resource attributes (collections, maps, derived fields)
-- [ ] Projection expressiveness sufficient to absorb `core`'s projector logic, with escape hatches only where genuinely required
-- [ ] Implement projector auto-discovery (replace the `generate_commanded_application.ex:115` TODO)
-- [ ] Production-viable snapshot store beyond in-memory ETS
+- [ ] `mix ash_commanded.dump` — render a DSL definition's generated code: pre-`Module.create/3`
+      AST by default, post-compile `:beam_lib` `debug_info` behind a flag
+- [ ] Golden renders of generated output, diffed in CI
+- [ ] `usage_rules` (dev-only) and generated LLM-facing usage rules for the library
+- [ ] AGENTS.md — idiomatic Elixir, DSL conventions, transformer ordering and testing
+      expectations, with `core` as the worked reference example
+- [ ] `CLAUDE.md` reconciled with reality and made consistent with AGENTS.md rather than divergent
+- [ ] Custom Credo checks enforcing the generation anti-patterns (see Constraints → Rewrite rules)
+- [ ] Elixir/OTP CI matrix — current release plus the previous two minors (unrun plan 01-08)
 
-**Examples and documentation**
+*Components — each runs the same loop: propose DSL → usage example → transformer → render and
+approve → persisters and verifiers → tests*
 
-- [ ] End-to-end example application on Commanded's in-memory adapter — fast, CI-friendly, doc-facing
-- [ ] End-to-end example application on a Postgres-backed EventStore — proves the real persistence path
-- [ ] Documented testing story: how to test commands, aggregates, projections and full event flows
-- [ ] Documentation reconciled with reality (remove or implement the three documented-but-absent verifiers)
+- [ ] Commands
+- [ ] Events
+- [ ] Application — including the router-generation defect that blocks it
+- [ ] Aggregates — opening with the design question: what is `AshCommanded.Aggregate.__using__/1`?
+- [ ] Projections
+- [ ] Routers, event handlers and process managers — requires a domain transformer that walks
+      `Ash.Domain.Info.resources/1` and reads each resource's persisted state via
+      `Spark.Dsl.Extension.get_persisted/2`; Spark dsl_state is per-module with no built-in
+      cross-module aggregation
+- [ ] Declarative event versioning through `Commanded.Event.Upcaster`
+- [ ] Snapshots re-targeted at `Commanded.Snapshotting`, replacing the adapter behaviour that
+      never existed; production-viable storage beyond in-memory ETS
+- [ ] Middleware and transaction coordination
 
-**Quality**
+*Carry-forwards from Phase 01 that must not be re-discovered*
 
-- [ ] Tests that exercise unhappy paths — DSL misuse rejected at compile time, runtime failures handled
-- [ ] Declare `:commanded` and `:event_store` in `mix.exs`
+- [ ] Restore `commanded_application_integration_test.exs.phase2-blocked`, delete its stale
+      `Code.ensure_loaded?` guard, and sweep `test/` for the same pattern (`lib/` was swept, `test/` was not)
+- [ ] Fix the latent `Ash.run_action(changeset, action)` at `generate_projector_modules.ex:359`
+- [ ] Resolve the `private? true` ETS fixture limitation — the table is scoped to the calling
+      process, so a write made inside Commanded's aggregate GenServer is invisible to a later
+      `Ash.get!/2` from the test process
+- [ ] `spark.cheat_sheets` to cover `DomainDsl`, not only `Dsl`
+- [ ] `mix.exs` `files:` to include `documentation/` and `cheatsheets/`
 - [ ] Replace `IO.puts`/`IO.inspect` in production paths with `Logger`
-- [ ] Decompose `GenerateAggregateModule` (861 lines) and `CommandActionMapper` (640 lines)
-- [ ] Review `Error` (514 lines) for composition opportunities
+- [ ] Bump dependencies to current versions (Ash, Spark, ExDoc, Sourceror, Igniter)
+- [ ] Revert `workflow.use_worktrees: false` once this branch merges
 
-**Repository and tooling**
-
-- [ ] Add `usage_rules` (dev-only) and generate LLM-facing usage rules for the library — `core` already uses `~> 1.2` as precedent
-- [ ] Add an `AGENTS.md` capturing DSL conventions, transformer ordering and testing expectations for coding agents
-- [ ] Reconcile `CLAUDE.md` with reality and make it and `AGENTS.md` consistent rather than divergent
-- [ ] Bump all dependencies to current versions (Ash, Spark, ExDoc, Sourceror, Igniter, Mock)
-- [ ] Move to current Elixir/OTP while supporting the previous two minor releases, enforced by a CI matrix
-
-**core migration**
+**Deferred to the next milestone — `core` migration and 1.0**
 
 - [ ] Migrate `identity` onto AshCommanded
 - [ ] Migrate `data` onto AshCommanded
 - [ ] Migrate `integration` onto AshCommanded
 - [ ] Migrate `schema_definition` onto AshCommanded
 - [ ] Migrate `workflow` onto AshCommanded
-
-**Release**
-
 - [ ] Publish 1.0 to hex.pm once `core` is fully migrated
 
 ### Out of Scope
@@ -173,6 +242,31 @@ stated pain.
 - **Genericity**: Examples and tests must be domain-neutral; no Accountex-specific concepts in the published library
 - **Versioning**: Break freely on 0.x; 1.0 is cut only after `core` is fully migrated
 
+**Rewrite rules** — foundational, not remedial. Derived from `.planning/LEARNINGS.md` §5 and from
+the anti-patterns the previous implementation exhibited. These are gates on the rewrite, and where
+possible they are enforced by custom Credo checks rather than by prose.
+
+1. **Generated code is thin wiring.** Logic lives in hand-written runtime modules reached through a
+   `__using__` front door. A generated clause carries only the per-entity literals that vary.
+2. **Anything computable at macro-expansion time is computed there** and `unquote`d as a literal,
+   never reassembled at runtime.
+3. **Measure the OUTPUT, not the generator.** Target: a generated clause under ~10 lines; no
+   `quote` block over 40. Splitting a fat generator into several generator modules satisfies a
+   line-count criterion while changing nothing about what is emitted.
+4. **Derive from `Transformer.get_persisted/2`**, never by module-name surgery.
+5. **Prefer a verifier over a transformer** when only validating.
+6. **Introspection belongs in `ModuleName.Info`.**
+7. **Golden renders of generated output, diffed in CI.**
+8. **DRY.** Repeated shapes extract to functions, modules or macros rather than recurring.
+9. **No double-handling.** Pass the value the caller already holds rather than re-deriving it by
+   re-walking nested AST. An extra parameter is cheaper than a traversal.
+10. **Idiomatic macros.** Mostly-static code with occasional `unquote` substitutions — never lists
+    of tuples and maps assembled into strings and reparsed into AST.
+11. **Tricky AST transformation is a smell.** If Spark does not already offer it, the design is
+    probably an overcomplicated version of something simple. Escalate and reconsider; a feature PR
+    to Spark is the last resort, not the first move. Where genuinely needed, it goes behind a named
+    utility module whose purpose is legible.
+
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
@@ -182,13 +276,20 @@ stated pain.
 | All five `core` domains, not a pilot | Partial migration leaves `core` maintaining two idioms at once, which is worse than either | — Pending |
 | Absorb everything viable into the DSL, not just boilerplate | Boilerplate-only wins file count but leaves 5,345 lines of aggregate/projector logic untouched; escape hatches only where genuinely needed | — Pending |
 | Declarative event upcasting is a v1 requirement | `core` depends on `Commanded.Event.Upcaster`; an ES library with no schema-evolution story is incomplete | — Pending |
-| Fold the in-flight `fix-application-generation` work into Phase 1 | The Domain/Resource split is correct and already underway; restarting wastes it | — Pending |
+| Fold the in-flight `fix-application-generation` work into Phase 1 | The Domain/Resource split is correct and already underway; restarting wastes it | ⚠️ Revisit — the split compiles, but router generation never fires under it; the application component of the rewrite now owns this |
 | Two example adapters (in-memory + Postgres EventStore) | In-memory keeps docs and CI fast; Postgres proves the path `core` actually uses | — Pending |
 | All flagged tech debt in scope | "Production ready" is not compatible with `IO.inspect` in dispatch paths or undeclared dependencies | — Pending |
 | Break the DSL now, cut 1.0 later | 0.2.0 adoption is negligible; freezing the DSL before `core` migrates would lock in the gaps this project exists to fix | — Pending |
 | Support current Elixir/OTP plus the previous two minors | Standard Hex-library practice: broad enough to adopt, narrow enough to CI-test honestly. `~> 1.14` was untested reach | — Pending |
 | Repository tooling (usage_rules, AGENTS.md, dep bumps) is in scope | The library will be worked on largely by coding agents; stale docs and undeclared conventions are the same failure mode as the `CLAUDE.md` drift already found | — Pending |
 | Upstream rather than fork | David holds maintainer rights on `accountex-org/ash_commanded` including hex publishing | ✓ Good |
+| Rewrite component by component rather than continue refactoring | A generator audit measured `generate_aggregate_module.ex` at 11 `quote` blocks, 225-line largest block and 541 generated lines, against 6–31 for every other generator. The distribution reads as accretion, and the cause is mechanical: Commanded supplies a `__using__` macro for everything except aggregates, so that machinery was written into the emitted AST instead of into a runtime module | — Pending |
+| Component order: commands, events, application, then aggregates and projections | Prove the render-and-approve methodology on the cheap components before it meets the hard ones | — Pending |
+| The DSL-output renderer is foundation, not a deliverable | Every component's human-approval step depends on it, so it cannot follow the components it gates | — Pending |
+| Render both pre-`Module.create/3` AST and post-compile `:beam_lib` | The two views catch different things: pre-create shows what the transformer wrote (with `use X` still `use X`), post-compile shows ground truth after macro expansion | — Pending |
+| Rewrite in place, per component, with the suite green at every commit | Phase 01's 176-test suite and blocking gates are the judging bar; a parallel namespace would keep known-broken code alive for the whole milestone and double the surface | — Pending |
+| `core` migration deferred to the next milestone | A migration cannot be sensibly phased against a DSL that does not yet exist; the migration roadmap should be written once the new DSL surface is real | — Pending |
+| Anti-patterns enforced by executable checks, not prose | "Mostly static code with occasional substitutions" is a countable property of a `quote` block. Prose gates decay once the approving human moves on; Credo checks and golden-render diffs do not | — Pending |
 
 ## Evolution
 
@@ -208,4 +309,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-11 after initialization*
+*Last updated: 2026-09-15 after starting milestone v0.3 Library Rewrite*
