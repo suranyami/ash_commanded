@@ -205,9 +205,12 @@ These hold across every phase and are not restated per phase:
 
 - **In place, not in parallel.** Delete the old component and its tests, write fresh against
   `.planning/LEARNINGS.md` rather than against the old code. No parallel namespace.
-- **Green at every commit.** 176 tests, 0 failures, and `mix check` (format + Credo strict +
-  Dialyzer + Sobelow + test) all blocking. This is the judging bar established in Phase 01 of the
-  previous milestone and it does not relax.
+- **Green at every commit.** 176 tests, 0 failures, and `mix check` all blocking. The real alias is
+  `format --check-formatted` → `compile --warnings-as-errors` → `credo` → `test` →
+  `scripts/compile_parity.sh` → `dialyzer` → `gen.docs`. **Corrected 2026-09-15:** an earlier version
+  of this line said "format + Credo strict + Dialyzer + Sobelow + test". There is no Sobelow step,
+  and `credo` runs non-strict by deliberate decision (archived phase D-21), not by omission — do not
+  "restore" either. This is the judging bar established in the previous milestone and it does not relax.
 - **Assets that survive.** `mix.exs` toolchain, `.credo.exs`, `.dialyzer_ignore.exs`,
   `test/support/` fixtures, `test/support/parity/` + `scripts/compile_parity.sh`, and the suite
   itself. See `.planning/LEARNINGS.md` §2.

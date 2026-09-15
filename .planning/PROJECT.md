@@ -118,8 +118,13 @@ stated pain.
 
 - ✓ A test suite capable of failing — 176 tests, 0 failures, stable across 45+ consecutive
   full-suite runs, zero mocking
-- ✓ Blocking quality gates — `mix check` = format + Credo (strict) + Dialyzer + Sobelow + test,
-  with `.credo.exs` and `.dialyzer_ignore.exs` checked in
+- ✓ Blocking quality gates — `mix check` = `format --check-formatted` → `compile --warnings-as-errors`
+  → `credo` → `test` → `scripts/compile_parity.sh` → `dialyzer` → `gen.docs`, with `.credo.exs` and
+  `.dialyzer_ignore.exs` checked in. **Corrected 2026-09-15:** an earlier version of this line read
+  "format + Credo (strict) + Dialyzer + Sobelow + test". There is no Sobelow step, and `credo` runs
+  non-strict (`.credo.exs:49` is `strict: false`) — non-strict is a deliberate recorded decision
+  (archived phase D-21: `core` runs `-a --strict`, this repo does not, because of the oversized
+  modules later phases decompose), not an oversight to fix.
 - ✓ Cross-environment visibility of generated code — `test/support/parity/` on the `:dev`
   elixirc path plus `scripts/compile_parity.sh`
 - ✓ `:commanded` declared as a hard dependency; six `Code.ensure_loaded?` fictions removed from `lib/`
