@@ -35,6 +35,13 @@ defmodule AshCommanded.TestSupport.Parity.Widget do
         changes(%{})
       end
     end
+
+    event_handlers do
+      handler :notifier do
+        events([:widget_created])
+        action :create
+      end
+    end
   end
 
   actions do

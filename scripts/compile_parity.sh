@@ -23,6 +23,7 @@ EXPECTED_MODULES=(
   "AshCommanded.TestSupport.Parity.Events.WidgetCreated"
   "AshCommanded.TestSupport.Parity.Projections.WidgetCreated"
   "AshCommanded.TestSupport.Parity.Projectors.WidgetProjector"
+  "AshCommanded.TestSupport.Parity.EventHandlers.WidgetNotifierHandler"
 )
 
 check_env() {
