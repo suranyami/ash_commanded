@@ -96,6 +96,54 @@ defmodule AshCommanded.Commanded.Transformers.BaseTransformerTest do
       assert BaseTransformer.create_module(module_name, ast, __ENV__) == :ok
       assert module_name.value() == :missing_table
     end
+
+    test "create_module/4 with an explicit location sets the module's own compile source (FOUND-18)" do
+      module_name = Module.concat(["AshCommanded", "Test", "ExplicitLocationModule"])
+
+      ast =
+        quote do
+          def value, do: :explicit_location
+        end
+
+      location = [file: "test/support/parity/parity_widget.ex", line: 12]
+
+      assert BaseTransformer.create_module(module_name, ast, __ENV__, location) == :ok
+
+      assert module_name.__info__(:compile) |> Keyword.fetch!(:source) |> to_string() ==
+               location[:file]
+    end
+
+    test "create_module/3 keeps falling back to Macro.Env.location(env) unchanged (FOUND-18)" do
+      module_name = Module.concat(["AshCommanded", "Test", "FallbackLocationModule"])
+
+      ast =
+        quote do
+          def value, do: :fallback_location
+        end
+
+      assert BaseTransformer.create_module(module_name, ast, __ENV__) == :ok
+
+      assert module_name.__info__(:compile) |> Keyword.fetch!(:source) |> to_string() ==
+               __ENV__.file
+    end
+
+    test "a compile error in the generated AST names the supplied location, not the transformer's own file (FOUND-18)" do
+      module_name = Module.concat(["AshCommanded", "Test", "CompileErrorModule"])
+
+      ast =
+        quote do
+          def broken(^undefined_pin_variable), do: :ok
+        end
+
+      location = [file: "fake/dsl_declaration.ex", line: 3]
+
+      error =
+        assert_raise CompileError, fn ->
+          BaseTransformer.create_module(module_name, ast, __ENV__, location)
+        end
+
+      assert to_string(error.file) == location[:file]
+    end
   end
 
   defp safe_delete_table(table) do
