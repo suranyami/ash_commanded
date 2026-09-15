@@ -60,12 +60,12 @@ output that breaks the rewrite rules — so every later phase has something real
   4. A developer runs the structural clone check across `lib/` and reads a report naming clone pairs that Credo's built-in duplicate check does not report; `AGENTS.md` carries Rule 9 ("no double-handling") as a reviewer checklist item with an explicit statement that no mechanical check for it exists.
   5. `AGENTS.md` exists documenting idiomatic Elixir, DSL conventions, transformer ordering, testing expectations and the Spark API surface, with `core` as the worked reference; `usage_rules` is a dev dependency and the library's generated usage rules are committed; `lib/` has sibling `resource/` and `domain/` trees each holding `transformers/`, `verifiers/` and `info.ex`; a deliberate error in generated code reports a `file:`/`line:` a developer can open; and CI runs the suite green on the current Elixir/OTP release plus the previous two minors.
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Tracer: AST capture seam, `mix ash_commanded.dump`, one golden, the clause-size gate, and explicit file/line metadata (wave 1)
+- [x] 01-01-PLAN.md — Tracer: AST capture seam, `mix ash_commanded.dump`, one golden, the clause-size gate, and explicit file/line metadata (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -247,7 +247,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase                                                       | Plans Complete | Status      | Completed |
 | ----------------------------------------------------------- | -------------- | ----------- | --------- |
-| 1. Foundation — Rendering, Enforcement and Layout           | 0/6            | Planned     | -         |
+| 1. Foundation — Rendering, Enforcement and Layout           | 1/6 | In Progress|  |
 | 2. Commands and Events                                      | 0/TBD          | Not started | -         |
 | 3. Application and Routers                                  | 0/TBD          | Not started | -         |
 | 4. Aggregates                                               | 0/TBD          | Not started | -         |
