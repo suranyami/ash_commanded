@@ -165,16 +165,66 @@ defmodule AshCommanded.CredoChecks.NoModuleNameSurgeryTest do
     end
   end
 
+  describe "the marker must be a standalone comment, not any line containing its text (CR-02)" do
+    test "a doc-string mention of the marker does not exempt the function beneath it" do
+      """
+      defmodule CredoSampleModule do
+        @doc \"\"\"
+        This function is deliberately exempt via the `# #{Exemption.marker()}` marker below.
+        \"\"\"
+        def unrelated_function(resource_module) do
+          resource_module |> Module.split() |> Enum.drop(-1) |> Module.concat()
+        end
+      end
+      """
+      |> to_source_file("lib/ash_commanded_sample/prose.ex")
+      |> run_check(NoModuleNameSurgery)
+      |> assert_issue()
+    end
+
+    test "a real standalone marker comment still exempts the function beneath it" do
+      """
+      defmodule CredoSampleModule do
+        # #{Exemption.marker()}
+        def get_module_prefix(resource_module) do
+          resource_module |> Module.split() |> Enum.drop(-1) |> Module.concat()
+        end
+      end
+      """
+      |> to_source_file("lib/ash_commanded_sample/marked.ex")
+      |> run_check(NoModuleNameSurgery)
+      |> refute_issues()
+    end
+  end
+
   describe "the exemption marker's footprint in the real tree" do
-    test "appears in exactly one function across all of lib/" do
+    test "exactly one standalone marker comment exists across all of lib/" do
+      # Counts marker COMMENT LINES, not files containing the marker text. The previous
+      # assertion mapped each file to its contents and counted files, so a file holding
+      # the marker twice counted once and the assertion passed vacuously — which is
+      # exactly what base_transformer.ex does (prose in its @doc plus the real marker).
       count =
         "lib"
         |> Path.join("**/*.ex")
         |> Path.wildcard()
-        |> Enum.map(&File.read!/1)
-        |> Enum.count(&String.contains?(&1, Exemption.marker()))
+        |> Enum.flat_map(&(&1 |> File.read!() |> String.split("\n")))
+        |> Enum.count(&marker_comment_line?/1)
 
       assert count == 1
     end
+
+    test "a prose mention of the marker inside a doc string is not a marker comment" do
+      refute marker_comment_line?(
+               "  that shape, and is deliberately exempt via the `# #{Exemption.marker()}` marker"
+             )
+    end
+
+    test "a standalone marker comment is a marker comment" do
+      assert marker_comment_line?("  # #{Exemption.marker()}")
+    end
+  end
+
+  defp marker_comment_line?(line) do
+    Regex.match?(~r/^\s*#\s*#{Regex.escape(Exemption.marker())}\s*$/, line)
   end
 end
