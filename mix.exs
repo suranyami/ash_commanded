@@ -23,6 +23,21 @@ defmodule AshCommanded.MixProject do
       name: "AshCommanded",
       docs: docs(),
 
+      # usage_rules (FOUND-13, dev-only): aggregates OTHER dependencies' own
+      # `usage-rules.md`/sub-rule files INTO AGENTS.md's sync-managed block, delimited by
+      # `<!-- usage-rules-start/end -->`. This is the opposite direction from `usage-rules.md`
+      # at the repository root, which is THIS library's own hand-authored file describing
+      # itself to a consumer. `:spark` and `:igniter` are the only current dependencies that
+      # actually ship a `usage-rules.md` (verified against `deps/*/usage-rules.md` on disk,
+      # 2026-09-16) — `:ash` and `:commanded`, the other two frameworks this library is built
+      # on, do not ship one in the vendored versions pinned here, and listing a package with
+      # neither a main file nor sub-rules is a hard resolution error
+      # (`deps/usage_rules/lib/mix/tasks/usage_rules.sync.ex`'s `resolve_named_usage_rules/6`),
+      # not a silent skip. `mix usage_rules.sync --check` (wired into CI, not the `check`
+      # alias — see aliases/0) fails the build the moment a synced dependency's rules drift
+      # from what is committed.
+      usage_rules: usage_rules(),
+
       # Testing
       aliases: aliases(),
       test_coverage: [tool: ExCoveralls],
@@ -85,6 +100,13 @@ defmodule AshCommanded.MixProject do
     ]
   end
 
+  defp usage_rules do
+    [
+      file: "AGENTS.md",
+      usage_rules: [:spark, :igniter]
+    ]
+  end
+
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(:dev), do: ["lib", "test/support/parity"]
   defp elixirc_paths(_), do: ["lib"]
@@ -122,7 +144,7 @@ defmodule AshCommanded.MixProject do
           String.starts_with?(path, excluded_prefix <> "/")
       end)
 
-    lib_files ++ ~w(mix.exs README.md LICENSE .formatter.exs)
+    lib_files ++ ~w(mix.exs README.md LICENSE .formatter.exs usage-rules.md)
   end
 
   defp docs do
