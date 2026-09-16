@@ -1,0 +1,97 @@
+defmodule AshCommanded.Resource.Sections.ApplicationSection do
+  @moduledoc """
+  Defines the schema for the `application` section of the Commanded DSL.
+
+  The application section is used on your **Ash.Domain** via the
+  `AshCommanded.Domain.Dsl` extension. It configures the generated
+  Commanded application (event store, pubsub, registry, etc.).
+
+  ## Example
+
+  ```elixir
+  defmodule MyApp.Domain do
+    use Ash.Domain, extensions: [AshCommanded.Domain.Dsl]
+
+    resources do
+      resource MyApp.User
+    end
+
+    commanded do
+      application do
+        otp_app :my_app
+        event_store Commanded.EventStore.Adapters.EventStore
+        pubsub :local
+        registry :local
+        include_supervisor? true
+        prefix "MyApp"
+      end
+    end
+  end
+  ```
+  """
+
+  @doc """
+  Returns the schema for the application section.
+  """
+  def schema do
+    [
+      otp_app: [
+        type: :atom,
+        doc: "The OTP application name to use for configuration",
+        required: true
+      ],
+      event_store: [
+        type: {:or, [:atom, :keyword_list, {:tuple, [:atom, :keyword_list]}]},
+        doc: "The event store adapter to use (e.g., Commanded.EventStore.Adapters.EventStore)",
+        required: true
+      ],
+      pubsub: [
+        type: :atom,
+        doc: "The pub/sub adapter to use (:local, :phoenix)",
+        default: :local
+      ],
+      registry: [
+        type: :atom,
+        doc: "The registry adapter to use (:local, :global)",
+        default: :local
+      ],
+      snapshotting: [
+        type: :boolean,
+        doc: "Whether to enable aggregate snapshotting",
+        default: false
+      ],
+      snapshot_threshold: [
+        type: :integer,
+        doc: "Number of events to process before taking a snapshot",
+        default: 100
+      ],
+      snapshot_version: [
+        type: :integer,
+        doc: "The version of the snapshot schema",
+        default: 1
+      ],
+      snapshot_store: [
+        type: {:or, [:atom, :map, {:in, [nil]}]},
+        doc: "Optional custom snapshot store module or configuration",
+        default: nil
+      ],
+      include_supervisor?: [
+        type: :boolean,
+        doc: "Whether to include a supervisor for the application",
+        default: false
+      ],
+      prefix: [
+        type: {:or, [:string, {:in, [nil]}]},
+        doc: "Application module prefix for generated code",
+        default: nil
+      ]
+    ]
+  end
+
+  @doc """
+  Returns the entities for the application section.
+
+  The application section doesn't define entities, only configuration options.
+  """
+  def entities, do: []
+end

@@ -27,7 +27,7 @@ defmodule Mix.Tasks.AshCommanded.Dump do
   injected.
 
   This forces a fresh, in-process recompile of the target module's own source file with AST
-  capture enabled (see `AshCommanded.Commanded.Transformers.BaseTransformer.create_module/3`).
+  capture enabled (see `AshCommanded.Resource.Transformers.BaseTransformer.create_module/3`).
   A normal `mix compile` or `mix test` never sets the capture flag, so it pays nothing (D-06).
 
   ## Regenerating goldens (FOUND-05)
@@ -172,7 +172,7 @@ defmodule Mix.Tasks.AshCommanded.Dump do
   # starts with the resource/domain's own module prefix (its parent namespace — the same prefix
   # BaseTransformer.get_module_prefix/1 derives), or exactly the --only module when given.
   defp select_captured(captured, target, nil) do
-    prefix = AshCommanded.Commanded.Transformers.BaseTransformer.get_module_prefix(target)
+    prefix = AshCommanded.Resource.Transformers.BaseTransformer.get_module_prefix(target)
     prefix_parts = Module.split(prefix)
 
     Enum.filter(captured, fn {module_name, _ast} ->

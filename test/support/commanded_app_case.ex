@@ -5,14 +5,14 @@ defmodule AshCommanded.TestSupport.WidgetRouter do
   Commanded, against the DSL's own generated `Widget` command and aggregate modules.
 
   This is deliberately NOT the DSL's own auto-generated main/domain router
-  (`AshCommanded.Commanded.Transformers.GenerateMainRouterModule` /
+  (`AshCommanded.Resource.Transformers.GenerateMainRouterModule` /
   `GenerateDomainRouterModule`). Confirmed via a live probe while writing this file: under the
-  current `AshCommanded.Commanded.Dsl` (resource) / `AshCommanded.Commanded.DomainDsl` (domain)
+  current `AshCommanded.Resource.Dsl` (resource) / `AshCommanded.Domain.Dsl` (domain)
   split, those two transformers never actually produce a router module. Both check
   `Spark.Dsl.Transformer.get_persisted(dsl_state, :module)` against the module *currently being
-  compiled* — but they are declared only in `AshCommanded.Commanded.Dsl`'s (resource-level)
+  compiled* — but they are declared only in `AshCommanded.Resource.Dsl`'s (resource-level)
   transformer list, so that check always sees the resource, never the domain, and
-  `GenerateMainRouterModule`'s domain branch can never fire. `AshCommanded.Commanded.DomainDsl`
+  `GenerateMainRouterModule`'s domain branch can never fire. `AshCommanded.Domain.Dsl`
   does not list either transformer itself. Net effect: no `<Domain>.Router` or `<Prefix>.Router`
   module is ever generated, for any domain, under the current architecture — verified directly:
   a real `Ash.Domain` using `DomainDsl` with a resource carrying commands compiles its command,

@@ -1,7 +1,7 @@
 defmodule AshCommanded.TestSupport.Parity.Domain do
   @moduledoc """
   A domain-neutral `Ash.Domain` used only to prove SC2 (D-19): that
-  `AshCommanded.Commanded.Dsl`'s generated modules are identical under `MIX_ENV=dev` and
+  `AshCommanded.Resource.Dsl`'s generated modules are identical under `MIX_ENV=dev` and
   `MIX_ENV=test`.
 
   This file, and `parity_widget.ex` beside it, are the ONLY resources in this repository that

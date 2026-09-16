@@ -1,7 +1,7 @@
 defmodule AshCommanded.TestSupport.Parity.Widget do
   @moduledoc """
   A domain-neutral, dependency-free `Ash.Resource` used only to prove SC2 (D-19): that
-  `AshCommanded.Commanded.Dsl`'s generated modules are identical under `MIX_ENV=dev` and
+  `AshCommanded.Resource.Dsl`'s generated modules are identical under `MIX_ENV=dev` and
   `MIX_ENV=test`. See `AshCommanded.TestSupport.Parity.Domain`'s moduledoc and
   `scripts/compile_parity.sh`.
 
@@ -11,7 +11,7 @@ defmodule AshCommanded.TestSupport.Parity.Widget do
   """
   use Ash.Resource,
     domain: AshCommanded.TestSupport.Parity.Domain,
-    extensions: [AshCommanded.Commanded.Dsl]
+    extensions: [AshCommanded.Resource.Dsl]
 
   commanded do
     commands do

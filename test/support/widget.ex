@@ -3,7 +3,7 @@ defmodule AshCommanded.TestSupport.Widget do
   use Ash.Resource,
     domain: AshCommanded.TestSupport.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshCommanded.Commanded.Dsl]
+    extensions: [AshCommanded.Resource.Dsl]
 
   ets do
     private? true
