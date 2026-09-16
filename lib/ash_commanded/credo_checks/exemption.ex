@@ -19,6 +19,11 @@ defmodule AshCommanded.CredoChecks.Exemption do
   than one contiguous string literal: the marker's whole point is to be a single, countable
   occurrence in `lib/` (asserted by both check test suites, walking `lib/` directly) — a literal
   copy of it sitting in this module's own source would be a second, spurious match.
+
+  A marker is recognised only as a standalone comment line whose entire content is the marker
+  text. Prose that merely mentions it — including a backtick-quoted reference in a `@doc`
+  explaining why a function is exempt — is inert, so documenting the exemption cannot silently
+  create another one.
   """
 
   @marker_namespace "ash_commanded"
@@ -62,5 +67,11 @@ defmodule AshCommanded.CredoChecks.Exemption do
   defp before_next_def?(violation_line, next_def), do: violation_line < next_def
 
   defp def_line?(text), do: Regex.match?(~r/^\s*def(p)?\s/, text)
-  defp marker_line?(text), do: String.contains?(text, @marker)
+
+  # A marker is a STANDALONE comment line, never merely a line containing the marker text.
+  # Substring matching cannot tell a real marker from prose about one, so a doc string that
+  # explains the exemption — as `BaseTransformer`'s own `@doc` does — was itself honoured as
+  # a marker and exempted the first function beneath it. Requiring the line to be nothing but
+  # `# <marker>` keeps prose, backtick-quoted mentions and mid-sentence references inert.
+  defp marker_line?(text), do: Regex.match?(~r/^\s*#\s*#{Regex.escape(@marker)}\s*$/, text)
 end

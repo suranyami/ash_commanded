@@ -83,15 +83,28 @@ defmodule AshCommanded.CredoChecks.NoRuntimeStringToAstTest do
   end
 
   describe "the exemption marker's footprint in the real tree" do
-    test "appears in exactly one function across all of lib/" do
+    test "exactly one standalone marker comment exists across all of lib/" do
+      # Counts marker COMMENT LINES, not files containing the marker text. The previous
+      # assertion counted files, so a file holding the marker twice counted once and the
+      # assertion passed vacuously (see CR-02 and no_module_name_surgery_test.exs).
       count =
         "lib"
         |> Path.join("**/*.ex")
         |> Path.wildcard()
-        |> Enum.map(&File.read!/1)
-        |> Enum.count(&String.contains?(&1, Exemption.marker()))
+        |> Enum.flat_map(&(&1 |> File.read!() |> String.split("\n")))
+        |> Enum.count(&marker_comment_line?/1)
 
       assert count == 1
     end
+
+    test "a prose mention of the marker inside a doc string is not a marker comment" do
+      refute marker_comment_line?(
+               "  that shape, and is deliberately exempt via the `# #{Exemption.marker()}` marker"
+             )
+    end
+  end
+
+  defp marker_comment_line?(line) do
+    Regex.match?(~r/^\s*#\s*#{Regex.escape(Exemption.marker())}\s*$/, line)
   end
 end
