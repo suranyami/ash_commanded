@@ -36,11 +36,11 @@ Must land before the first component, because step 4 of the method depends on it
 - [x] **FOUND-09**: A check fails the build when transformer code calls `Code.string_to_quoted!`/`eval_string` to build AST from strings
 - [x] **FOUND-10**: A check fails the build when a module name is derived by `Module.split`/`Module.concat` surgery rather than from persisted state
 - [x] **FOUND-11**: Structural duplicate detection runs across generator modules and reports clones Credo's built-in check misses
-- [ ] **FOUND-12**: Rule 9 ("no double-handling") is carried as an explicit reviewer checklist item, since no mechanical check exists for it
-- [ ] **FOUND-13**: `usage_rules` is a dev dependency and the library publishes generated LLM-facing usage rules
-- [ ] **FOUND-14**: `AGENTS.md` documents idiomatic Elixir, DSL conventions, transformer ordering and testing expectations, using `core` as the worked reference
-- [ ] **FOUND-15**: `AGENTS.md` includes the Spark API reference so implementers reach for built-in machinery before hand-rolling it
-- [ ] **FOUND-16**: CI runs the suite against the current Elixir/OTP release plus the previous two minors
+- [x] **FOUND-12**: Rule 9 ("no double-handling") is carried as an explicit reviewer checklist item, since no mechanical check exists for it
+- [x] **FOUND-13**: `usage_rules` is a dev dependency and the library publishes generated LLM-facing usage rules
+- [x] **FOUND-14**: `AGENTS.md` documents idiomatic Elixir, DSL conventions, transformer ordering and testing expectations, using `core` as the worked reference
+- [x] **FOUND-15**: `AGENTS.md` includes the Spark API reference so implementers reach for built-in machinery before hand-rolling it
+- [x] **FOUND-16**: CI runs the suite against the current Elixir/OTP release plus the previous two minors
 - [x] **FOUND-17**: `lib/` is reorganised into `resource/` and `domain/` trees, each with its own `transformers/`, `verifiers/` and `info.ex`
 - [ ] **FOUND-18**: A shared module-creation helper sets explicit `file:`/`line:` metadata so generated-code errors point somewhere useful
 
@@ -179,11 +179,11 @@ one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does no
 | FOUND-09 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-10 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-11 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
-| FOUND-12 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-13 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-14 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-15 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-16 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-12 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-13 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-14 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-15 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-16 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-17 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-18 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Gaps Found |
 | CMD-01 | Phase 2 — Commands and Events | Pending |

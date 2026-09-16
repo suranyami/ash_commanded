@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-09-16T08:15:45.497Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-09-16T08:50:28.554Z"
 last_activity: 2026-09-16
 last_activity_desc: Phase 01 execution resumed (wave continue)
-state_head: ff2045884f12395f339669c95da76b37cb3a22a7
+state_head: 0db51eefccee170c8b0762c2702ff60858c45b50
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-16 — Phase 01 execution resumed (wave continue)
 
@@ -87,6 +87,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P03 | 110min | 4 tasks | 30 files |
 | Phase 01 P04 | 35min | 3 tasks | 112 files |
 | Phase 01 P05 | 90min | 3 tasks | 16 files |
+| Phase 01 P06 | 26min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-05: identified the exact 15 pre-existing Credo disables (8 files) by diffing against c5e71e8^ (the commit before 01-03 started), re-pointing only those onto the current roadmap's phase numbers rather than every disable currently in lib/
 - [Phase 01]: 01-05: re-ran all five gate-evidence violations fresh rather than reusing 01-03's commit-message-only deliberate-violation proof, since no verbatim transcript from that run was archived
 - [Phase 01]: 01-05: seeded-violation fixtures live under priv/seeded_violations/ (on no elixirc_paths entry, swept by no .credo.exs included: glob) so they encode real violations permanently without ever compiling, linting, or reaching the published Hex package
+- [Phase 01]: [Phase 01, 01-06]: usage_rules config lists :spark/:igniter only (the only two deps with a real usage-rules.md); :ash/:commanded do not ship one and would be a resolution error
+- [Phase 01]: [Phase 01, 01-06]: CI matrix (1.18.4/1.19.6/1.20.4, all OTP 27.3) established live from mise ls-remote elixir on 2026-09-16, not from a planning document; mix.exs's elixir: requirement widened (ceiling only, floor stays 1.18) so all three legs satisfy it
+- [Phase 01]: [Phase 01, 01-06]: AGENTS.md's eleven-rewrite-rules section honestly annotates which rules are mechanically enforced vs partially vs not at all; rule 9 (no double-handling, FOUND-12) gets an explicit reviewer checklist item and an explicit no-mechanical-check statement
 
 ### Pending Todos
 
@@ -185,7 +189,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-16T08:15:45.483Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-09-16T08:50:28.539Z
+Stopped at: Completed 01-06-PLAN.md
 Next: `/gsd-execute-phase 1`
 Resume file: None
