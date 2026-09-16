@@ -1,0 +1,112 @@
+name: CI
+
+# FOUND-16: the first CI workflow this repository has ever had — there is nothing to
+# migrate or adjust; this authors the matrix from scratch
+# (.planning/phases/01-foundation-rendering-enforcement-and-layout/01-RESEARCH.md,
+# Correction #3: `.github/workflows/` did not exist before this plan).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Read-only by default at the workflow level; no job here needs anything more (this
+# repository ships no network surface and handles no user input, so CI is its realistic
+# external attack surface — T-01-SC-03, 01-06-PLAN.md's threat model).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: mix check (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Canonical leg (D-12). Matches this repository's own toolchain exactly
+          # (.tool-versions: 1.18.4-otp-27; test/test_helper.exs's
+          # canonical_elixir_version = "1.18") and is the ONLY leg on which the golden
+          # text-diff (test/ash_commanded/golden_render_test.exs, tag
+          # :canonical_version_only) actually runs. That exclusion is computed FROM THE
+          # RUNNING ELIXIR VERSION inside test_helper.exs itself, not from a CI-side flag —
+          # the same behaviour holds for a developer running the suite locally on a
+          # non-canonical toolchain. Do not add a second, CI-side exclusion mechanism here;
+          # it would only be able to drift from the one in test_helper.exs, never improve on
+          # it.
+          - elixir: "1.18.4"
+            otp: "27.3"
+          # Previous minor.
+          - elixir: "1.19.6"
+            otp: "27.3"
+          # Current minor. PROJECT.md's Constraints require "current Elixir/OTP release plus
+          # the previous two minors" — verified against the real Elixir release list on
+          # 2026-09-16 (`mise ls-remote elixir`; current series was 1.20, previous two 1.19
+          # and 1.18). Re-verify against the real release list, not this comment, before
+          # assuming these three are still current + previous two when next touching this
+          # file.
+          - elixir: "1.20.4"
+            otp: "27.3"
+          # OTP is held constant (27.3, this repository's own installed runtime — see `erl
+          # -eval 'io:format(erlang:system_info(system_version))'`) across all three legs
+          # deliberately: the requirement is a three-way Elixir matrix, not a two-axis
+          # Elixir/OTP matrix, and holding OTP fixed isolates the one variable the
+          # requirement is actually about.
+    env:
+      MIX_ENV: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Elixir and OTP
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Restore dependency and build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            deps
+            _build
+          key: mix-deps-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            mix-deps-${{ matrix.elixir }}-${{ matrix.otp }}-
+
+      - name: Restore Dialyzer PLT cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # mix.exs's dialyzer: config names this exact path (plt_file:
+          # {:no_warn, "priv/plts/project.plt"}) — keep this in sync with that config, not
+          # with Dialyzer's own default location. Keyed on the toolchain versions as well as
+          # the lockfile: a PLT built for one Elixir/OTP pair is invalid for another, and an
+          # unkeyed cache produces confusing cross-version failures that look like real
+          # Dialyzer findings.
+          path: priv/plts
+          key: plt-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            plt-${{ matrix.elixir }}-${{ matrix.otp }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: mix check
+        # The real gate, defined once in mix.exs's aliases/0 (format --check-formatted ->
+        # compile --warnings-as-errors -> credo -> cmd MIX_ENV=test mix coveralls ->
+        # cmd ./scripts/compile_parity.sh -> dialyzer -> gen.docs). Invoked here rather than
+        # its steps being restated, so this workflow and the local gate cannot drift
+        # (AGENTS.md's Testing expectations; T-01-BI-16 in this plan's threat model).
+        run: mix check
+
+      - name: usage_rules.sync --check
+        # FOUND-13: fails the build the moment AGENTS.md's dependency-sourced block drifts
+        # from what a real `mix usage_rules.sync` run would produce (T-01-BI-17). --check
+        # runs entirely in dry-run mode (see deps/igniter/lib/igniter.ex's
+        # halt_if_fails_check!/3 — it halts before any write is attempted) and is safe to run
+        # after `mix check` without leaving the checkout dirty.
+        run: mix usage_rules.sync --check

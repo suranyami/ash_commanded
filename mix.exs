@@ -9,7 +9,15 @@ defmodule AshCommanded.MixProject do
     [
       app: :ash_commanded,
       version: @version,
-      elixir: "~> 1.18",
+      # FOUND-16: current Elixir/OTP release plus the previous two minors
+      # (PROJECT.md Constraints), verified against the real release list on 2026-09-16 via
+      # `mise ls-remote elixir` (current: 1.20.x; previous two: 1.19.x, 1.18.x) — re-verify
+      # against the real release list, not this comment, before assuming these are still
+      # current. `~> 1.18` alone (the prior declaration) matches ONLY 1.18.x and would reject
+      # the 1.19/1.20 CI legs at `mix deps.get`; this widens the ceiling to match all three
+      # while keeping the floor exactly where it was tightened to (D-12's canonical golden
+      # version, `test/test_helper.exs`, stays 1.18 — the oldest of the three, not the newest).
+      elixir: "~> 1.18 or ~> 1.19 or ~> 1.20",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() == :prod,
       deps: deps(),
