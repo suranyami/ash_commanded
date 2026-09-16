@@ -1,3 +1,9 @@
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 2 — `build_event_module/2`'s
+# `event_module |> Module.split() |> ...` reconstructs the event struct's parent namespace from
+# the event module name itself, the confirmed defect FOUND-10/rewrite-rule-4 targets. ROADMAP.md
+# Phase 2 ("Commands and Events") owns the event generator rewrite and is where this is replaced
+# with `Transformer.get_persisted/2`, per D-01.
 defmodule AshCommanded.Commanded.Transformers.GenerateEventModules do
   @moduledoc """
   Generates event modules based on the events defined in the DSL.

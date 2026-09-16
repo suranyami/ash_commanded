@@ -91,8 +91,33 @@ defmodule AshCommanded.MixProject do
       links: %{
         "GitHub" => @source_url
       },
-      files: ~w(lib mix.exs README.md LICENSE .formatter.exs)
+      files: package_files()
     ]
+  end
+
+  # Hex's `files:` key is an include list, not an include-with-exclusions list, so listing the
+  # bare `lib` directory (as this project did before 01-03) ships EVERYTHING under it. Excluding
+  # `lib/ash_commanded/credo_checks/` (the FOUND-09/10 custom Credo checks, dev/test-only tooling
+  # per this repository's own `credo` dep being `only: [:dev, :test]`, T-01-SC-02) requires
+  # enumerating `lib/`'s real files and rejecting that one subtree instead.
+  defp package_files do
+    excluded_prefix = "lib/ash_commanded/credo_checks"
+
+    lib_files =
+      "lib/**/*"
+      |> Path.wildcard()
+      # Two things at once, both required: `File.regular?/1` drops directory entries — Hex
+      # treats a bare directory path in `files:` as "include everything under it," which would
+      # silently re-include the excluded subtree's files via its own parent directory entry
+      # (`lib/ash_commanded/credo_checks` itself) even after this filter rejects the files
+      # directly. Matching on `excluded_prefix` (exact, or with a trailing "/") excludes the
+      # subtree regardless of that directory-entry re-inclusion behaviour.
+      |> Enum.reject(fn path ->
+        not File.regular?(path) or path == excluded_prefix or
+          String.starts_with?(path, excluded_prefix <> "/")
+      end)
+
+    lib_files ++ ~w(mix.exs README.md LICENSE .formatter.exs)
   end
 
   defp docs do

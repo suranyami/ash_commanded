@@ -1,3 +1,10 @@
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 2 — `build_command_module/2`'s
+# `command_module |> Module.split() |> ...` reconstructs the command struct's parent namespace
+# from the command module name itself, the confirmed defect FOUND-10/rewrite-rule-4 targets
+# (01-RESEARCH.md's "Known Collision" analysis names this exact call site). ROADMAP.md Phase 2
+# ("Commands and Events") owns the command generator rewrite and is where this is replaced with
+# `Transformer.get_persisted/2`, per D-01.
 defmodule AshCommanded.Commanded.Transformers.GenerateCommandModules do
   @moduledoc """
   Generates command modules based on the commands defined in the DSL.

@@ -4,6 +4,14 @@
 # Phase 5 ("Projection Expressiveness", PROJ-01..04) already schedules to rework — that
 # phase rewrites projector generation to add idempotency and richer projection composition.
 # Reducing nesting here now would be redone once that rewrite lands (D-21).
+#
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 5 — `build_projector_module/2`, `build_projector_module_ast/2` and
+# `transform/1` each reconstruct a projector module's parent namespace from an existing module
+# name via `Module.split/1` + `Module.concat/1,2`, the confirmed defect FOUND-10/rewrite-rule-4
+# targets. ROADMAP.md Phase 5 ("Projections, Event Handlers and Process Managers") owns the
+# projector generator rewrite and is where this is replaced with `Transformer.get_persisted/2`,
+# per D-01.
 defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
   @moduledoc """
   Generates projector modules based on the projections defined in the DSL.

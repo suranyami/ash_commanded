@@ -10,6 +10,13 @@
 # (`.credo.exs` `strict: true`) suppresses it here rather than editing generated-code shape
 # outside Phase 4's own rewrite of this transformer.
 #
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 4 — `build_aggregate_module/2` and `generate_execute_functions/2`
+# each reconstruct the aggregate module's parent namespace from an existing module name via
+# `Module.split/1` + `Module.concat/1,2` (FOUND-10/rewrite-rule-4). ROADMAP.md Phase 4
+# ("Aggregates") owns this transformer's rewrite and is where this is replaced with
+# `Transformer.get_persisted/2`, per D-01.
+#
 # This module is 861 lines spanning command execution, event application and snapshot
 # generation — the exact debt PROJECT.md's known-debt inventory and ROADMAP.md Phase 4
 # ("Aggregate Expressiveness and Lifecycle", QUAL-03) already name for decomposition.

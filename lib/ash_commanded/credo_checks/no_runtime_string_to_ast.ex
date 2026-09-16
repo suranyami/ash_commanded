@@ -10,9 +10,18 @@ defmodule AshCommanded.CredoChecks.NoRuntimeStringToAst do
   macro-expansion or runtime — the exact anti-pattern FOUND-09 targets. Idiomatic macros build
   AST directly with `quote` and substitute per-entity literals with `unquote`.
 
-  Scoped to `lib/` only: hand-authored test fixtures and the golden-measurement helpers under
-  `test/` legitimately parse rendered *output* (not build AST that gets compiled into a
-  transformer's own generated code), which is a different concern this check does not target.
+  Scoped to `lib/` only, excluding `lib/ash_commanded/dump/`: hand-authored test fixtures, the
+  golden-measurement helpers under `test/`, and the renderer's own measurement helpers under
+  `lib/ash_commanded/dump/` (`AshCommanded.Dump.Golden.measure/1` calls `Code.string_to_quoted!/2`
+  to count an already-rendered module's clause/line spans) all legitimately parse rendered
+  *output* — not build AST that gets compiled into a transformer's own generated code — which is
+  a different concern this check does not target. Found live during 01-03's own D-01 suppression
+  pass: `golden.ex` sits under `lib/` (the renderer ships in the published package per D-08), so
+  the blanket `lib/` guard this check shipped with in its first commit flagged the renderer's own
+  tooling alongside real transformer defects. The exclusion is by directory, not by call site, so
+  a *transformer* accidentally added under `lib/ash_commanded/dump/` in the future would also
+  escape the check — considered and accepted, since that directory is renderer tooling by
+  construction (D-05/D-06/D-08), not a home for DSL transformers.
 
   The single named exemption marker (see `AshCommanded.CredoChecks.Exemption.marker/0` for the
   literal text) is honoured here for symmetry with
@@ -59,7 +68,10 @@ defmodule AshCommanded.CredoChecks.NoRuntimeStringToAst do
   end
 
   defp under_lib?(source_file) do
-    String.starts_with?(source_file.filename || "", "lib/")
+    filename = source_file.filename || ""
+
+    String.starts_with?(filename, "lib/") and
+      not String.starts_with?(filename, "lib/ash_commanded/dump/")
   end
 
   defp traverse(

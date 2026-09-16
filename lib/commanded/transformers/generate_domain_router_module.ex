@@ -6,6 +6,14 @@
 # deferred-items.md`'s "From Plan 01-06" entry (router generation never fires under the
 # current Domain/Resource DSL split — Phase 2 rewrites this transformer's control flow to
 # fix it). Reducing nesting here now would be redone once that rewrite lands (D-21).
+#
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 3 — `build_domain_router_module/1` reconstructs a domain router
+# module name from an existing module name via `Module.split/1` + `Module.concat/1,2`
+# (FOUND-10/rewrite-rule-4). ROADMAP.md Phase 3 ("Application and Routers") owns this
+# transformer's rewrite and is where this is replaced with `Transformer.get_persisted/2`, per
+# D-01. (The pre-existing disable above cites the archived roadmap's "Phase 2" — stale per
+# D-02, corrected in plan 05, not here.)
 defmodule AshCommanded.Commanded.Transformers.GenerateDomainRouterModule do
   @moduledoc """
   Generates a domain-specific router module based on the commands defined in a domain's resources.

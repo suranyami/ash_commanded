@@ -41,7 +41,10 @@
       # If you create your own checks, you must specify the source files for
       # them here, so they can be loaded by Credo before running the analysis.
       #
-      requires: [],
+      # AshCommanded.CredoChecks.{NoRuntimeStringToAst, NoModuleNameSurgery, Exemption}
+      # (FOUND-09, FOUND-10) live here — see `checks: enabled:` below for the modules
+      # themselves.
+      requires: ["lib/ash_commanded/credo_checks/*.ex"],
       #
       # If you want to enforce a style guide and need a more traditional linting
       # experience, you can change `strict` to `true` below:
@@ -123,7 +126,18 @@
           {Credo.Check.Refactor.FilterCount, []},
           {Credo.Check.Refactor.FilterFilter, []},
           {Credo.Check.Refactor.FunctionArity, []},
-          {Credo.Check.Refactor.LongQuoteBlocks, []},
+          # max_line_count: 40 matches rewrite rule 3's stated ceiling (FOUND-07). Do NOT
+          # delete generate_aggregate_module.ex's own LongQuoteBlocks disable below — its
+          # largest `quote` block is 225 lines and Phase 4 owns the rewrite (D-01); deleting
+          # the disable here would turn `mix check` red for four phases.
+          {Credo.Check.Refactor.LongQuoteBlocks, [max_line_count: 40]},
+
+          # FOUND-09, FOUND-10 (01-03): both custom checks carry `base_priority: :high` in
+          # their own `use Credo.Check` declaration; listed here with no priority override so
+          # that base priority is what fires. `strict: true` above and the deliberate-violation
+          # proof in 01-03-SUMMARY.md both confirm these block the real `mix check` alias.
+          {AshCommanded.CredoChecks.NoRuntimeStringToAst, []},
+          {AshCommanded.CredoChecks.NoModuleNameSurgery, []},
           {Credo.Check.Refactor.MapJoin, []},
           {Credo.Check.Refactor.MatchInCondition, []},
           {Credo.Check.Refactor.NegatedConditionsInUnless, []},

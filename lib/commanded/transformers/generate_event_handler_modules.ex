@@ -5,6 +5,15 @@
 # concerns ROADMAP.md's Phase 6 ("Event Handlers, Dispatch and Process Managers", HAND-01/
 # HAND-02) already schedules to rework — that phase makes subscription and dispatch options
 # declarable, which rewrites this exact code path. Reducing it now would be redone (D-21).
+#
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
+# gsd-disable-until-phase: 5 — `build_handler_module/2` reconstructs the handler module's
+# parent namespace via `Module.split/1` + `Module.concat/1,2` (FOUND-10/rewrite-rule-4), and
+# `build_handler_module_ast/5`'s `quote` block exceeds the new 40-line ceiling (FOUND-07).
+# ROADMAP.md Phase 5 ("Projections, Event Handlers and Process Managers") owns the event-handler
+# generator rewrite; both are replaced/decomposed there, per D-01. (The pre-existing disables
+# above cite the archived roadmap's "Phase 6" — stale per D-02, corrected in plan 05, not here.)
 defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
   @moduledoc """
   Generates event handler modules based on the event_handlers defined in the DSL.

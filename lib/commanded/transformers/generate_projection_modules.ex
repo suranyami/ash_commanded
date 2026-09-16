@@ -1,3 +1,9 @@
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 5 — `build_projection_module/2`'s
+# `event_module |> Module.split() |> ...` reconstructs a projection module's parent namespace
+# from the event module name itself, the confirmed defect FOUND-10/rewrite-rule-4 targets.
+# ROADMAP.md Phase 5 ("Projections, Event Handlers and Process Managers") owns the projection
+# generator rewrite and is where this is replaced with `Transformer.get_persisted/2`, per D-01.
 defmodule AshCommanded.Commanded.Transformers.GenerateProjectionModules do
   @moduledoc """
   Generates projection modules based on the projections defined in the DSL.

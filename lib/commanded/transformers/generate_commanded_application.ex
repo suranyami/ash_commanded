@@ -7,6 +7,14 @@
 # TODO at generate_commanded_application.ex:115 and must not reintroduce the cross-module
 # compile deadlock closed in Phase 2." Resolving the TODO here, ahead of that phase's own
 # compile-order design work, risks exactly the deadlock that note warns against (D-21).
+#
+# credo:disable-for-this-file AshCommanded.CredoChecks.NoModuleNameSurgery
+# gsd-disable-until-phase: 3 — `application_module_name/1` and `main_router_module_name/1`
+# reconstruct the application/router module names from the domain module's own name via
+# `Module.split/1` + `Module.concat/1,2` (FOUND-10/rewrite-rule-4). ROADMAP.md Phase 3
+# ("Application and Routers") owns this transformer's rewrite and is where this is replaced
+# with `Transformer.get_persisted/2`, per D-01. (The pre-existing disables above cite the
+# archived roadmap's "Phase 5" — stale per D-02, corrected in plan 05, not here.)
 defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
   @moduledoc """
   Generates a Commanded.Application module based on the configuration in the application section.

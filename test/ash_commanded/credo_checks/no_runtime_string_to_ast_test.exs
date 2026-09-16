@@ -51,6 +51,21 @@ defmodule AshCommanded.CredoChecks.NoRuntimeStringToAstTest do
     end
   end
 
+  describe "run/2 — the renderer's own measurement helpers under lib/ash_commanded/dump/" do
+    test "produces no issue, even though the file is under lib/ (found live against golden.ex, 01-03)" do
+      """
+      defmodule AshCommanded.Dump.SampleGolden do
+        def measure(body) do
+          Code.string_to_quoted!(body, columns: true, token_metadata: true)
+        end
+      end
+      """
+      |> to_source_file("lib/ash_commanded/dump/sample_golden.ex")
+      |> run_check(NoRuntimeStringToAst)
+      |> refute_issues()
+    end
+  end
+
   describe "run/2 — the named exemption marker" do
     test "suppresses an issue for the one function it precedes, even though the shape is present" do
       """
