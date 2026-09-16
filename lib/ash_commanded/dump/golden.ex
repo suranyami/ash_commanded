@@ -118,14 +118,27 @@ defmodule AshCommanded.Dump.Golden do
       Macro.prewalk(quoted, [], fn
         {kind, meta, _args} = node, acc when kind in [:def, :defp] ->
           start_line = Keyword.fetch!(meta, :line)
-          end_line = meta |> Keyword.fetch!(:end) |> Keyword.fetch!(:line)
-          {node, [end_line - start_line + 1 | acc]}
+          {node, [clause_end_line(meta, start_line) - start_line + 1 | acc]}
 
         node, acc ->
           {node, acc}
       end)
 
     spans
+  end
+
+  # Only a `do ... end` clause carries `:end`. A one-line `def bar, do: :ok` carries
+  # `:end_of_expression` instead, and carries neither when it is its block's last
+  # statement — so `:end` cannot be read unconditionally without raising KeyError on
+  # perfectly valid source. Each fallback narrows to the next-best real terminator,
+  # ending at the start line, which is correct: a clause with no terminator metadata
+  # occupies exactly the line it starts on.
+  defp clause_end_line(meta, start_line) do
+    cond do
+      line = get_in(meta, [:end, :line]) -> line
+      line = get_in(meta, [:end_of_expression, :line]) -> line
+      true -> start_line
+    end
   end
 
   @doc """
