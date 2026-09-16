@@ -1,3 +1,9 @@
+# credo:disable-for-this-file ExDNA.Credo
+# gsd-disable-until-phase: 2 — `find_duplicates/1`'s body is a confirmed structural clone
+# (Type-I, mass 51/54) of
+# `AshCommanded.Commanded.Verifiers.ValidateEventNames.find_duplicates/1`, found by the
+# FOUND-11 clone check (01-CLONE-REPORT.md). ROADMAP.md Phase 2 ("Commands and Events") owns
+# both this verifier's and the event-name verifier's rewrite, per D-01.
 defmodule AshCommanded.Commanded.Verifiers.ValidateCommandNames do
   @moduledoc """
   Verifies that each command name within a resource is unique.

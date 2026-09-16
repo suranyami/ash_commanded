@@ -14,6 +14,13 @@
 # ROADMAP.md Phase 5 ("Projections, Event Handlers and Process Managers") owns the event-handler
 # generator rewrite; both are replaced/decomposed there, per D-01. (The pre-existing disables
 # above cite the archived roadmap's "Phase 6" — stale per D-02, corrected in plan 05, not here.)
+#
+# credo:disable-for-this-file ExDNA.Credo
+# gsd-disable-until-phase: 5 — `build_handler_module_ast/5`'s dispatch/error-handling body is a
+# confirmed structural clone (Type-II, renamed, mass 40), found by the FOUND-11 clone check
+# (01-CLONE-REPORT.md), of
+# `AshCommanded.Commanded.Transformers.GenerateProjectorModules.build_event_handler/5`. Same
+# ROADMAP.md Phase 5 rewrite, per D-01.
 defmodule AshCommanded.Commanded.Transformers.GenerateEventHandlerModules do
   @moduledoc """
   Generates event handler modules based on the event_handlers defined in the DSL.

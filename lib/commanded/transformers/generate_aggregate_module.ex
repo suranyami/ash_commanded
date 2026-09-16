@@ -17,6 +17,12 @@
 # ("Aggregates") owns this transformer's rewrite and is where this is replaced with
 # `Transformer.get_persisted/2`, per D-01.
 #
+# credo:disable-for-this-file ExDNA.Credo
+# gsd-disable-until-phase: 4 — `generate_execute_functions/2`'s two `Ash.run_action(...)`
+# result-handling branches (lines ~477, ~508) are a confirmed structural clone (Type-I, mass
+# 45/46), found by the FOUND-11 clone check (01-CLONE-REPORT.md). ROADMAP.md Phase 4
+# ("Aggregates") owns this transformer's rewrite, per D-01.
+#
 # This module is 861 lines spanning command execution, event application and snapshot
 # generation — the exact debt PROJECT.md's known-debt inventory and ROADMAP.md Phase 4
 # ("Aggregate Expressiveness and Lifecycle", QUAL-03) already name for decomposition.

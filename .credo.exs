@@ -36,7 +36,26 @@
       #
       # Load and configure plugins here:
       #
-      plugins: [],
+      # ex_dna 1.5.4 (FOUND-11, human-verified legitimacy checkpoint approved 01-03): structural
+      # clone detection reusing Credo's already-parsed ASTs.
+      #
+      # The line below registers the plugin's OWN default config (which puts `ExDNA.Credo` in
+      # `checks: extra:` and disables the built-in duplicate-code check) — but empirically
+      # verified this session (`mix credo` found 0 issues with only this line present, vs. 4
+      # real clones from a standalone `mix ex_dna lib/` run): `Credo.ConfigFile.merge_checks/2`
+      # has a clause that fires whenever the CONSUMING `.credo.exs` declares its own
+      # `checks: enabled:` list (which this file already did before ex_dna) — that clause
+      # discards the plugin's `extra:` contribution entirely rather than merging it in,
+      # because the base's `enabled:` is pattern-bound to `_checks_base` (ignored) once the
+      # "other" config carries an `enabled:` key at all. hexdocs.pm/ex_dna's README documents
+      # exactly this as the fallback ("Or add directly to the `:enabled` checks list"), which is
+      # why `{ExDNA.Credo, []}` is ALSO listed explicitly in `checks: enabled:` below — for a
+      # project with a real `enabled:` list (virtually every project, including this one before
+      # ex_dna), the plugin registration alone is not sufficient; both lines are required.
+      # The built-in duplicate-code check (`disabled:` list below) was ALREADY disabled before
+      # this change (01-CONTEXT.md's "Correction" — an earlier draft claimed otherwise), so
+      # nothing extra needs disabling there either way.
+      plugins: [{ExDNA.Credo, []}],
       #
       # If you create your own checks, you must specify the source files for
       # them here, so they can be loaded by Credo before running the analysis.
@@ -91,6 +110,11 @@
           # set this value to 0 (zero).
           #
           {Credo.Check.Design.TagTODO, [exit_status: 2]},
+          # FOUND-11 (01-03): explicit `checks: enabled:` entry, required alongside the
+          # plugin registration above per this file's own merge-behavior comment there.
+          # `base_priority: :higher` is the check module's own default (see
+          # deps/ex_dna/lib/ex_dna/integrations/credo.ex) and is not overridden here.
+          {ExDNA.Credo, []},
 
           #
           ## Readability Checks
@@ -199,6 +223,15 @@
           #
           {Credo.Check.Consistency.MultiAliasImportRequireUse, []},
           {Credo.Check.Consistency.UnusedVariableNames, []},
+          # Stays disabled after 01-03's ex_dna plugin registration above. The plugin's own
+          # default config also disables this automatically via `Credo.Plugin`, but that
+          # mechanism is overridden by this project's own explicit `checks:` list the same way
+          # the plugin's `extra:` check registration is (see the plugin registration comment
+          # above) — so THIS line, not the plugin's auto-disable, is what actually keeps it off.
+          # Left in place as explicit, human-readable config rather than relying on a plugin
+          # mechanism that a config shaped like this one's overrides anyway
+          # (FOUND-11; see 01-CLONE-REPORT.md for the comparison this replaces it
+          # with: ExDNA.Credo, not this check).
           {Credo.Check.Design.DuplicatedCode, []},
           {Credo.Check.Design.SkipTestWithoutComment, []},
           {Credo.Check.Readability.AliasAs, []},

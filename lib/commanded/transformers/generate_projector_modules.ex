@@ -12,6 +12,13 @@
 # targets. ROADMAP.md Phase 5 ("Projections, Event Handlers and Process Managers") owns the
 # projector generator rewrite and is where this is replaced with `Transformer.get_persisted/2`,
 # per D-01.
+#
+# credo:disable-for-this-file ExDNA.Credo
+# gsd-disable-until-phase: 5 — `build_event_handler/5`'s dispatch/error-handling body is a
+# confirmed structural clone (Type-II, renamed, mass 40), found by the FOUND-11 clone check
+# (01-CLONE-REPORT.md), of
+# `AshCommanded.Commanded.Transformers.GenerateEventHandlerModules.build_handler_module_ast/5`.
+# Same ROADMAP.md Phase 5 rewrite, per D-01.
 defmodule AshCommanded.Commanded.Transformers.GenerateProjectorModules do
   @moduledoc """
   Generates projector modules based on the projections defined in the DSL.

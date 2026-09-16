@@ -71,6 +71,11 @@ defmodule AshCommanded.MixProject do
 
       # Static analysis and coverage
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      # Structural clone detection (FOUND-11), pinned to the version the human-verified
+      # legitimacy checkpoint confirmed (01-03). `runtime: false`, dev/test only: it executes
+      # during `mix credo`/`mix ex_dna` with developer/CI privileges (T-01-SC) and must never
+      # reach a consumer's compiled application.
+      {:ex_dna, "~> 1.5.4", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:test]},
       {:usage_rules, "~> 1.2", only: [:dev]},

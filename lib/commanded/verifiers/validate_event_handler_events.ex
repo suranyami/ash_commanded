@@ -1,3 +1,10 @@
+# credo:disable-for-this-file ExDNA.Credo
+# gsd-disable-until-phase: 5 — `build_error_message/2`'s message-formatting body is a
+# confirmed structural clone (Type-I, mass 44/46) of
+# `AshCommanded.Commanded.Verifiers.ValidateProjectionEvents.build_error_message/2`, found by
+# the FOUND-11 clone check (01-CLONE-REPORT.md). ROADMAP.md Phase 5 ("Projections, Event
+# Handlers and Process Managers") owns both this verifier's and the projection verifier's
+# rewrite, per D-01.
 defmodule AshCommanded.Commanded.Verifiers.ValidateEventHandlerEvents do
   @moduledoc """
   Verifies that event handlers only reference valid events defined in the resource.
