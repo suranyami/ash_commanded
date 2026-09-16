@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-09-15T04:42:28.944Z"
-last_activity: 2026-09-15
-last_activity_desc: Phase 01 execution started
-state_head: 40c2a7e666ef26fd8ec1d76fa1d6ca17f7621e8c
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-09-16T03:20:28.262Z"
+last_activity: 2026-09-16
+last_activity_desc: Phase 01 execution resumed (wave continue)
+state_head: cca61deaaa42a8ea9b43395b93efcf55297e3ee0
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 3 of 6
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-09-15 — Phase 01 execution started
+Last activity: 2026-09-16 — Phase 01 execution resumed (wave continue)
 
 Progress: [░░░░░░░░░░] 0% (0/7 phases)
 
@@ -84,6 +84,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Prior Phase 01 P07 | 55min | 3 tasks | 32 files |
 | Phase 01 P01 | 45min | 2 tasks | 6 files |
 | Phase 01 P02 | 95min | 3 tasks | 20 files |
+| Phase 01 P03 | 110min | 4 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -119,7 +120,19 @@ Recent decisions affecting current work:
 - [Phase 01]: D-08 (one-way) confirmed: mix ash_commanded.dump ships in the published Hex package as documented public feature
 - [Phase 01]: FOUND-18's create_module/4 proven at mechanism level only; no transformer caller wired yet (excluded by Task 2's own scope) — a real end-to-end demonstration needs a future plan
 - [Phase 01]: Code.compile_file/1 (used for AST capture) leaves :code.which/1 unable to find a module's real .beam file for the rest of the VM session; capture_entries/2 now purges and force-recompiles affected modules immediately afterward to restore normal compiled state — Discovered when --beam introspection broke for a module already touched by the default AST view in the same test process; invisible in real single-invocation usage but essential for the test suite
+- [Phase 01]: Credo strictness folded into plan 01-03 rather than landed standalone — `mix credo -a --strict`
+  is RED (exit 6: 34 readability + 72 design issues) while default `mix credo` is exit 0; `mix check` runs
+  credo as a blocking step, so landing strictness alone would block plans 01-03..01-06. 01-03 already owns
+  `.credo.exs` and `mix.exs` and will calibrate its two new custom checks against strict directly. `coveralls`
+  and `precommit.fast` are additive and land with it.
+- [Phase 01]: `workflow.build_command` / `workflow.test_command` set in `.planning/config.json` — GSD's
+  post-merge gate has no `mix.exs` branch and was skipping silently, so waves could report "verified" with
+  nothing having run.
 - [Phase 01]: Staged goldens (D-01 marker) are exempt from the runtime-reassembly lint as well as the absolute clause ceiling — The confirmed live :erlang.++ defect (LEARNINGS.md #1) lives in exactly the same not-yet-rewritten aggregate generator that already exceeds the line ceiling; without the exemption mix check could never be green until Phase 4's rewrite
+- [Phase 01]: 01-03: FOUND-10/FOUND-18 namespace-derivation collision resolved by one permanent, named, counted exemption marker (# ash_commanded:namespace-derivation) rather than a rewrite or phase-cited suppression
+- [Phase 01]: 01-03: Credo.Check.Design.AliasUsage moved to disabled: (not fixed at 72 call sites) when strict mode was turned on — a real strictness reduction, tracked in WINDOWS.md
+- [Phase 01]: 01-03: ex_dna's plugin registration alone does not run the check in a project with a non-empty checks: enabled: list — Credo.ConfigFile.merge_checks/2 discards the plugin's extra: contribution; both plugins: and an explicit checks: enabled: entry are required
+- [Phase 01]: 01-03: Credo.Check.Design.DuplicatedCode stays disabled (it already was); ex_dna/ExDNA.Credo is a pure addition, not a swap
 
 ### Pending Todos
 
@@ -151,6 +164,7 @@ Recent decisions affecting current work:
 - **In-flight branch.** `fix-application-generation` carries the Domain/Resource split. The split
   itself is correct and compiles; router generation never fires under it. Phase 3 owns the fix.
   Revert `workflow.use_worktrees: false` once the branch merges.
+- FOUND-18's create_module/4 (explicit file:/line: metadata) is wired into none of the nine real create_module/3 call sites — plan 01-01's must-have is not demonstrable end to end until 01-04 wires those sites or a gap-closure plan does (see 01-03-SUMMARY.md Findings)
 
 ## Deferred Items
 
@@ -164,7 +178,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-15T04:42:28.931Z
-Stopped at: Completed 01-02-PLAN.md
-Next: `/gsd-plan-phase 1`
+Last session: 2026-09-16T03:20:28.246Z
+Stopped at: Completed 01-03-PLAN.md
+Next: `/gsd-execute-phase 1`
 Resume file: None

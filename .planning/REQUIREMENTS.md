@@ -31,11 +31,11 @@ Must land before the first component, because step 4 of the method depends on it
 - [ ] **FOUND-04**: Golden renders of generated output are committed and diffed in CI, failing the build on unreviewed change
 - [x] **FOUND-05**: A developer can regenerate golden files with a single documented command
 - [ ] **FOUND-06**: A check fails the build when any generated function clause exceeds ~10 lines in the rendered output
-- [ ] **FOUND-07**: A check fails the build when any `quote` block in the library exceeds 40 lines
+- [x] **FOUND-07**: A check fails the build when any `quote` block in the library exceeds 40 lines
 - [ ] **FOUND-08**: A check fails the build when values computable at macro-expansion time survive into rendered output as runtime work (the `:erlang.++` class of defect)
-- [ ] **FOUND-09**: A check fails the build when transformer code calls `Code.string_to_quoted!`/`eval_string` to build AST from strings
-- [ ] **FOUND-10**: A check fails the build when a module name is derived by `Module.split`/`Module.concat` surgery rather than from persisted state
-- [ ] **FOUND-11**: Structural duplicate detection runs across generator modules and reports clones Credo's built-in check misses
+- [x] **FOUND-09**: A check fails the build when transformer code calls `Code.string_to_quoted!`/`eval_string` to build AST from strings
+- [x] **FOUND-10**: A check fails the build when a module name is derived by `Module.split`/`Module.concat` surgery rather than from persisted state
+- [x] **FOUND-11**: Structural duplicate detection runs across generator modules and reports clones Credo's built-in check misses
 - [ ] **FOUND-12**: Rule 9 ("no double-handling") is carried as an explicit reviewer checklist item, since no mechanical check exists for it
 - [ ] **FOUND-13**: `usage_rules` is a dev dependency and the library publishes generated LLM-facing usage rules
 - [ ] **FOUND-14**: `AGENTS.md` documents idiomatic Elixir, DSL conventions, transformer ordering and testing expectations, using `core` as the worked reference
@@ -174,11 +174,11 @@ one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does no
 | FOUND-04 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
 | FOUND-05 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-06 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-07 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-07 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-08 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-09 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-10 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
-| FOUND-11 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
+| FOUND-09 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-10 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-11 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-12 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
 | FOUND-13 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
 | FOUND-14 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Pending |
