@@ -1,4 +1,10 @@
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
+# gsd-disable-until-phase: 3 — router-generation transformer nesting is exactly the
+# compile-order boundary ROADMAP.md's current Phase 3 ("Application and Routers", APP-02)
+# owns: router generation never fires under the current Domain/Resource DSL split (see
+# PROJECT.md's Falsified section), and Phase 3 rewrites this transformer's control flow to
+# fix it. (Re-pointed 2026-09-16, plan 05, D-02 — this disable previously cited the archived
+# 13-phase roadmap's "Phase 2".)
 #
 # Router-generation transformer nesting is exactly the compile-order boundary
 # ROADMAP.md's Phase 2 ("Deterministic Generation and Compile-Time Rejection", FOUND-03/

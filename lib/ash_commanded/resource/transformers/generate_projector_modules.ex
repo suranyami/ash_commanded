@@ -1,4 +1,11 @@
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
+# gsd-disable-until-phase: 5 — `build_event_handler/5`'s nesting is a projection-
+# expressiveness concern ROADMAP.md's current Phase 5 ("Projections, Event Handlers and
+# Process Managers", PROJ-01..04) owns: that phase rewrites projector generation to add
+# idempotency and richer projection composition. (Re-pointed 2026-09-16, plan 05, D-02 —
+# this disable previously cited the archived 13-phase roadmap's "Phase 5" under different
+# requirement numbering; the NoModuleNameSurgery/ExDNA.Credo disables further below in this
+# file's own group already carry current-roadmap citations from 01-03.)
 #
 # `build_event_handler/5`'s nesting is a projection-expressiveness concern ROADMAP.md's
 # Phase 5 ("Projection Expressiveness", PROJ-01..04) already schedules to rework — that

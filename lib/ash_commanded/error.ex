@@ -1,5 +1,10 @@
 # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 # credo:disable-for-this-file Credo.Check.Readability.PredicateFunctionNames
+# gsd-disable-until-phase: 6 — this module's error normalization and naming are part of the
+# runtime-surfaces requirement group (RUN-04..07: middleware, transaction rollback, and
+# replacing debug-print calls in production paths with Logger) ROADMAP.md Phase 6 ("Event
+# Versioning, Snapshots, Middleware and Transactions") owns. (Re-pointed 2026-09-16, plan
+# 05, D-02 — this disable previously cited the archived 13-phase roadmap's numbering.)
 #
 # `normalize_error/1`'s complexity, and the `is_error?/1`/`is_error_result?/1` naming (Elixir
 # convention wants `error?`/`error_result?`, no `is_` prefix), are both public-API surface on

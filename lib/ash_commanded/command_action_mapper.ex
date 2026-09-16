@@ -1,6 +1,11 @@
 # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
 # credo:disable-for-this-file Credo.Check.Refactor.FunctionArity
+# gsd-disable-until-phase: 2 — this module's own complexity/nesting/arity exist to map a
+# command struct onto a named Ash action (CMD-02) and reject one that names a nonexistent
+# action (CMD-07). ROADMAP.md Phase 2 ("Commands and Events") is the phase that rewrites
+# command handling and is where this module is decomposed, per D-01. (Re-pointed 2026-09-16,
+# plan 05, D-02 — this disable previously cited the archived 13-phase roadmap's numbering.)
 #
 # This module is 640 lines spanning mapping, transformation, validation, transactions and
 # error handling — the exact debt PROJECT.md's known-debt inventory and ROADMAP.md Phase 6

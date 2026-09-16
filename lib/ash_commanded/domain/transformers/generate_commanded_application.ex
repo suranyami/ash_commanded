@@ -1,5 +1,11 @@
 # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 # credo:disable-for-this-file Credo.Check.Design.TagTODO
+# gsd-disable-until-phase: 3 — this transformer's own complexity and its unfinished projector
+# auto-discovery marker are the confirmed application-generation defect (APP-01..03) that
+# ROADMAP.md Phase 3 ("Application and Routers") exists to fix — the domain transformer must
+# read each resource's persisted command state via `Ash.Domain.Info.resources/1`, replacing
+# the current TODO. (Re-pointed 2026-09-16, plan 05, D-02 — this disable previously cited the
+# archived 13-phase roadmap's numbering.)
 #
 # `generate_application_module/1`'s complexity, and the `TODO: Add dynamically discovered
 # projectors here` at line ~109, are both projector-supervision concerns ROADMAP.md's Phase 5

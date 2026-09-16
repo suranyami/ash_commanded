@@ -1,5 +1,12 @@
 # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
+# gsd-disable-until-phase: 5 — `build_handler_module_ast/5`'s complexity and nesting are
+# event-handler dispatch/execution concerns ROADMAP.md's current Phase 5 ("Projections, Event
+# Handlers and Process Managers", HDLR-01..04) owns: that phase makes subscription and
+# dispatch options declarable, which rewrites this exact code path. (Re-pointed 2026-09-16,
+# plan 05, D-02 — these two disables previously cited the archived 13-phase roadmap's "Phase
+# 6"; the NoModuleNameSurgery/LongQuoteBlocks/ExDNA.Credo disables further below in this
+# file's own group already carry current-roadmap citations from 01-03.)
 #
 # `build_handler_module_ast/5`'s complexity and nesting are event-handler dispatch/execution
 # concerns ROADMAP.md's Phase 6 ("Event Handlers, Dispatch and Process Managers", HAND-01/

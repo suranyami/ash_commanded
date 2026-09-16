@@ -1,6 +1,13 @@
 # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
 # credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
+# gsd-disable-until-phase: 4 — this transformer's own complexity, nesting and largest `quote`
+# block are exactly the 861-line generator audit PROJECT.md/ROADMAP.md Phase 4 ("Aggregates")
+# already names for decomposition into a hand-written `__using__/1` front door and runtime
+# module (AGG-01..03). (Re-pointed 2026-09-16, plan 05, D-02 — these three disables previously
+# cited the archived 13-phase roadmap's numbering; the fourth disable in this file's own
+# group below, for PreferImplicitTry, already carries a current-roadmap citation from 01-03.)
+#
 # credo:disable-for-this-file Credo.Check.Readability.PreferImplicitTry
 # gsd-disable-until-phase: 4 — the explicit `try do ... rescue ... end` inside `apply/2`'s
 # `quote do` block (generate_apply_functions/2) is emitted AST, not this transformer's own
