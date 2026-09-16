@@ -2,9 +2,9 @@
 # gsd-staged-until-phase: 4
 defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
   @moduledoc "Aggregate for Widget resource handling commands and events"
-  alias AshCommanded.Commanded.Error
-  alias AshCommanded.Commanded.Snapshot
-  alias AshCommanded.Commanded.SnapshotStore
+  alias AshCommanded.Error
+  alias AshCommanded.Snapshot
+  alias AshCommanded.SnapshotStore
   defstruct id: nil, label: nil, version: 0
 
   (
@@ -66,7 +66,7 @@ defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
       }
 
       try do
-        AshCommanded.Commanded.Middleware.CommandMiddlewareProcessor.apply_middleware(
+        AshCommanded.Middleware.CommandMiddlewareProcessor.apply_middleware(
           command,
           resource_module,
           context,
@@ -172,7 +172,7 @@ defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
 
       cond do
         is_nil(aggregate_id) ->
-          case AshCommanded.Commanded.CommandActionMapper.map_to_action(
+          case AshCommanded.CommandActionMapper.map_to_action(
                  command,
                  resource_module,
                  action_name,
@@ -195,7 +195,7 @@ defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
           end
 
         aggregate_id == command_id ->
-          case AshCommanded.Commanded.CommandActionMapper.map_to_action(
+          case AshCommanded.CommandActionMapper.map_to_action(
                  command,
                  resource_module,
                  action_name,
