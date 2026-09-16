@@ -122,6 +122,41 @@ defmodule AshCommanded.GoldenBudgetTest do
     end
   end
 
+  describe "AshCommanded.Dump.Golden.measure/1 clause spans (CR-01)" do
+    test "measures a one-line `do:` clause without requiring :end metadata" do
+      # A one-line `def bar, do: :ok` carries no `:end` in its AST metadata — only
+      # `:end_of_expression`, and not even that when it is the module's last statement.
+      # Reading `:end` unconditionally raised KeyError, so any hand-edited golden using
+      # shorthand syntax crashed `mix test` and `mix ash_commanded.dump` rather than
+      # reporting a budget.
+      assert %{clause_max: 1} = Golden.measure("defmodule Foo do\n  def bar, do: :ok\nend\n")
+    end
+
+    test "measures a one-line clause that is not the last statement" do
+      source = "defmodule Foo do\n  def bar, do: :ok\n  def baz, do: :ok\nend\n"
+
+      assert %{clause_max: 1} = Golden.measure(source)
+    end
+
+    test "measures a `do:` clause wrapped across lines by its true span" do
+      source = "defmodule Foo do\n  def bar,\n    do: :ok\nend\n"
+
+      assert %{clause_max: 2} = Golden.measure(source)
+    end
+
+    test "still measures block clauses by their end line" do
+      source = "defmodule Foo do\n  def bar do\n    :ok\n  end\nend\n"
+
+      assert %{clause_max: 3} = Golden.measure(source)
+    end
+
+    test "measures the longest clause when block and shorthand forms are mixed" do
+      source = "defmodule Foo do\n  def bar, do: :ok\n\n  def baz do\n    :ok\n  end\nend\n"
+
+      assert %{clause_max: 3} = Golden.measure(source)
+    end
+  end
+
   @doc false
   def assert_within_budget!(golden_path) do
     {header_lines, body} = golden_path |> File.read!() |> Golden.split_header()
