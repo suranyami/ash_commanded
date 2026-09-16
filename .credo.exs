@@ -46,7 +46,7 @@
       # If you want to enforce a style guide and need a more traditional linting
       # experience, you can change `strict` to `true` below:
       #
-      strict: false,
+      strict: true,
       #
       # To modify the timeout for parsing files, change this value:
       #
@@ -82,8 +82,6 @@
           # You can customize the priority of any check
           # Priority values are: `low, normal, high, higher`
           #
-          {Credo.Check.Design.AliasUsage,
-           [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 0]},
           {Credo.Check.Design.TagFIXME, []},
           # You can also customize the exit_status of each check.
           # If you don't want TODO comments to cause `mix credo` to fail, just
@@ -165,7 +163,20 @@
         ],
         disabled: [
           #
-          # Checks scheduled for next check update (opt-in for now)
+          # Moved here 2026-09-16 (01-03, strictness pass). Stock config
+          # (`if_nested_deeper_than: 2, if_called_more_often_than: 0`) flags a SINGLE
+          # nested-module reference anywhere — under `strict: true` this produced 72 issues
+          # across 40+ files (generators later phases rewrite wholesale, permanent runtime
+          # modules, and integration tests for generators that get deleted alongside them).
+          # None of the 72 relate to the eleven rewrite-rule gates FOUND-07/09/10/11 this plan
+          # enforces; aliasing every nested reference campaign-wide is disproportionate churn
+          # for a generic style preference, and per-file phase-cited suppression (D-01/D-02)
+          # doesn't fit either, since a majority of the hits are in permanent (non-generator)
+          # modules and in test/ (which D-02's citation-parser does not even inspect). Disabled
+          # as a deliberate config choice, not a suppression debt — re-enable with a tuned
+          # threshold if a future phase wants it back.
+          {Credo.Check.Design.AliasUsage,
+           [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 0]},
           {Credo.Check.Refactor.UtcNowTruncate, []},
 
           #

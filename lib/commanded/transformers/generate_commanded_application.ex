@@ -20,8 +20,8 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
 
   use Spark.Dsl.Transformer
 
-  alias Spark.Dsl.Transformer
   alias AshCommanded.Commanded.Transformers.BaseTransformer
+  alias Spark.Dsl.Transformer
 
   @doc """
   Transforms the DSL state by adding the generated Commanded application module.
@@ -114,7 +114,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateCommandedApplication do
         # For now, just using a simple supervisor
         quote do
           @impl true
-          def child_spec() do
+          def child_spec do
             # TODO: Add dynamically discovered projectors here
             #
             # `Supervisor.child_spec/2`'s first argument must be a module (or `{module, arg}`)

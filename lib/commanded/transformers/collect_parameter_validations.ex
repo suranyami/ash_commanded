@@ -8,8 +8,8 @@ defmodule AshCommanded.Commanded.Transformers.CollectParameterValidations do
   """
 
   use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
   alias AshCommanded.Commanded.ParameterValidator
+  alias Spark.Dsl.Transformer
 
   @doc """
   Transforms the DSL to collect parameter validations.

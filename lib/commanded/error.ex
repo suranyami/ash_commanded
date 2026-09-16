@@ -447,12 +447,10 @@ defmodule AshCommanded.Commanded.Error do
 
   # Helper for detecting Commanded errors without direct pattern matching
   defp commanded_error?(error, module_name) do
-    try do
-      module = module_name |> String.to_existing_atom() |> Code.ensure_loaded?()
-      module && is_struct(error, module_name |> String.to_existing_atom())
-    rescue
-      _ -> false
-    end
+    module = module_name |> String.to_existing_atom() |> Code.ensure_loaded?()
+    module && is_struct(error, module_name |> String.to_existing_atom())
+  rescue
+    _ -> false
   end
 
   @doc """

@@ -167,7 +167,7 @@ defmodule AshCommanded.Commanded.Dsl do
   This is used in tests to create custom DSL extensions without verifiers.
   """
   @spec __sections__() :: Spark.Dsl.Section.t()
-  def __sections__() do
+  def __sections__ do
     @commanded_section
   end
 

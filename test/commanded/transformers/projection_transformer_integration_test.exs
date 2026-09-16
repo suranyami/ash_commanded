@@ -68,7 +68,7 @@ defmodule AshCommanded.Commanded.Transformers.ProjectionTransformerIntegrationTe
 
       # Skip the full apply test for now - we need a properly initialized resource
       # which is more complex to set up in tests
-      # 
+      #
       # We can add more comprehensive tests after we have the base functionality working
     end
   end

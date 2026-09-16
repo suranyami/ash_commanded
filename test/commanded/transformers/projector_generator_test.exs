@@ -1,8 +1,8 @@
 defmodule AshCommanded.Commanded.Transformers.ProjectorGeneratorTest do
   use ExUnit.Case, async: true
 
-  alias AshCommanded.Commanded.Projection
   alias AshCommanded.Commanded.Event
+  alias AshCommanded.Commanded.Projection
   alias AshCommanded.Commanded.Transformers.GenerateProjectorModules
 
   describe "projector module generation helpers" do

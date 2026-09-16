@@ -11,11 +11,11 @@ defmodule AshCommanded.GeneratedModules.DirectCallsTest do
   """
   use ExUnit.Case, async: true
 
-  alias AshCommanded.TestSupport.Widget
-  alias AshCommanded.TestSupport.Events.WidgetUpdated
-  alias AshCommanded.TestSupport.Events.WidgetCreated
-  alias AshCommanded.TestSupport.Projectors.WidgetProjector
   alias AshCommanded.TestSupport.EventHandlers.WidgetWidgetNotifierHandler
+  alias AshCommanded.TestSupport.Events.WidgetCreated
+  alias AshCommanded.TestSupport.Events.WidgetUpdated
+  alias AshCommanded.TestSupport.Projectors.WidgetProjector
+  alias AshCommanded.TestSupport.Widget
 
   describe "generated projector" do
     test "handle/2 writes a real Ash record, readable back through Ash.get" do

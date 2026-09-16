@@ -72,9 +72,9 @@ defmodule AshCommanded.Commanded.Transformers.GenerateMainRouterModule do
   """
 
   use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
   alias AshCommanded.Commanded.Transformers.BaseTransformer
   alias AshCommanded.Commanded.Transformers.GenerateDomainRouterModule
+  alias Spark.Dsl.Transformer
 
   @doc """
   Specifies that this transformer should run after the domain router transformer.

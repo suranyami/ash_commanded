@@ -35,9 +35,9 @@ defmodule AshCommanded.Commanded.Transformers.GenerateEventModules do
   """
 
   use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
   alias AshCommanded.Commanded.Transformers.BaseTransformer
   alias AshCommanded.Commanded.Transformers.GenerateCommandModules
+  alias Spark.Dsl.Transformer
 
   @doc """
   Specifies that this transformer should run after the command module transformer.

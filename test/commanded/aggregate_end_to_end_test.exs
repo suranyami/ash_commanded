@@ -2,10 +2,10 @@ defmodule AshCommanded.AggregateEndToEndTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias AshCommanded.TestSupport.Widget
-  alias AshCommanded.TestSupport.WidgetAggregate
   alias AshCommanded.TestSupport.Commands.CreateWidget
   alias AshCommanded.TestSupport.Events.WidgetCreated
+  alias AshCommanded.TestSupport.Widget
+  alias AshCommanded.TestSupport.WidgetAggregate
 
   test "a create_widget command travels through the generated aggregate into real Ash state" do
     assert Code.ensure_loaded?(WidgetAggregate)

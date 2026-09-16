@@ -172,66 +172,58 @@ defmodule AshCommanded.Commanded.ParameterTransformer do
   end
 
   defp apply_transform({:compute, field, opts}, params) do
-    try do
-      compute_fn =
-        if is_function(opts, 1) do
-          opts
-        else
-          Keyword.get(opts, :using) || Keyword.get(opts, :fn)
-        end
-
-      if is_function(compute_fn, 1) do
-        computed_value = compute_fn.(params)
-        Map.put(params, field, computed_value)
+    compute_fn =
+      if is_function(opts, 1) do
+        opts
       else
-        params
+        Keyword.get(opts, :using) || Keyword.get(opts, :fn)
       end
-    rescue
-      _ -> params
+
+    if is_function(compute_fn, 1) do
+      computed_value = compute_fn.(params)
+      Map.put(params, field, computed_value)
+    else
+      params
     end
+  rescue
+    _ -> params
   end
 
   defp apply_transform({:transform, field, transform_fn}, params)
        when is_function(transform_fn, 1) do
-    try do
-      if Map.has_key?(params, field) do
-        value = Map.get(params, field)
-        transformed_value = transform_fn.(value)
-        Map.put(params, field, transformed_value)
-      else
-        params
-      end
-    rescue
-      _ -> params
+    if Map.has_key?(params, field) do
+      value = Map.get(params, field)
+      transformed_value = transform_fn.(value)
+      Map.put(params, field, transformed_value)
+    else
+      params
     end
+  rescue
+    _ -> params
   end
 
   defp apply_transform({:default, field, opts}, params) do
-    try do
-      if is_nil(Map.get(params, field)) do
-        default_value =
-          if is_list(opts) do
-            get_default_value(opts)
-          else
-            # opts is a direct value
-            opts
-          end
+    if is_nil(Map.get(params, field)) do
+      default_value =
+        if is_list(opts) do
+          get_default_value(opts)
+        else
+          # opts is a direct value
+          opts
+        end
 
-        Map.put(params, field, default_value)
-      else
-        params
-      end
-    rescue
-      _ -> params
+      Map.put(params, field, default_value)
+    else
+      params
     end
+  rescue
+    _ -> params
   end
 
   defp apply_transform({:custom, transform_fn}, params) when is_function(transform_fn, 1) do
-    try do
-      transform_fn.(params)
-    rescue
-      _ -> params
-    end
+    transform_fn.(params)
+  rescue
+    _ -> params
   end
 
   defp apply_transform(_invalid_transform, params) do
@@ -302,21 +294,17 @@ defmodule AshCommanded.Commanded.ParameterTransformer do
   defp cast_value(value, :list) when is_list(value), do: {:ok, value}
 
   defp cast_value(value, :list) when is_binary(value) do
-    try do
-      {:ok, String.split(value, ",")}
-    rescue
-      _ -> {:error, "Cannot convert to list"}
-    end
+    {:ok, String.split(value, ",")}
+  rescue
+    _ -> {:error, "Cannot convert to list"}
   end
 
   defp cast_value(value, :map) when is_map(value), do: {:ok, value}
 
   defp cast_value(value, :map) when is_binary(value) do
-    try do
-      {:ok, Jason.decode!(value)}
-    rescue
-      _ -> {:error, "Cannot convert to map"}
-    end
+    {:ok, Jason.decode!(value)}
+  rescue
+    _ -> {:error, "Cannot convert to map"}
   end
 
   defp cast_value(_value, _type), do: {:error, "Unsupported type conversion"}

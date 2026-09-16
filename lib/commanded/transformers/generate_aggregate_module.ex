@@ -1,6 +1,14 @@
 # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
 # credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
+# credo:disable-for-this-file Credo.Check.Readability.PreferImplicitTry
+# gsd-disable-until-phase: 4 — the explicit `try do ... rescue ... end` inside `apply/2`'s
+# `quote do` block (generate_apply_functions/2) is emitted AST, not this transformer's own
+# source; rewriting it to implicit-try form would change the rendered output of every
+# committed WidgetAggregate golden (test/golden/parity_widget/*.WidgetAggregate.golden,
+# staged to Phase 4 already per 01-02-SUMMARY.md), so the strictness pass this plan adds
+# (`.credo.exs` `strict: true`) suppresses it here rather than editing generated-code shape
+# outside Phase 4's own rewrite of this transformer.
 #
 # This module is 861 lines spanning command execution, event application and snapshot
 # generation — the exact debt PROJECT.md's known-debt inventory and ROADMAP.md Phase 4
@@ -79,11 +87,11 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
   """
 
   use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
+  alias AshCommanded.Commanded.Error
   alias AshCommanded.Commanded.Transformers.BaseTransformer
   alias AshCommanded.Commanded.Transformers.GenerateCommandModules
   alias AshCommanded.Commanded.Transformers.GenerateEventModules
-  alias AshCommanded.Commanded.Error
+  alias Spark.Dsl.Transformer
 
   @doc """
   Specifies that this transformer should run after the command and event module transformers.
@@ -219,7 +227,7 @@ defmodule AshCommanded.Commanded.Transformers.GenerateAggregateModule do
       # Define the aggregate state struct with all resource attributes
       defstruct unquote(struct_fields)
 
-      # Snapshot support 
+      # Snapshot support
       unquote_splicing(snapshot_functions)
 
       # Command handlers

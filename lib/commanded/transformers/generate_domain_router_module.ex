@@ -42,9 +42,9 @@ defmodule AshCommanded.Commanded.Transformers.GenerateDomainRouterModule do
   """
 
   use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
-  alias AshCommanded.Commanded.Transformers.GenerateCommandModules
   alias AshCommanded.Commanded.Transformers.GenerateAggregateModule
+  alias AshCommanded.Commanded.Transformers.GenerateCommandModules
+  alias Spark.Dsl.Transformer
 
   @doc """
   Specifies that this transformer should run after the command and aggregate module transformers.

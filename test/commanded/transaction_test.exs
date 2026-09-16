@@ -4,14 +4,12 @@ defmodule AshCommanded.Commanded.TransactionTest do
   # Mock repository for testing
   defmodule MockRepo do
     def transaction(fun, _opts \\ []) do
-      try do
-        result = fun.()
-        {:ok, result}
-      rescue
-        error ->
-          # Simulate transaction rollback
-          {:error, error}
-      end
+      result = fun.()
+      {:ok, result}
+    rescue
+      error ->
+        # Simulate transaction rollback
+        {:error, error}
     end
 
     def supports_transactions?, do: true
@@ -22,8 +20,8 @@ defmodule AshCommanded.Commanded.TransactionTest do
     def supports_transactions?, do: false
   end
 
-  alias AshCommanded.Commanded.Transaction
   alias AshCommanded.Commanded.Error
+  alias AshCommanded.Commanded.Transaction
 
   describe "transaction module" do
     test "run/3 executes function in transaction" do

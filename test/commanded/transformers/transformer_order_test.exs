@@ -1,10 +1,10 @@
 defmodule AshCommanded.Commanded.Transformers.TransformerOrderTest do
   use ExUnit.Case, async: true
 
+  alias AshCommanded.Commanded.Transformers.GenerateCommandedApplication
   alias AshCommanded.Commanded.Transformers.GenerateCommandModules
   alias AshCommanded.Commanded.Transformers.GenerateEventModules
   alias AshCommanded.Commanded.Transformers.GenerateMainRouterModule
-  alias AshCommanded.Commanded.Transformers.GenerateCommandedApplication
 
   describe "transformer ordering" do
     test "event module transformer runs after command module transformer" do

@@ -39,7 +39,12 @@ defmodule AshCommanded.MixProject do
         # :mix ships callback info for `Mix.Task` and friends; without it in the PLT,
         # Dialyzer treats `mix ash_commanded.dump`'s use of Mix.Task/Mix.raise/Mix.shell as
         # unknown functions rather than actually checking them.
-        plt_add_apps: [:mix]
+        #
+        # :credo ships the `Credo.Check` behaviour and its support modules (SourceFile,
+        # IssueMeta, Code, Execution.*); without it in the PLT, Dialyzer treats every
+        # Credo.* call inside `lib/ash_commanded/credo_checks/*.ex` (01-03, FOUND-09/10) as
+        # an unknown function/type rather than actually checking them.
+        plt_add_apps: [:mix, :credo]
       ]
     ]
   end
@@ -206,14 +211,28 @@ defmodule AshCommanded.MixProject do
       # "unknown_function" findings for ExUnit.Callbacks macros). The `test` step is spawned in
       # its own MIX_ENV=test subprocess via `cmd` instead, so the two envs don't fight over
       # which one the whole alias runs under.
+      #
+      # `coveralls` (not a second, separate `mix test`) runs the suite and reports coverage in
+      # one pass — ExCoveralls' own task already runs ExUnit under the hood
+      # (`preferred_cli_env: [coveralls: :test, ...]` above), so running both would pay for the
+      # suite twice for no extra signal (01-03 strictness pass, scope addition).
       check: [
         "format --check-formatted",
         "compile --warnings-as-errors",
         "credo",
-        "cmd MIX_ENV=test mix test",
+        "cmd MIX_ENV=test mix coveralls",
         "cmd ./scripts/compile_parity.sh",
         "dialyzer",
         "gen.docs"
+      ],
+      # A fast, format/compile/credo/test-only subset of `check` for local iteration —
+      # skips `compile_parity.sh`, `dialyzer` and `gen.docs`, which are the three slowest
+      # steps and do not need to re-run on every save (01-03 strictness pass, scope addition).
+      "precommit.fast": [
+        "format --check-formatted",
+        "compile --warnings-as-errors",
+        "credo",
+        "cmd MIX_ENV=test mix test"
       ]
     ]
   end

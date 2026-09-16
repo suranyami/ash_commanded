@@ -366,38 +366,34 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   # Safely transform params with error handling
   defp safely_transform_params(command, mapping) do
-    try do
-      {:ok, transform_params(command, mapping)}
-    rescue
-      e in _ ->
-        {:error,
-         Error.transformation_error(
-           "Error transforming command parameters: #{Exception.message(e)}",
-           context: %{
-             command: inspect(command),
-             mapping: inspect(mapping),
-             error: inspect(e)
-           }
-         )}
-    end
+    {:ok, transform_params(command, mapping)}
+  rescue
+    e in _ ->
+      {:error,
+       Error.transformation_error(
+         "Error transforming command parameters: #{Exception.message(e)}",
+         context: %{
+           command: inspect(command),
+           mapping: inspect(mapping),
+           error: inspect(e)
+         }
+       )}
   end
 
   # Safely apply advanced transforms with error handling
   defp safely_apply_advanced_transforms(params, transforms) do
-    try do
-      {:ok, AshCommanded.Commanded.ParameterTransformer.transform_params(params, transforms)}
-    rescue
-      e in _ ->
-        {:error,
-         Error.transformation_error(
-           "Error applying parameter transforms: #{Exception.message(e)}",
-           context: %{
-             params: inspect(params),
-             transforms: inspect(transforms),
-             error: inspect(e)
-           }
-         )}
-    end
+    {:ok, AshCommanded.Commanded.ParameterTransformer.transform_params(params, transforms)}
+  rescue
+    e in _ ->
+      {:error,
+       Error.transformation_error(
+         "Error applying parameter transforms: #{Exception.message(e)}",
+         context: %{
+           params: inspect(params),
+           transforms: inspect(transforms),
+           error: inspect(e)
+         }
+       )}
   end
 
   # Safely apply pre-processor with error handling
@@ -405,19 +401,17 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   defp safely_apply_preprocessor(params, command, before_action)
        when is_function(before_action) do
-    try do
-      {:ok, before_action.(params, command)}
-    rescue
-      e in _ ->
-        {:error,
-         Error.command_error("Error in command pre-processor: #{Exception.message(e)}",
-           context: %{
-             params: inspect(params),
-             command: inspect(command),
-             error: inspect(e)
-           }
-         )}
-    end
+    {:ok, before_action.(params, command)}
+  rescue
+    e in _ ->
+      {:error,
+       Error.command_error("Error in command pre-processor: #{Exception.message(e)}",
+         context: %{
+           params: inspect(params),
+           command: inspect(command),
+           error: inspect(e)
+         }
+       )}
   end
 
   # Safely apply post-processor with error handling
@@ -425,19 +419,17 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
 
   defp safely_apply_postprocessor({:ok, _record} = result, command, after_action)
        when is_function(after_action) do
-    try do
-      after_action.(result, command) || result
-    rescue
-      e in _ ->
-        {:error,
-         Error.command_error("Error in command post-processor: #{Exception.message(e)}",
-           context: %{
-             result: inspect(result),
-             command: inspect(command),
-             error: inspect(e)
-           }
-         )}
-    end
+    after_action.(result, command) || result
+  rescue
+    e in _ ->
+      {:error,
+       Error.command_error("Error in command post-processor: #{Exception.message(e)}",
+         context: %{
+           result: inspect(result),
+           command: inspect(command),
+           error: inspect(e)
+         }
+       )}
   end
 
   # Transform command params based on mapping
@@ -647,24 +639,22 @@ defmodule AshCommanded.Commanded.CommandActionMapper do
     # with the other four paths, context goes through for_action/4's own
     # :context opt so it is visible during argument casting, not applied
     # afterward via set_context/2.
-    try do
-      action_input = Ash.ActionInput.for_action(resource, action_name, params, context: context)
+    action_input = Ash.ActionInput.for_action(resource, action_name, params, context: context)
 
-      case Ash.run_action(action_input) do
-        {:ok, _} = success -> success
-        {:error, error} -> {:error, error}
-      end
-    rescue
-      e in _ ->
-        {:error,
-         Error.action_error("Error running custom action: #{Exception.message(e)}",
-           context: %{
-             resource: resource,
-             action: action_name,
-             params: inspect(params),
-             error: inspect(e)
-           }
-         )}
+    case Ash.run_action(action_input) do
+      {:ok, _} = success -> success
+      {:error, error} -> {:error, error}
     end
+  rescue
+    e in _ ->
+      {:error,
+       Error.action_error("Error running custom action: #{Exception.message(e)}",
+         context: %{
+           resource: resource,
+           action: action_name,
+           params: inspect(params),
+           error: inspect(e)
+         }
+       )}
   end
 end
