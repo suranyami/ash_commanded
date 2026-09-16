@@ -12,11 +12,42 @@ defmodule AshCommanded.Commanded.Transformers.BaseTransformer do
   This extracts the base namespace from the resource module, which will be used
   as the prefix for all generated modules.
 
+  ## Namespace-derivation exemption (rewrite rule 4/11, FOUND-10)
+
+  `AshCommanded.CredoChecks.NoModuleNameSurgery` flags `Module.split/1` results reaching
+  `Module.concat/1,2` as module-name surgery (rewrite rule 4: "Derive from
+  `Transformer.get_persisted/2`, never by module-name surgery."). This function does exactly
+  that shape, and is deliberately exempt via the `# ash_commanded:namespace-derivation` marker
+  below.
+
+  It is exempt rather than rewritten or phase-cited (D-01/D-02) because neither of those
+  remedies applies here. Rewriting is impossible in the literal sense the rule asks for: a
+  generated module's parent namespace has no source other than the DSL module's own name —
+  Spark persists the resource module via `Transformer.get_persisted/2`, not a namespace prefix,
+  so there is nothing to read back. And a phase-cited suppression is the wrong shape because
+  D-02 requires the cited phase to be live and incomplete, whereas this site is permanent: no
+  future phase's rewrite removes the need to derive a namespace prefix from a resource module's
+  own name (`ash_oban` derives its own generated-module namespace exactly the same way,
+  confirmed in this project's ARCHITECTURE.md research).
+
+  The distinction is the one CONTEXT.md's D-04 already draws between a temporary suppression
+  and a permanent, visible exemption: every OTHER call site that reconstructs an existing module
+  reference by splitting and reconcatenating a name is a defect (the confirmed defects rewrite
+  rule 4 targets), but deriving a *fresh* child namespace from a DSL module's own name — never
+  reconstructing an existing reference — is the one legitimate use of this shape, and it lives
+  behind this one named, documented, and counted (`AshCommanded.CredoChecks.Exemption`) utility
+  rather than being open-ended.
+
+  `get_resource_name/1` below needs no marker: it terminates in `List.last/1` with no
+  concatenation, which both credo checks' own design already treats as a display string, not
+  surgery.
+
   ## Examples
-      
+
       iex> get_module_prefix(MyApp.Accounts.User)
       MyApp.Accounts
   """
+  # ash_commanded:namespace-derivation
   @spec get_module_prefix(module()) :: module()
   def get_module_prefix(resource_module) do
     parts = Module.split(resource_module)

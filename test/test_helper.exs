@@ -17,4 +17,12 @@ exclude_tags =
   end
 
 ExUnit.configure(exclude: exclude_tags)
+
+# Credo is `runtime: false` (dev/test only, never shipped to consumers — see mix.exs deps()), so
+# it is never auto-started as part of this application's supervision tree. Its own
+# `Credo.Test.Case` helpers (`to_source_file/2` etc.) depend on `Credo.Service.SourceFileAST`
+# and friends being alive, which only happens once `:credo` itself is started. Tests under
+# test/ash_commanded/credo_checks/ need this.
+{:ok, _} = Application.ensure_all_started(:credo)
+
 ExUnit.start()
