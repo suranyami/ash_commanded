@@ -5,7 +5,7 @@
 ```elixir
 defmodule MyApp.User do
   use Ash.Resource,
-    extensions: [AshCommanded.Commanded.Dsl]
+    extensions: [AshCommanded.Resource.Dsl]
     
   # Resource configuration...
     
@@ -152,11 +152,11 @@ end
 
 ## Application Configuration
 
-The `application` section is configured on your **Domain** using the Domain extension `AshCommanded.Commanded.DomainDsl`. This generates the Commanded application module (e.g. `MyApp.Domain.Application`).
+The `application` section is configured on your **Domain** using the Domain extension `AshCommanded.Domain.Dsl`. This generates the Commanded application module (e.g. `MyApp.Domain.Application`).
 
 ```elixir
 defmodule MyApp.Domain do
-  use Ash.Domain, extensions: [AshCommanded.Commanded.DomainDsl]
+  use Ash.Domain, extensions: [AshCommanded.Domain.Dsl]
 
   resources do
     resource MyApp.User

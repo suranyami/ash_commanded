@@ -145,7 +145,7 @@ defmodule AshCommanded.MixProject do
         "documentation/routers.md",
         "documentation/application.md",
         "documentation/snapshotting.md",
-        "cheatsheets/AshCommanded.Commanded.Dsl.cheatmd"
+        "cheatsheets/AshCommanded.Resource.Dsl.cheatmd"
       ],
       groups_for_extras: [
         Guides: [
@@ -165,23 +165,25 @@ defmodule AshCommanded.MixProject do
           "documentation/error_handling.md"
         ],
         Cheatsheets: [
-          "cheatsheets/AshCommanded.Commanded.Dsl.cheatmd"
+          "cheatsheets/AshCommanded.Resource.Dsl.cheatmd"
         ]
       ],
       groups_for_modules: [
         DSL: [
-          AshCommanded.Commanded.Dsl,
-          AshCommanded.Commanded.DomainDsl,
-          ~r/AshCommanded.Commanded.Sections/
+          AshCommanded.Resource.Dsl,
+          AshCommanded.Domain.Dsl,
+          ~r/AshCommanded.Resource.Sections/
         ],
         Transformers: [
-          ~r/AshCommanded.Commanded.Transformers/
+          ~r/AshCommanded.Resource.Transformers/,
+          ~r/AshCommanded.Domain.Transformers/
         ],
         Verifiers: [
-          ~r/AshCommanded.Commanded.Verifiers/
+          ~r/AshCommanded.Resource.Verifiers/
         ],
         Info: [
-          AshCommanded.Commanded.Info
+          AshCommanded.Resource.Info,
+          AshCommanded.Domain.Info
         ]
       ],
       before_closing_body_tag: &before_closing_body_tag/1,
@@ -230,7 +232,8 @@ defmodule AshCommanded.MixProject do
       setup: ["local.hex --force", "local.rebar --force", "deps.get", "deps.compile"],
       docs: ["docs", &copy_images/1],
       "gen.docs": ["spark.cheat_sheets", "docs"],
-      "spark.cheat_sheets": "spark.cheat_sheets --extensions AshCommanded.Commanded.Dsl",
+      "spark.cheat_sheets":
+        "spark.cheat_sheets --extensions AshCommanded.Resource.Dsl,AshCommanded.Domain.Dsl",
       # REPO-05's full gate list, cheapest first, so a contributor gets the fast failure
       # first. CI (see .github/workflows) invokes this alias rather than restating the
       # steps, so the two cannot drift (D-23).

@@ -6,12 +6,12 @@
 # list blocks `mix dialyzer` — that is the point of seeding it (D-22). Later phases shrink
 # this list; nobody should add to it without a stated reason.
 [
-  {"lib/commanded/transformers/generate_aggregate_module.ex",
+  {"lib/ash_commanded/resource/transformers/generate_aggregate_module.ex",
    "The pattern can never match the type true."},
-  {"lib/commanded/transformers/generate_aggregate_module.ex",
+  {"lib/ash_commanded/resource/transformers/generate_aggregate_module.ex",
    "The guard clause can never succeed."},
-  {"lib/commanded/transformers/generate_aggregate_module.ex",
+  {"lib/ash_commanded/resource/transformers/generate_aggregate_module.ex",
    "The pattern variable _ can never match the type, because it is covered by previous clauses."},
-  {"lib/commanded/transformers/generate_commanded_application.ex",
+  {"lib/ash_commanded/domain/transformers/generate_commanded_application.ex",
    "Unknown type: Spark.Dsl.Transformer.t/0."}
 ]
