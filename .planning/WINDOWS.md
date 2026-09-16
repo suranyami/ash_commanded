@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 0
 fixed_count: 0
-total_count: 5
-last_updated: 2026-09-16T03:17:55.387Z
+total_count: 6
+last_updated: 2026-09-16T07:39:58.250Z
 ---
 
 # Broken Windows Ledger
@@ -20,6 +20,7 @@ last_updated: 2026-09-16T03:17:55.387Z
 | 3 | 01 | deviation | .credo.exs |  | Design.AliasUsage moved to disabled: rather than fixing 72 call sites when Credo strict mode was enabled (01-03) — a real reduction in strictness, not a clean win; re-enable with a tuned threshold if a future phase wants it back | open |  | 2026-09-16T03:17:55.224Z |  |
 | 4 | 01 | unmet-truth | .credo.exs |  | 01-03's acceptance criterion 'grep -c DuplicatedCode .credo.exs == 1' cannot be literally satisfied: count is 2 because Credo's own stock-template comment at line ~87 predates this plan and was deliberately left untouched rather than deleted just to satisfy a grep | open |  | 2026-09-16T03:17:55.306Z |  |
 | 5 | 01 | deviation | lib/commanded/transformers/base_transformer.ex |  | FOUND-18: create_module/4 with explicit [:file, :line] exists and is unit-tested, but is wired into NONE of the nine real create_module/3 call sites (01-01 Task 2 forbade touching them) — plan 01-01's must-have (a deliberate error names the DSL declaration's file) is not demonstrable end to end until 01-04 wires those call sites or a gap-closure plan does. Do not rubber-stamp at phase verification. | open |  | 2026-09-16T03:17:55.387Z |  |
+| 6 | 01 | deviation | mix.exs |  | spark 2.7.2's Igniter-based spark.cheat_sheets task writes documentation/dsls/DSL-<Module>.md, not cheatsheets/<Module>.cheatmd; mix.exs's docs() extras/groups_for_extras still reference the committed cheatsheets/AshCommanded.Resource.Dsl.cheatmd file by hand-substituted content, not tool-regenerated. Predates 01-04; discovered while executing Task 2. | open |  | 2026-09-16T07:39:58.250Z |  |
 
 ````json
 [
@@ -81,6 +82,18 @@ last_updated: 2026-09-16T03:17:55.387Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-16T03:17:55.387Z",
+    "resolved_at": null
+  },
+  {
+    "id": 6,
+    "kind": "deviation",
+    "phase": "01",
+    "file": "mix.exs",
+    "line": null,
+    "description": "spark 2.7.2's Igniter-based spark.cheat_sheets task writes documentation/dsls/DSL-<Module>.md, not cheatsheets/<Module>.cheatmd; mix.exs's docs() extras/groups_for_extras still reference the committed cheatsheets/AshCommanded.Resource.Dsl.cheatmd file by hand-substituted content, not tool-regenerated. Predates 01-04; discovered while executing Task 2.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-16T07:39:58.250Z",
     "resolved_at": null
   }
 ]

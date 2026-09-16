@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-09-16T03:20:28.262Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-09-16T07:42:26.060Z"
 last_activity: 2026-09-16
 last_activity_desc: Phase 01 execution resumed (wave continue)
-state_head: cca61deaaa42a8ea9b43395b93efcf55297e3ee0
+state_head: b3a55254880d89b03e70a4d84d22cecfb683785b
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-16 — Phase 01 execution resumed (wave continue)
 
@@ -85,6 +85,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P01 | 45min | 2 tasks | 6 files |
 | Phase 01 P02 | 95min | 3 tasks | 20 files |
 | Phase 01 P03 | 110min | 4 tasks | 30 files |
+| Phase 01 P04 | 35min | 3 tasks | 112 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-03: Credo.Check.Design.AliasUsage moved to disabled: (not fixed at 72 call sites) when strict mode was turned on — a real strictness reduction, tracked in WINDOWS.md
 - [Phase 01]: 01-03: ex_dna's plugin registration alone does not run the check in a project with a non-empty checks: enabled: list — Credo.ConfigFile.merge_checks/2 discards the plugin's extra: contribution; both plugins: and an explicit checks: enabled: entry are required
 - [Phase 01]: 01-03: Credo.Check.Design.DuplicatedCode stays disabled (it already was); ex_dna/ExDNA.Credo is a pure addition, not a swap
+- [Phase 01]: D-13/D-14 executed as one behaviour-neutral big-bang move: lib/commanded -> lib/ash_commanded resource/domain trees, proven neutral by golden-diff (5/6 byte-identical, 1/6 changed on module-name literals only)
+- [Phase 01]: Domain-tree transformer membership follows current extension registration (only GenerateCommandedApplication), not a semantic re-derivation; AshCommanded.Domain.Info currently exposes zero accessors since AshCommanded.Domain.Dsl.sections() is genuinely []
 
 ### Pending Todos
 
@@ -178,7 +181,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-16T03:20:28.246Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-09-16T07:42:26.047Z
+Stopped at: Completed 01-04-PLAN.md
 Next: `/gsd-execute-phase 1`
 Resume file: None
