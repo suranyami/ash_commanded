@@ -60,7 +60,7 @@ output that breaks the rewrite rules — so every later phase has something real
   4. A developer runs the structural clone check across `lib/` and reads a report naming clone pairs that Credo's built-in duplicate check does not report; `AGENTS.md` carries Rule 9 ("no double-handling") as a reviewer checklist item with an explicit statement that no mechanical check for it exists.
   5. `AGENTS.md` exists documenting idiomatic Elixir, DSL conventions, transformer ordering, testing expectations and the Spark API surface, with `core` as the worked reference; `usage_rules` is a dev dependency and the library's generated usage rules are committed; `lib/` has sibling `resource/` and `domain/` trees each holding `transformers/`, `verifiers/` and `info.ex`; a deliberate error in generated code reports a `file:`/`line:` a developer can open; and CI runs the suite green on the current Elixir/OTP release plus the previous two minors.
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -78,7 +78,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md — Seeded-violation fixtures, the gate meta-test, phase-cited suppressions and the gate-evidence record (wave 4)
+- [x] 01-05-PLAN.md — Seeded-violation fixtures, the gate meta-test, phase-cited suppressions and the gate-evidence record (wave 4)
 - [ ] 01-06-PLAN.md — `usage-rules.md`, `AGENTS.md` and the first CI workflow with a three-leg matrix (wave 4)
 
 ### Phase 2: Commands and Events
@@ -247,7 +247,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase                                                       | Plans Complete | Status      | Completed |
 | ----------------------------------------------------------- | -------------- | ----------- | --------- |
-| 1. Foundation — Rendering, Enforcement and Layout           | 4/6 | In Progress|  |
+| 1. Foundation — Rendering, Enforcement and Layout           | 5/6 | In Progress|  |
 | 2. Commands and Events                                      | 0/TBD          | Not started | -         |
 | 3. Application and Routers                                  | 0/TBD          | Not started | -         |
 | 4. Aggregates                                               | 0/TBD          | Not started | -         |
