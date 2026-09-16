@@ -65,7 +65,7 @@ findings:
   warning: 5
   info: 2
   total: 10
-status: issues_found
+status: issues_found_partially_resolved
 ---
 
 # Phase 01: Code Review Report
@@ -461,3 +461,32 @@ via `use Spark.Dsl.Extension, sections: [...]`, not merely an import, before ext
 *Reviewed: 2026-09-16*
 *Reviewer: Claude (gsd-code-reviewer)*
 *Depth: standard*
+
+---
+
+## Post-Review Resolution (orchestrator, 2026-09-16)
+
+Two Criticals were reproduced independently and fixed in-phase with RED-then-GREEN pairs.
+The remainder are deferred to the gap-closure plan that also carries FOUND-18.
+
+| Finding | Disposition | Commits |
+|---------|-------------|---------|
+| CR-01 - measure_clause_spans/1 KeyError on one-line clauses | **Fixed** | a3a5c64 (RED, 4 failing), 3b015a1 (GREEN) |
+| CR-02 - prose mention honoured as exemption marker; guard test counted files not occurrences | **Fixed** | 0d8999b (RED, 1 failing), e720414 (GREEN) |
+| CR-03 - String.to_atom/1 atom-exhaustion DoS in parameter_transformer.ex:292 | **Deferred** - pre-existing shipped-code defect; a behaviour change to command dispatch with no coverage in this phase's scope, so it needs its own plan and tests | - |
+| WR-01 - collect_parameter_transforms/validations substitute hardcoded stubs for real DSL contents | **Deferred** - substantive correctness work on generator modules phases 2-6 rewrite; note it carries no gsd-disable-until-phase citation, unlike sibling debt | - |
+| WR-02, WR-03, WR-04, WR-05, IN-01, IN-02 | **Deferred** | - |
+
+**CR-01 verification:** reproduced live before fixing - measuring a module containing a
+one-line shorthand clause raised KeyError for a missing :end key. Plan 01-05 had changed a
+fixture to avoid this crash; the defect itself was never fixed. The span now resolves via
+:end, then :end_of_expression, then the start line.
+
+**CR-02 verification:** confirmed 2 marker occurrences in base_transformer.ex (prose at
+line 20, real marker at line 50) while the guard asserted count == 1 and passed, because
+Enum.count was applied over file contents rather than occurrences. Both the check
+(marker_line?/1 now requires a standalone comment) and both guard tests were fixed. mix
+credo still exits 0, proving the legitimate exemption of get_module_prefix/1 survives.
+
+Tree state after fixes: 259 tests / 0 failures, mix credo 0, mix format clean,
+mix compile clean under warnings-as-errors.
