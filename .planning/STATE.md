@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-10-20T03:42:20.511Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-10-20T03:52:44.000Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 01 execution started
-state_head: 27e9ba85fe1694b98a07ee8f7cc08e6d94fd3888
+last_activity_desc: Completed 01-09-PLAN.md
+state_head: a620d388a8d21b4ac52eb9b1abf6f268b5988990
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
-Last activity: 2026-10-20 — Phase 01 execution started
+Last activity: 2026-10-20 — Completed 01-09-PLAN.md
 
 Progress: [░░░░░░░░░░] 0% (0/7 phases)
 
@@ -90,6 +90,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P06 | 26min | 3 tasks | 4 files |
 | Phase 01 P07 | 11min | 3 tasks | 12 files |
 | Phase 01 P08 | 25min | 3 tasks | 4 files |
+| Phase 01 P09 | 10min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,10 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-07: location attribution uses Spark persisted :file and entity annotation; six sites behaviorally proven, three domain-owned sites wired but unexercisable until Phase 3 (router generation never fires)
 - [Phase 01]: 01-07: FOUND-18 relocated three pre-existing Dialyzer findings to the parity fixture; ignore entries re-anchored with identical messages rather than removed or widened (8 total / 8 skipped / 0 unnecessary)
 - [Phase 01]: CR-03 atom-cast trust boundary: Option A (existing atoms only, error tuple otherwise). cast_value/2 accepts only atoms already in the runtime atom table, proven by a test that observes the atom table itself. Options B (resource-derived allow-list) and C (configurable strictness) rejected; the change is a recorded migration note, not a compatibility shim.
+- [Phase 01]: 01-09: deleted CollectParameterTransforms/CollectParameterValidations rather than implementing an undeclared DSL surface — transform_params/validate_params appear nowhere in REQUIREMENTS.md, and the command entity's `entities: []` makes those blocks impossible; the public transform_params/2 and validate_params/2 functions remain documented and directly callable
+- [Phase 01]: 01-09: the documentation guard enumerates its scan set explicitly, counts occurrences (not files), asserts every file was read, and excludes its own source and `.planning/` — pre-empting CR-02's self-exemption and file-counting failures
+- [Phase 01]: 01-09: corrected additional documentation sites (commands.md, transactions.md, the legacy AshCqrs cheatmd, ParameterValidator's moduledoc) beyond the plan's three, because no documentation site may advertise a command sub-block the extension rejects
+- [Phase 01]: 01-09: module-path documentation drift deferred to Phase 7's stated goal, with no fabricated DOCS-0x citation — Phase 7 owns documentation reconciliation, while the deleted collectors had no owner and were therefore refused a citation
 
 ### Pending Todos
 
@@ -194,7 +199,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:42:20.489Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-10-20T03:52:44.000Z
+Stopped at: Completed 01-09-PLAN.md
 Next: `/gsd-execute-phase 1`
 Resume file: None
