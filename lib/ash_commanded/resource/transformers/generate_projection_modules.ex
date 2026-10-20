@@ -78,7 +78,8 @@ defmodule AshCommanded.Resource.Transformers.GenerateProjectionModules do
             BaseTransformer.create_module(
               projection_module,
               build_projection_module_ast(projection, resource_name),
-              __ENV__
+              __ENV__,
+              BaseTransformer.entity_location(projection, acc_dsl_state)
             )
 
             # Store the generated module in DSL state for potential use by other transformers

@@ -156,6 +156,87 @@ defmodule AshCommanded.Resource.Transformers.BaseTransformer do
     :ok
   end
 
+  @doc """
+  Returns the location of the DSL module whose `transform/1` is currently running.
+
+  The file comes from `Spark.Dsl.Transformer.get_persisted(dsl_state, :file)`, which Spark
+  persists for every extension when the consumer writes `use Ash.Resource` or `use
+  Ash.Domain`. Passing the result to `create_module/4` attributes every generated clause to
+  the module a developer actually wrote, rather than to the transformer that generated it.
+
+  An empty list means Spark persisted no file (or persisted something unusable). That is not
+  a failure: `create_module/4` already documents `[]` as "fall back to
+  `Macro.Env.location(env)`", so such a module degrades to the pre-FOUND-18 behaviour rather
+  than handing `Module.create/3` a nil file.
+
+  ## Examples
+
+      iex> dsl_location(%{persist: %{file: "/app/lib/my_app/user.ex"}})
+      [file: "/app/lib/my_app/user.ex", line: 1]
+
+      iex> dsl_location(%{})
+      []
+  """
+  @spec dsl_location(Spark.Dsl.t()) :: keyword()
+  def dsl_location(dsl_state) do
+    case Spark.Dsl.Transformer.get_persisted(dsl_state, :file) do
+      file when is_binary(file) and file != "" ->
+        [file: file, line: 1]
+
+      file when is_list(file) ->
+        case IO.chardata_to_string(file) do
+          "" -> []
+          path -> [file: path, line: 1]
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Returns the location of a single DSL declaration.
+
+  The line comes from the entity's own Spark annotation (`Spark.Dsl.Entity.anno/1`), and the
+  file from `dsl_location/1` — the two sources FOUND-18 asks for. Passing the result to
+  `create_module/4` makes an error inside the generated module point at the declaration that
+  produced it, which is the line a developer opens first.
+
+  `anno/1` deliberately emits an `IO.warn` for entities whose struct has no
+  `__spark_metadata__` field, so that call is guarded: this library must not emit that
+  warning during an ordinary consumer compile. When the entity carries no usable annotation,
+  the result falls back to `dsl_location/1`, so the file stays correct and only the line
+  degrades.
+
+  ## Examples
+
+      iex> entity_location(%MyEntity{__spark_metadata__: %Spark.Dsl.Entity.Meta{
+      ...>   anno: :erl_anno.set_line(:erl_anno.new(0), 33)
+      ...> }}, %{persist: %{file: "/app/lib/my_app/user.ex"}})
+      [file: "/app/lib/my_app/user.ex", line: 33]
+  """
+  @spec entity_location(Spark.Dsl.Entity.entity(), Spark.Dsl.t()) :: keyword()
+  def entity_location(entity, dsl_state) do
+    location = dsl_location(dsl_state)
+
+    case {location, entity_line(entity)} do
+      {[file: file, line: _], line} when is_integer(line) and line > 0 ->
+        [file: file, line: line]
+
+      {location, _line} ->
+        location
+    end
+  end
+
+  defp entity_line(entity) do
+    if Map.has_key?(entity, :__spark_metadata__) do
+      case Spark.Dsl.Entity.anno(entity) do
+        nil -> nil
+        anno -> :erl_anno.line(anno)
+      end
+    end
+  end
+
   @capture_table :ash_commanded_dump_capture
 
   defp capture_ast(module_name, ast) do
