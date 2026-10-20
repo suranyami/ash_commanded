@@ -13,9 +13,13 @@
 # the aggregate transformer's. Findings, messages and count are unchanged; only the attributed
 # file moved, and re-anchoring is what keeps the ratchet anchored to reality rather than
 # silently letting the findings escape it.
+#
+# 2026-10-21 (plan 01-11): the generated aggregate no longer emits runtime branches on
+# compile-time literals, so "The guard clause can never succeed." no longer has a finding to
+# skip. Removed rather than kept: an unused filter means the entry and reality have diverged,
+# which is the direction that lets a new finding escape unnoticed.
 [
   {"test/support/parity/parity_widget.ex", "The pattern can never match the type true."},
-  {"test/support/parity/parity_widget.ex", "The guard clause can never succeed."},
   {"test/support/parity/parity_widget.ex",
    "The pattern variable _ can never match the type, because it is covered by previous clauses."},
   {"lib/ash_commanded/domain/transformers/generate_commanded_application.ex",
