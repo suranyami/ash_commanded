@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-12-PLAN.md; 01-10 CI observation still outstanding
-last_updated: "2026-10-20T19:16:05.028Z"
+stopped_at: Completed 01-14-PLAN.md; 01-10 CI observation still outstanding
+last_updated: "2026-10-20T20:24:00.574Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed 01-12-PLAN.md
-state_head: dcdec45e1a15330d6f23621d994db207bced844b
+last_activity_desc: Completed 01-14-PLAN.md
+state_head: 7f9143b8c2e4375474180c08f1d684fff1e066df
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 12
-  completed_plans: 11
+  total_plans: 14
+  completed_plans: 12
   percent: 0
 ---
 
@@ -22,7 +22,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-15)
+See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** `core`'s five event-sourced domains run in production on AshCommanded.
 **Current focus:** Phase 01 — Foundation — Rendering, Enforcement and Layout
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 12 of 12 authored, 11 complete (01-10 CI observation outstanding)
-Status: Executing — 01-10 awaits the observed three-leg CI run after 01-12's `:cover` fix
-Last activity: 2026-10-20 — Completed 01-12-PLAN.md
+Plan: 14 of 14 authored, 12 complete (01-10 CI observation outstanding; 01-13 not yet executed)
+Status: Executing — 01-13 is the next runnable plan; 01-10 awaits the observed three-leg CI run
+Last activity: 2026-10-20 — Completed 01-14-PLAN.md (dependency upgrade)
 
 Progress: [░░░░░░░░░░] 0% (0/7 phases)
 
@@ -93,6 +93,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P09 | 10min | 3 tasks | 14 files |
 | Phase 01 P11 | 13h38m | 5 tasks | 12 files |
 | Phase 01 P12 | 2 min | 1 tasks | 1 files |
+| Phase 01 P14 | 4 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-12: used a module attribute plus an explicit fn rather than Enum.member?/2 — keeps the documented fn workaround and names the four standard verbs once.
 - [Phase 01]: 01-12: described the compiler bug without reproducing the forbidden shorthand in the comment, so the plan's grep verification prints nothing.
 - [Phase 01]: 01-12: left 01-CI-EVIDENCE.md untouched — no three-leg run has been observed for this commit, and FOUND-16 stays open.
+- [Phase 01]: 01-14: chose default_string_length_count: :codepoints, matching SQL data-layer string counting so max_length bounds stored size consistently across resources.
+- [Phase 01]: 01-14: accepted the resolver's full upgraded set (ash 3.36.1, spark 2.7.8, ecto 3.14.2, reactor 1.0.7, splode 0.3.2) without narrowing mix.exs constraints; hex.outdated is all Up-to-date and the gate plus unchanged goldens prove no output change.
 
 ### Pending Todos
 
@@ -208,7 +211,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T19:16:05.007Z
-Stopped at: Completed 01-12-PLAN.md; 01-10 CI observation still outstanding
+Last session: 2026-10-20T20:24:00.551Z
+Stopped at: Completed 01-14-PLAN.md; 01-10 CI observation still outstanding
 Next: `/gsd-execute-phase 1`
 Resume file: None
