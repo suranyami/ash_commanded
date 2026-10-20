@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-10-20T03:35:16.500Z"
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-10-20T03:42:20.511Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 01 execution started
-state_head: 4f45a6aa8ae517c40c60c737ba74d05dd02ce4f9
+state_head: 27e9ba85fe1694b98a07ee8f7cc08e6d94fd3888
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 01 execution started
 
@@ -89,6 +89,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P05 | 90min | 3 tasks | 16 files |
 | Phase 01 P06 | 26min | 3 tasks | 4 files |
 | Phase 01 P07 | 11min | 3 tasks | 12 files |
+| Phase 01 P08 | 25min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,7 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01, 01-06]: AGENTS.md's eleven-rewrite-rules section honestly annotates which rules are mechanically enforced vs partially vs not at all; rule 9 (no double-handling, FOUND-12) gets an explicit reviewer checklist item and an explicit no-mechanical-check statement
 - [Phase 01]: 01-07: location attribution uses Spark persisted :file and entity annotation; six sites behaviorally proven, three domain-owned sites wired but unexercisable until Phase 3 (router generation never fires)
 - [Phase 01]: 01-07: FOUND-18 relocated three pre-existing Dialyzer findings to the parity fixture; ignore entries re-anchored with identical messages rather than removed or widened (8 total / 8 skipped / 0 unnecessary)
+- [Phase 01]: CR-03 atom-cast trust boundary: Option A (existing atoms only, error tuple otherwise). cast_value/2 accepts only atoms already in the runtime atom table, proven by a test that observes the atom table itself. Options B (resource-derived allow-list) and C (configurable strictness) rejected; the change is a recorded migration note, not a compatibility shim.
 
 ### Pending Todos
 
@@ -192,7 +194,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:35:16.481Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-10-20T03:42:20.489Z
+Stopped at: Completed 01-08-PLAN.md
 Next: `/gsd-execute-phase 1`
 Resume file: None
