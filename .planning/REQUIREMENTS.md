@@ -42,7 +42,7 @@ Must land before the first component, because step 4 of the method depends on it
 - [x] **FOUND-15**: `AGENTS.md` includes the Spark API reference so implementers reach for built-in machinery before hand-rolling it
 - [x] **FOUND-16**: CI runs the suite against the current Elixir/OTP release plus the previous two minors
 - [x] **FOUND-17**: `lib/` is reorganised into `resource/` and `domain/` trees, each with its own `transformers/`, `verifiers/` and `info.ex`
-- [ ] **FOUND-18**: A shared module-creation helper sets explicit `file:`/`line:` metadata so generated-code errors point somewhere useful
+- [x] **FOUND-18**: A shared module-creation helper sets explicit `file:`/`line:` metadata so generated-code errors point somewhere useful
 
 ### Commands
 
@@ -185,7 +185,7 @@ one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does no
 | FOUND-15 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-16 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-17 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
-| FOUND-18 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Gaps Found |
+| FOUND-18 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | CMD-01 | Phase 2 — Commands and Events | Pending |
 | CMD-02 | Phase 2 — Commands and Events | Pending |
 | CMD-03 | Phase 2 — Commands and Events | Pending |

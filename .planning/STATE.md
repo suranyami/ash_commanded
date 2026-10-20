@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Gap-closure plans 01-07..01-10 planned; not started
-last_updated: "2026-10-20T03:23:17.394Z"
+stopped_at: Completed 01-07-PLAN.md
+last_updated: "2026-10-20T03:35:16.500Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 01 execution started
-state_head: 9b37bbafcc50cbc32edac73379e34c72c13f48aa
+state_head: 4f45a6aa8ae517c40c60c737ba74d05dd02ce4f9
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 1 of 10
-Status: Executing Phase 01
+Plan: 8 of 10
+Status: Ready to execute
 Last activity: 2026-10-20 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/7 phases)
@@ -88,6 +88,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P04 | 35min | 3 tasks | 112 files |
 | Phase 01 P05 | 90min | 3 tasks | 16 files |
 | Phase 01 P06 | 26min | 3 tasks | 4 files |
+| Phase 01 P07 | 11min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01, 01-06]: usage_rules config lists :spark/:igniter only (the only two deps with a real usage-rules.md); :ash/:commanded do not ship one and would be a resolution error
 - [Phase 01]: [Phase 01, 01-06]: CI matrix (1.18.4/1.19.6/1.20.4, all OTP 27.3) established live from mise ls-remote elixir on 2026-09-16, not from a planning document; mix.exs's elixir: requirement widened (ceiling only, floor stays 1.18) so all three legs satisfy it
 - [Phase 01]: [Phase 01, 01-06]: AGENTS.md's eleven-rewrite-rules section honestly annotates which rules are mechanically enforced vs partially vs not at all; rule 9 (no double-handling, FOUND-12) gets an explicit reviewer checklist item and an explicit no-mechanical-check statement
+- [Phase 01]: 01-07: location attribution uses Spark persisted :file and entity annotation; six sites behaviorally proven, three domain-owned sites wired but unexercisable until Phase 3 (router generation never fires)
+- [Phase 01]: 01-07: FOUND-18 relocated three pre-existing Dialyzer findings to the parity fixture; ignore entries re-anchored with identical messages rather than removed or widened (8 total / 8 skipped / 0 unnecessary)
 
 ### Pending Todos
 
@@ -189,7 +192,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:11:46.572Z
-Stopped at: Gap-closure plans 01-07..01-10 planned; not started
+Last session: 2026-10-20T03:35:16.481Z
+Stopped at: Completed 01-07-PLAN.md
 Next: `/gsd-execute-phase 1`
 Resume file: None
