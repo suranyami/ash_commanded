@@ -60,7 +60,7 @@ output that breaks the rewrite rules — so every later phase has something real
   4. A developer runs the structural clone check across `lib/` and reads a report naming clone pairs that Credo's built-in duplicate check does not report; `AGENTS.md` carries Rule 9 ("no double-handling") as a reviewer checklist item with an explicit statement that no mechanical check for it exists.
   5. `AGENTS.md` exists documenting idiomatic Elixir, DSL conventions, transformer ordering, testing expectations and the Spark API surface, with `core` as the worked reference; `usage_rules` is a dev dependency and the library's generated usage rules are committed; `lib/` has sibling `resource/` and `domain/` trees each holding `transformers/`, `verifiers/` and `info.ex`; a deliberate error in generated code reports a `file:`/`line:` a developer can open; and CI runs the suite green on the current Elixir/OTP release plus the previous two minors.
 
-**Plans:** 9/10 plans executed — 6/6 original plans executed, 4 gap-closure plans planned
+**Plans:** 9/11 plans executed — 6/6 original plans executed, 5 gap-closure plans planned
 
 Plans:
 **Wave 1**
@@ -96,6 +96,10 @@ Plans:
 **Wave 8** *(gap closure — blocked on Wave 7 completion)*
 
 - [ ] 01-10-PLAN.md — FOUND-16: the CI matrix pre-flighted against the live build manifests, then observed running green on a real remote (wave 8)
+
+**Wave 9** *(gap closure — from the first observed CI run)*
+
+- [ ] 01-11-PLAN.md — CI portability: the gate becomes direct Mix invocations (no alias shell-out), and the six Elixir 1.20 warnings are resolved (wave 9)
 
 ### Phase 2: Commands and Events
 
