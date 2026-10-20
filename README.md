@@ -12,13 +12,26 @@ Special thanks to [Ben Smith](https://github.com/slashdotdash) for the Commanded
 # works on a machine that doesn't have rebar3 yet
 mix setup
 
-# Run every gate CI runs, in one command: format check, compile with
-# warnings as errors, Credo, tests, the dev/test compile-parity script,
-# Dialyzer, and a docs build. This is the local equivalent of CI.
+# The dev gate: format check, compile with warnings as errors, Credo,
+# Dialyzer, and a docs build.
 mix check
+
+# The test gate: the suite plus coverage. The environment is set by the
+# caller, not by a Mix alias.
+MIX_ENV=test mix coveralls
+
+# The cross-environment compile-parity check (starts one VM per environment,
+# so it is deliberately a separate step rather than part of `mix check`).
+./scripts/compile_parity.sh
 ```
 
-There is exactly one documented way to bootstrap (`mix setup`) and one to verify (`mix check`).
+`mix setup` is the one documented way to bootstrap. `mix check`,
+`MIX_ENV=test mix coveralls` and `./scripts/compile_parity.sh` are the three
+commands CI runs, invoked separately. No Mix alias shells out to a Mix task:
+switching environments inside an alias requires a subprocess, and Mix 1.19
+stopped parsing `cmd` through a shell, so the environment switch lives at the
+caller instead.
+
 Individual steps remain available directly if you only need one of them:
 
 ```bash

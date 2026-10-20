@@ -27,6 +27,7 @@ thin wiring over hand-written runtime modules — verified by rendering the actu
 approving it, not by reading the generator.
 
 **Target features:**
+
 - Foundation: a DSL-output renderer (`mix ash_commanded.dump`), golden renders diffed in CI,
   `usage_rules` + AGENTS.md for idiomatic Elixir and testing, custom Credo checks enforcing the
   generation anti-patterns, and an Elixir/OTP CI matrix
@@ -56,7 +57,7 @@ textbook smell a DSL exists to remove.
 **Measured surface of `core`'s event-sourced code (2026-09-11):**
 
 | Kind | Files | LOC | Character |
-|------|-------|-----|-----------|
+| ------ | ------- | ----- | ----------- |
 | Commands | 64 | 505 | Plain structs, ~8 LOC each — near-total boilerplate |
 | Events | 68 | 548 | Structs, `@derive Jason.Encoder`, some `Commanded.Event.Upcaster` impls |
 | Aggregates | 13 | 1,822 | Genuine invariants mixed with dispatch plumbing |
@@ -119,8 +120,10 @@ stated pain.
 - ✓ A test suite capable of failing — 176 tests, 0 failures, stable across 45+ consecutive
   full-suite runs, zero mocking
 - ✓ Blocking quality gates — `mix check` = `format --check-formatted` → `compile --warnings-as-errors`
-  → `credo` → `test` → `scripts/compile_parity.sh` → `dialyzer` → `gen.docs`, with `.credo.exs` and
-  `.dialyzer_ignore.exs` checked in. **Corrected 2026-09-15:** an earlier version of this line read
+  → `credo` → `dialyzer` → `gen.docs`; `MIX_ENV=test mix coveralls` (suite plus coverage) and
+  `scripts/compile_parity.sh` are invoked by the caller as separate commands, with the test
+  environment set on the caller's side rather than by an alias subprocess — no alias shells out to
+  a Mix task. `.credo.exs` and `.dialyzer_ignore.exs` are checked in. **Corrected 2026-09-15:** an earlier version of this line read
   "format + Credo (strict) + Dialyzer + Sobelow + test". There is no Sobelow step, and `credo` runs
   non-strict (`.credo.exs:49` is `strict: false`) — non-strict is a deliberate recorded decision
   (archived phase D-21: `core` runs `-a --strict`, this repo does not, because of the oversized
@@ -278,7 +281,7 @@ possible they are enforced by custom Credo checks rather than by prose.
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
-|----------|-----------|---------|
+| ---------- | ----------- | --------- |
 | Bar for "production ready" is `core` running on it | A boilerplate-removal library is only credible if it carries a real system; any lesser bar is self-assessed | — Pending |
 | `core` migration is inside this project's scope | Changed from "library only" during questioning — direct proof beats indirect proof, and the migration is the payoff | — Pending |
 | All five `core` domains, not a pilot | Partial migration leaves `core` maintaining two idioms at once, which is worse than either | — Pending |
@@ -304,6 +307,7 @@ possible they are enforced by custom Credo checks rather than by prose.
 This document evolves at phase transitions and milestone boundaries.
 
 **After each phase transition** (via `/gsd-transition`):
+
 1. Requirements invalidated? → Move to Out of Scope with reason
 2. Requirements validated? → Move to Validated with phase reference
 3. New requirements emerged? → Add to Active
@@ -311,6 +315,7 @@ This document evolves at phase transitions and milestone boundaries.
 5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
+
 1. Full review of all sections
 2. Core Value check — still the right priority?
 3. Audit Out of Scope — reasons still valid?

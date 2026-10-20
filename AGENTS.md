@@ -154,18 +154,26 @@ what to reach for before hand-rolling the equivalent:
   phase has progressed (249 tests as of the last completed plan in this phase) — the number in
   this document is the floor the milestone is judged against, not a live count; re-run
   `MIX_ENV=test mix test` for the current one.
-- **`mix check` is the real gate**, defined once in `mix.exs`'s `aliases/0` and never restated
-  elsewhere (CI invokes the alias — see `.github/workflows/ci.yml` — rather than listing its
-  steps independently, so the two cannot drift): `format --check-formatted` →
-  `compile --warnings-as-errors` → `credo` → `cmd MIX_ENV=test mix coveralls` →
-  `cmd ./scripts/compile_parity.sh` → `dialyzer` → `gen.docs`.
-- **The test step runs in its own `MIX_ENV=test` subprocess (`cmd MIX_ENV=test mix coveralls`),
-  not the alias's default `:dev` environment.** Dialyzer has no `:ex_unit` application in its
-  PLT, so analysing `test/support` under `MIX_ENV=test` raises spurious `unknown_function`
-  findings for `ExUnit.Callbacks` macros — keeping `dialyzer`/`credo`/
-  `compile --warnings-as-errors` on `:dev` and spawning `test` separately avoids that, at the cost
-  of the two environments never fighting over which one the whole alias runs under. Preserve this
-  split if you ever touch the alias.
+- **The gate is two direct commands plus a separate parity script**, with the environment chosen
+  by the caller. CI invokes each as its own step (see `.github/workflows/ci.yml`), and the local
+  gate is the same command pair:
+  - `mix check` — the dev gate, defined once in `mix.exs`'s `aliases/0`:
+    `format --check-formatted` → `compile --warnings-as-errors` → `credo` → `dialyzer` →
+    `gen.docs`.
+  - `MIX_ENV=test mix coveralls` — the suite plus coverage, invoked directly with the
+    environment set by the caller (CI step env, or the developer's shell).
+  - `./scripts/compile_parity.sh` — its own step, because a cross-environment comparison
+    genuinely starts two VMs and is not a basic Mix task.
+- **No Mix alias shells out to run a Mix task.** Mix aliases run in one environment; switching
+  environment inside an alias requires a subprocess (`cmd MIX_ENV=test mix ...`), and Mix 1.19
+  changed `cmd` to execute without a shell, so that form treated `MIX_ENV=test` as the executable
+  and raised `:enoent`. Keeping the switch at the caller removes the failure class rather than
+  special-casing a Mix version. `precommit.fast` follows the same rule: `format
+  --check-formatted` → `compile --warnings-as-errors` → `credo`, with its test half invoked
+  directly as `MIX_ENV=test mix test`.
+- **Dialyzer runs on `:dev`, not `:test`.** It has no `:ex_unit` application in its PLT, so
+  analysing `test/support` under `MIX_ENV=test` raises spurious `unknown_function` findings for
+  `ExUnit.Callbacks` macros. Preserve the dev/test split if you ever touch the gate.
 - **No mocking anywhere in the suite** — `:meck` was removed entirely
   (`.planning/LEARNINGS.md` §6, §7) after an intermittent `:cover`-server race, re-verified over
   35+ consecutive full-suite runs. Do not reintroduce `:meck` or `with_mock`; a real stub module

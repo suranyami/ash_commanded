@@ -264,38 +264,44 @@ defmodule AshCommanded.MixProject do
       "gen.docs": ["spark.cheat_sheets", "docs"],
       "spark.cheat_sheets":
         "spark.cheat_sheets --extensions AshCommanded.Resource.Dsl,AshCommanded.Domain.Dsl",
-      # REPO-05's full gate list, cheapest first, so a contributor gets the fast failure
-      # first. CI (see .github/workflows) invokes this alias rather than restating the
-      # steps, so the two cannot drift (D-23).
+      # REPO-05's dev gate, cheapest first, so a contributor gets the fast failure first.
+      # CI (see .github/workflows) invokes each command as its own step rather than
+      # restating an alias, so the two cannot drift (D-23).
       #
       # Runs as :dev by default (matching the `dialyzer`/`credo`/`compile --warnings-as-errors`
       # steps, which must NOT see test/support's ExUnit-only modules — Dialyzer has no :ex_unit
       # application in its PLT, so analyzing test/support under MIX_ENV=test raises spurious
-      # "unknown_function" findings for ExUnit.Callbacks macros). The `test` step is spawned in
-      # its own MIX_ENV=test subprocess via `cmd` instead, so the two envs don't fight over
-      # which one the whole alias runs under.
+      # "unknown_function" findings for ExUnit.Callbacks macros).
+      #
+      # The test suite is deliberately NOT in this alias. A Mix alias runs in one environment;
+      # changing environment inside it requires a subprocess (`cmd MIX_ENV=test mix ...`), and
+      # Mix 1.19 stopped parsing `cmd` through a shell, so `cmd MIX_ENV=test mix coveralls`
+      # treated `MIX_ENV=test` as the executable and raised `:enoent`. The environment switch
+      # belongs to the caller instead: `MIX_ENV=test mix coveralls` is invoked directly by CI
+      # (with `MIX_ENV: test` on the step) or by the developer's shell.
       #
       # `coveralls` (not a second, separate `mix test`) runs the suite and reports coverage in
       # one pass — ExCoveralls' own task already runs ExUnit under the hood
       # (`preferred_cli_env: [coveralls: :test, ...]` above), so running both would pay for the
       # suite twice for no extra signal (01-03 strictness pass, scope addition).
+      #
+      # `scripts/compile_parity.sh` is likewise not in this alias: it genuinely starts two VMs
+      # (one per environment), so it is not a basic Mix task and remains its own CI step.
       check: [
         "format --check-formatted",
         "compile --warnings-as-errors",
         "credo",
-        "cmd MIX_ENV=test mix coveralls",
-        "cmd ./scripts/compile_parity.sh",
         "dialyzer",
         "gen.docs"
       ],
-      # A fast, format/compile/credo/test-only subset of `check` for local iteration —
-      # skips `compile_parity.sh`, `dialyzer` and `gen.docs`, which are the three slowest
-      # steps and do not need to re-run on every save (01-03 strictness pass, scope addition).
+      # A fast, format/compile/credo subset of `check` for local iteration — skips
+      # `dialyzer` and `gen.docs`, which are the slowest steps and do not need to re-run on
+      # every save (01-03 strictness pass, scope addition). Its test half is invoked directly
+      # by the caller as `MIX_ENV=test mix test`, for the same reason `check` excludes the suite.
       "precommit.fast": [
         "format --check-formatted",
         "compile --warnings-as-errors",
-        "credo",
-        "cmd MIX_ENV=test mix test"
+        "credo"
       ]
     ]
   end

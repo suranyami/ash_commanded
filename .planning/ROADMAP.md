@@ -235,9 +235,10 @@ These hold across every phase and are not restated per phase:
 
 - **In place, not in parallel.** Delete the old component and its tests, write fresh against
   `.planning/LEARNINGS.md` rather than against the old code. No parallel namespace.
-- **Green at every commit.** 176 tests, 0 failures, and `mix check` all blocking. The real alias is
-  `format --check-formatted` → `compile --warnings-as-errors` → `credo` → `test` →
-  `scripts/compile_parity.sh` → `dialyzer` → `gen.docs`. **Corrected 2026-09-15:** an earlier version
+- **Green at every commit.** 176 tests, 0 failures, and the gate all blocking. `mix check` is
+  `format --check-formatted` → `compile --warnings-as-errors` → `credo` → `dialyzer` → `gen.docs`;
+  `MIX_ENV=test mix coveralls` and `scripts/compile_parity.sh` are invoked by the caller as separate
+  commands, with the environment chosen there rather than inside an alias subprocess. **Corrected 2026-09-15:** an earlier version
   of this line said "format + Credo strict + Dialyzer + Sobelow + test". There is no Sobelow step,
   and `credo` runs non-strict by deliberate decision (archived phase D-21), not by omission — do not
   "restore" either. This is the judging bar established in the previous milestone and it does not relax.

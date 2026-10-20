@@ -96,12 +96,32 @@ jobs:
         run: mix deps.get
 
       - name: mix check
-        # The real gate, defined once in mix.exs's aliases/0 (format --check-formatted ->
-        # compile --warnings-as-errors -> credo -> cmd MIX_ENV=test mix coveralls ->
-        # cmd ./scripts/compile_parity.sh -> dialyzer -> gen.docs). Invoked here rather than
-        # its steps being restated, so this workflow and the local gate cannot drift
-        # (AGENTS.md's Testing expectations; T-01-BI-16 in this plan's threat model).
+        # The dev half of the gate, defined once in mix.exs's aliases/0 (format
+        # --check-formatted -> compile --warnings-as-errors -> credo -> dialyzer ->
+        # gen.docs). Invoked here rather than its steps being restated, so this workflow and
+        # the local gate cannot drift (AGENTS.md's Testing expectations; T-01-BI-16 in this
+        # plan's threat model).
+        #
+        # No alias shells out to `mix`: Mix 1.19 changed `mix cmd` to execute without a shell,
+        # so `cmd MIX_ENV=test mix coveralls` treated `MIX_ENV=test` as the executable and
+        # raised `:enoent`. The environment switch is made here, on the caller's side, instead.
+        env:
+          MIX_ENV: dev
         run: mix check
+
+      - name: MIX_ENV=test mix coveralls
+        # The test half of the gate. Invoked directly, with the environment set on the step
+        # (not inside a string an alias has to parse). `coveralls` runs ExUnit and reports
+        # coverage in one pass.
+        env:
+          MIX_ENV: test
+        run: mix coveralls
+
+      - name: compile parity
+        # D-19/SC2: proves the parity fixture's generated modules load under both MIX_ENV=dev
+        # and MIX_ENV=test. This starts two VMs and is therefore not a basic Mix task; it
+        # stays a separate step rather than being folded into the `check` alias.
+        run: ./scripts/compile_parity.sh
 
       - name: usage_rules.sync --check
         # FOUND-13: fails the build the moment AGENTS.md's dependency-sourced block drifts
