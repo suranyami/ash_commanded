@@ -45,9 +45,12 @@ defmodule AshCommanded.ParameterTransformer do
               ) == :gt, do: years - 1, else: years
             end
             
-            # Nested transformation for collections
+            # Nested transformation for collections. Convert members only to
+            # atoms the runtime already knows: atoms are never reclaimed, so
+            # String.to_atom/1 on unbounded external input is an atom-table
+            # exhaustion denial-of-service primitive.
             transform :roles, fn roles ->
-              roles |> Enum.map(&String.to_atom/1)
+              roles |> Enum.map(&String.to_existing_atom/1)
             end
             
             # Add default values

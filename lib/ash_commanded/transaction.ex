@@ -155,7 +155,15 @@ defmodule AshCommanded.Transaction do
     Code.ensure_loaded?(repo) && function_exported?(repo, :transaction, 2)
   end
 
-  # Converts a command spec to an operation name for the Multi
+  # Converts a command spec to an operation name for the Multi.
+  #
+  # The derived value starts from `command_spec.command.__struct__`, so the set
+  # of derivable names is bounded by the set of command modules the application
+  # compiled. No caller-supplied string reaches this conversion: both the
+  # struct and an explicit `:name` are supplied by application code, not by
+  # external command parameters. The atom minted here is therefore bounded by
+  # the application's own code (T-01-DO-04, accepted). Do not "fix" it to
+  # String.to_existing_atom/1 — that changes behaviour for no threat reduction.
   defp command_name_to_operation(command_spec) do
     command = command_spec.command
     command_module = command.__struct__
