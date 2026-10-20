@@ -1,77 +1,56 @@
 # Parameter Transformation and Validation
 
-AshCommanded provides powerful parameter transformation and validation capabilities for command handling, allowing you to:
+AshCommanded provides parameter transformation and validation for command handling through two
+public runtime modules:
 
-1. Transform command fields before they're sent to actions
-2. Validate command parameters to ensure they meet specific criteria
-3. Add computed fields based on input parameters
-4. Apply complex, multi-step transformations to command data
+- `AshCommanded.ParameterTransformer` — transforms a parameter map before it reaches an Ash action
+- `AshCommanded.ParameterValidator` — validates a parameter map against a list of rules
 
-These features enhance the integration between commands and Ash actions, making it easier to map command fields to action parameters and to ensure that commands meet your business rules.
+> **There is no `transform_params` or `validate_params` DSL surface.** The `command` entity
+> declares no nested entities, so a `command` block containing either of those blocks does not
+> compile. Everything on this page is called directly from your command-handling code, with the
+> spec lists shown. The same is true of the nested `transaction` block: transaction configuration
+> is available only through the flat command options (`in_transaction?`, `repo`,
+> `transaction_timeout`, `transaction_isolation_level`), which the DSL does declare and honour.
 
 ## Parameter Transformation
 
-Parameter transformation allows you to modify command parameters before they're sent to Ash actions. This is useful for:
+`AshCommanded.ParameterTransformer.transform_params/2` applies a list of transformation specs to
+a parameter map and returns the transformed map. It is useful for:
 
 - Renaming fields to match action expectations
-- Type conversion (e.g., string to integer)
+- Type conversion (for example, string to integer)
 - Computing new fields
 - Setting default values
-- Applying complex transformations
+- Applying arbitrary transformations
 
 ### Basic Usage
 
 ```elixir
-defmodule MyApp.User do
-  use Ash.Resource,
-    extensions: [AshCommanded.Commanded.Dsl]
+params = %{name: "John Doe", email: "John@Example.com", birthdate: "1990-01-01"}
 
-  commanded do
-    commands do
-      command :register_user do
-        fields [:id, :name, :email, :birthdate]
-        
-        transform_params do
-          # Map a field from one name to another
-          map :name, to: :full_name
-          
-          # Cast a field to a specific type
-          cast :birthdate, :date
-          
-          # Compute a new field
-          compute :display_name, fn params ->
-            "#{params.full_name} <#{params.email}>"
-          end
-          
-          # Transform a field value
-          transform :email, &String.downcase/1
-          
-          # Set default values
-          default :status, "active"
-          default :created_at, &DateTime.utc_now/0
-          
-          # Custom transformation for all params
-          custom fn params ->
-            # Additional custom transformations...
-            params
-          end
-        end
-      end
-    end
-  end
-end
+transformed =
+  AshCommanded.ParameterTransformer.transform_params(params, [
+    {:map, :name, to: :full_name},
+    {:cast, :birthdate, :date},
+    {:transform, :email, &String.downcase/1},
+    {:default, :status, [value: "active"]}
+  ])
 ```
 
 ### Transformation Types
 
-| Transformation | Description | Example |
-|----------------|-------------|---------|
-| `map` | Renames a field | `map :name, to: :full_name` |
-| `cast` | Converts a field to a specific type | `cast :age, :integer` |
-| `compute` | Creates a new field using a function | `compute :display_name, fn p -> "#{p.name}" end` |
-| `transform` | Applies a function to a field | `transform :email, &String.downcase/1` |
-| `default` | Sets a default value if the field is nil | `default :status, "active"` |
-| `custom` | Applies a function to the entire params map | `custom fn p -> Map.put(p, :key, "value") end` |
+| Spec | Description | Example |
+| ------ | ------------- | --------- |
+| `{:map, from, to}` | Renames a field | `{:map, :name, to: :full_name}` |
+| `{:cast, field, type}` | Converts a field to a specific type | `{:cast, :age, :integer}` |
+| `{:compute, field, fun}` | Creates a new field using a function of the whole map | `{:compute, :display_name, fn p -> p.name end}` |
+| `{:transform, field, fun}` | Applies a function to a field's value | `{:transform, :email, &String.downcase/1}` |
+| `{:default, field, value}` | Sets a value when the field is nil | `{:default, :status, "active"}` |
+| `{:custom, fun}` | Applies a function to the entire params map | `{:custom, fn p -> Map.put(p, :key, "value") end}` |
+
+The `:default` spec also accepts `[value: value]` and `[fn: zero_arity_fun]`. The `:compute` spec
+accepts a one-arity function directly, or a keyword list with `:using` or `:fn`.
 
 ### Type Casting
 
@@ -90,130 +69,94 @@ AshCommanded supports casting fields to the following types:
 For example:
 
 ```elixir
-transform_params do
-  # Convert string to integer
-  cast :age, :integer
-  
-  # Convert string to datetime
-  cast :created_at, :datetime
-  
-  # Convert string to boolean
-  cast :active, :boolean
-end
+AshCommanded.ParameterTransformer.transform_params(params, [
+  {:cast, :age, :integer},
+  {:cast, :created_at, :datetime},
+  {:cast, :active, :boolean}
+])
 ```
+
+Casting to `:atom` accepts only atoms the runtime already knows. Atoms are never reclaimed on the
+BEAM, so converting arbitrary input into atoms with `String.to_atom/1` would be an atom-table
+exhaustion denial-of-service primitive; a value whose atom does not already exist leaves the
+original value in place.
 
 ## Parameter Validation
 
-Parameter validation ensures that command data meets specific criteria before processing. This allows you to:
-
-- Ensure required fields are present
-- Validate field formats (e.g., email, date)
-- Check value ranges (e.g., minimum/maximum)
-- Apply domain-specific validation rules
-- Prevent invalid commands from being processed
+`AshCommanded.ParameterValidator.validate_params/2` validates a parameter map against a list of
+validation rules and returns `:ok` or `{:error, errors}`, where `errors` is a list of
+`AshCommanded.Error` structs.
 
 ### Basic Usage
 
 ```elixir
-defmodule MyApp.User do
-  use Ash.Resource,
-    extensions: [AshCommanded.Commanded.Dsl]
-
-  commanded do
-    commands do
-      command :register_user do
-        fields [:id, :name, :email, :age, :password]
-        
-        validate_params do
-          # Type validation
-          validate :name, type: :string
-          validate :email, type: :string
-          validate :age, type: :integer
-          
-          # Format validation
-          validate :email, format: ~r/^[^\s]+@[^\s]+\.[^\s]+$/
-          
-          # Range validation
-          validate :age, min: 18, max: 120
-          
-          # Length validation
-          validate :name, min_length: 2, max_length: 100
-          
-          # Custom validation
-          validate :password, fn value ->
-            cond do
-              String.length(value) < 8 ->
-                {:error, "Password must be at least 8 characters"}
-              not String.match?(value, ~r/[A-Z]/) ->
-                {:error, "Password must contain an uppercase letter"}
-              not String.match?(value, ~r/[0-9]/) ->
-                {:error, "Password must contain a number"}
-              true ->
-                :ok
-            end
-          end
-        end
-      end
-    end
-  end
+case AshCommanded.ParameterValidator.validate_params(params, [
+       {:validate, :name, [type: :string, min_length: 2]},
+       {:validate, :email, [format: ~r/@/]},
+       {:validate, :age, [type: :integer, min: 18]}
+     ]) do
+  :ok -> :valid
+  {:error, errors} -> {:invalid, errors}
 end
 ```
 
 ### Validation Types
 
-| Validation | Description | Example |
-|------------|-------------|---------|
-| `type` | Checks the field's type | `validate :age, type: :integer` |
-| `format` | Validates against a regular expression | `validate :email, format: ~r/@/` |
-| `min`/`max` | Checks numeric range | `validate :age, min: 18, max: 120` |
-| `min_length`/`max_length` | Checks string length | `validate :name, min_length: 2` |
-| `min_items`/`max_items` | Checks list item count | `validate :tags, min_items: 1` |
-| `one_of` | Checks value against a list | `validate :role, one_of: [:user, :admin]` |
-| `subset_of` | For lists, checks all values | `validate :roles, subset_of: [:user, :admin]` |
-| Custom function | Applies arbitrary validation logic | `validate :field, fn value -> ... end` |
+| Rule | Description | Example |
+| ------ | ------------- | --------- |
+| `type` | Checks the field's type | `{:validate, :age, [type: :integer]}` |
+| `format` | Validates against a regular expression | `{:validate, :email, [format: ~r/@/]}` |
+| `min`/`max` | Checks a numeric range | `{:validate, :age, [min: 18, max: 120]}` |
+| `min_length`/`max_length` | Checks string length | `{:validate, :name, [min_length: 2]}` |
+| `min_items`/`max_items` | Checks list item count | `{:validate, :tags, [min_items: 1]}` |
+| `one_of` | Checks a value against a list | `{:validate, :role, [one_of: [:user, :admin]]}` |
+| `subset_of` | For lists, checks every value | `{:validate, :roles, [subset_of: [:user, :admin]]}` |
+| Custom function | Applies arbitrary validation logic | `{:validate, :field, fn value -> :ok end}` |
+
+A custom function must return `:ok` or `{:error, message}`.
 
 ### Combining Multiple Validations
 
-You can apply multiple validations to a single field:
+A single field can carry multiple rules in one spec:
 
 ```elixir
-validate_params do
-  validate :password do
-    min_length 8
-    format ~r/[A-Z]/  # Contains uppercase letter
-    format ~r/[a-z]/  # Contains lowercase letter
-    format ~r/[0-9]/  # Contains number
-    format ~r/[^A-Za-z0-9]/  # Contains special character
-  end
-end
+{:validate, :password,
+ [
+   min_length: 8,
+   format: ~r/[A-Z]/,
+   format: ~r/[a-z]/,
+   format: ~r/[0-9]/,
+   format: ~r/[^A-Za-z0-9]/
+ ]}
 ```
 
 ## Integration with Command Middleware
 
-Both parameter transformation and validation can also be implemented as middleware. The built-in `ValidationMiddleware` provides similar functionality to the `validate_params` DSL:
+Parameter validation can also be configured as command middleware. The built-in
+`AshCommanded.Middleware.ValidationMiddleware` accepts the same kinds of checks through its
+middleware options:
 
 ```elixir
 defmodule MyApp.User do
   use Ash.Resource,
-    extensions: [AshCommanded.Commanded.Dsl]
+    extensions: [AshCommanded.Resource.Dsl]
 
   commanded do
     commands do
       command :register_user do
         fields [:id, :name, :email, :age]
-        
+
         middleware [
-          {AshCommanded.Commanded.Middleware.ValidationMiddleware,
-            required: [:name, :email, :age],
-            format: [email: ~r/@/],
-            validate: fn command ->
-              if command.age < 18 do
-                {:error, "User must be at least 18 years old"}
-              else
-                :ok
-              end
-            end
-          }
+          {AshCommanded.Middleware.ValidationMiddleware,
+           required: [:name, :email, :age],
+           format: [email: ~r/@/],
+           validate: fn command ->
+             if command.age < 18 do
+               {:error, "User must be at least 18 years old"}
+             else
+               :ok
+             end
+           end}
         ]
       end
     end
@@ -223,14 +166,16 @@ end
 
 ## Benefits Over Basic Mapping
 
-The parameter transformation and validation system provides several advantages over basic field mapping:
+The parameter transformation and validation modules provide several advantages over basic field
+mapping:
 
 1. **Type Safety**: Automatic type conversion ensures values match expected types
-2. **Data Normalization**: Fields can be consistently transformed (e.g., lowercase emails)
+2. **Data Normalization**: Fields can be consistently transformed (for example, lowercased emails)
 3. **Computation**: Derived fields can be calculated based on input parameters
 4. **Validation**: Problems are caught early in the command lifecycle
 5. **Security**: Input can be sanitized and validated before processing
 6. **Default Values**: Missing or nil values can be automatically populated
 7. **Contextual Processing**: Command parameters can be transformed based on other parameters
 
-By using these features, you can create a more robust integration between your commands and Ash actions, with clear validation rules and transformation logic.
+By using these functions, you can create a more robust integration between your commands and Ash
+actions, with clear validation rules and transformation logic.

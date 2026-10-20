@@ -17,55 +17,48 @@ defmodule AshCommanded.ParameterTransformer do
 
   ## Example
 
+  There is no `transform_params` DSL block — the `command` entity declares no
+  nested entities. Pass the spec list directly to `transform_params/2`:
+
   ```elixir
-  defmodule MyApp.User do
-    use Ash.Resource,
-      extensions: [AshCommanded.Resource.Dsl]
-      
-    commanded do
-      commands do
-        command :register_user do
-          fields [:id, :name, :email, :birthdate, :roles]
-          
-          transform_params do
-            # Simple field rename
-            map :name, to: :full_name
-            
-            # Type conversion
-            cast :birthdate, :date
-            
-            # Computed field
-            compute :age, fn params ->
-              date = params.birthdate
-              now = Date.utc_today()
-              years = now.year - date.year
-              if Date.compare(
-                %{date | year: now.year}, 
-                %{now | month: date.month, day: date.day}
-              ) == :gt, do: years - 1, else: years
-            end
-            
-            # Nested transformation for collections. Convert members only to
-            # atoms the runtime already knows: atoms are never reclaimed, so
-            # String.to_atom/1 on unbounded external input is an atom-table
-            # exhaustion denial-of-service primitive.
-            transform :roles, fn roles ->
-              roles |> Enum.map(&String.to_existing_atom/1)
-            end
-            
-            # Add default values
-            default :status, "active"
-            default :registered_at, &DateTime.utc_now/0
-            
-            # Custom transformation function
-            custom fn params ->
-              Map.put(params, :normalized_email, String.downcase(params.email))
-            end
-          end
-        end
-      end
-    end
-  end
+  params = %{id: "123", name: "John Doe", email: "John@Example.com",
+             birthdate: "1990-01-01", roles: ["admin"]}
+
+  AshCommanded.ParameterTransformer.transform_params(params, [
+    # Simple field rename
+    {:map, :name, to: :full_name},
+
+    # Type conversion
+    {:cast, :birthdate, :date},
+
+    # Computed field
+    {:compute, :age, fn params ->
+      date = params.birthdate
+      now = Date.utc_today()
+      years = now.year - date.year
+      if Date.compare(
+        %{date | year: now.year},
+        %{now | month: date.month, day: date.day}
+      ) == :gt, do: years - 1, else: years
+    end},
+
+    # Nested transformation for collections. Convert members only to
+    # atoms the runtime already knows: atoms are never reclaimed, so
+    # String.to_atom/1 on unbounded external input is an atom-table
+    # exhaustion denial-of-service primitive.
+    {:transform, :roles, fn roles ->
+      roles |> Enum.map(&String.to_existing_atom/1)
+    end},
+
+    # Add default values
+    {:default, :status, [value: "active"]},
+    {:default, :registered_at, [fn: &DateTime.utc_now/0]},
+
+    # Custom transformation function
+    {:custom, fn params ->
+      Map.put(params, :normalized_email, String.downcase(params.email))
+    end}
+  ])
   ```
   """
 

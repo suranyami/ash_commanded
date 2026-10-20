@@ -34,27 +34,16 @@ commanded do
       
       # Advanced options
       middleware [MyApp.LoggingMiddleware]
-      
-      # Parameter transformations
-      transform_params do
-        map email: :normalized_email
-        compute :timestamp, &DateTime.utc_now/0
-      end
-      
-      # Parameter validations
-      validate_params do
-        validate :email, format: ~r/@/
-        validate :name, present: true
-      end
-      
-      # Alternative transaction syntax
-      transaction do
-        enabled? true
-        repo MyApp.Repo
-        timeout 5000
-        isolation_level :read_committed
-      end
-      
+
+      # Parameter transformation and validation are not a DSL surface today: the
+      # `command` entity declares no nested entities. Call
+      # AshCommanded.ParameterTransformer.transform_params/2 and
+      # AshCommanded.ParameterValidator.validate_params/2 directly instead.
+
+      # A nested `transaction` block is not implemented either. Transaction
+      # configuration uses the flat `in_transaction?`, `repo`,
+      # `transaction_timeout` and `transaction_isolation_level` options above.
+
       # Context options
       include_aggregate? true
       include_command? true

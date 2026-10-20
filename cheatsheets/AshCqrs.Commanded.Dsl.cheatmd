@@ -59,60 +59,19 @@ defmodule ECommerce.Customer do
         ]
       end
       
+      # Parameter transformation and validation are not DSL blocks: the `command`
+      # entity declares no nested entities. Call
+      # AshCommanded.ParameterTransformer.transform_params/2 and
+      # AshCommanded.ParameterValidator.validate_params/2 from command-handling code.
+
       # Command with parameter transformation
       command :process_payment do
         fields [:id, :amount, :currency, :payment_method]
-        
-        transform_params do
-          # Map fields
-          map :payment_method, :method_type
-          
-          # Cast fields to specific types
-          cast :amount, :decimal
-          
-          # Add computed fields
-          compute :processed_at, fn _ -> DateTime.utc_now() end
-          
-          # Transform individual fields
-          transform :currency, &String.upcase/1
-          
-          # Set default values
-          default :status, "pending"
-          
-          # Custom transformation
-          custom fn params ->
-            Map.put(params, :payment_id, "PMT-#{params.id}")
-          end
-        end
       end
-      
+
       # Command with parameter validation
       command :ship_order do
         fields [:id, :tracking_number, :carrier, :shipping_date]
-        
-        validate_params do
-          # Type validation
-          validate :id, type: :string
-          validate :tracking_number, type: :string
-          
-          # Format validation
-          validate :tracking_number, format: ~r/^[A-Z]{2}\d{9}[A-Z]{2}$/
-          
-          # Range validation
-          validate :shipping_date, fn date ->
-            today = Date.utc_today()
-            if Date.compare(date, today) in [:eq, :gt] do
-              :ok
-            else
-              {:error, "Shipping date cannot be in the past"}
-            end
-          end
-          
-          # Multiple validations on one field
-          validate :carrier do
-            one_of ["USPS", "FedEx", "UPS", "DHL"]
-          end
-        end
       end
     end
   end

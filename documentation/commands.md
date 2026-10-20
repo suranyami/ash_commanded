@@ -35,14 +35,13 @@ defmodule ECommerce.Customer do
       command :deactivate_customer do
         fields([:id])
         identity_field(:id)
-        
-        # Use block syntax for transaction options
-        transaction do
-          enabled? true
-          repo ECommerce.Repo
-          timeout 5000 
-          isolation_level :read_committed
-        end
+
+        # A nested `transaction` block is not implemented: the `command` entity
+        # declares no nested entities. Use the flat options shown above.
+        in_transaction? true
+        repo ECommerce.Repo
+        transaction_timeout 5000
+        transaction_isolation_level :read_committed
       end
     end
   end

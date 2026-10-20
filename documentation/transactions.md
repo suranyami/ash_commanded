@@ -23,17 +23,14 @@ defmodule MyApp.Order do
         transaction_isolation_level :read_committed
       end
 
-      # Enable transactions with block syntax
+      # The same options on another command
       command :update_order do
         fields [:id, :total]
         identity_field :id
-        
-        transaction do
-          enabled? true
-          repo MyApp.Repo
-          timeout 5000
-          isolation_level :read_committed
-        end
+        in_transaction? true
+        repo MyApp.Repo
+        transaction_timeout 5000
+        transaction_isolation_level :read_committed
       end
     end
   end
@@ -51,18 +48,12 @@ You can configure the following transaction options:
 - `transaction_timeout`: The transaction timeout in milliseconds (number, optional)
 - `transaction_isolation_level`: The transaction isolation level (atom, optional)
 
-### Block Syntax Options
+### Nested Block Not Implemented
 
-Using the `transaction` block, you can configure:
-
-```elixir
-transaction do
-  enabled? true             # Enable/disable transactions for this command
-  repo MyApp.Repo           # The Ecto repository to use
-  timeout 5000              # Timeout in milliseconds
-  isolation_level :serializable  # Isolation level (:read_committed, :repeatable_read, etc.)
-end
-```
+A nested `transaction` block inside a `command` is not implemented: the `command` entity
+declares no nested entities. Configure transactions with the flat command-level options listed
+above (`in_transaction?`, `repo`, `transaction_timeout`, `transaction_isolation_level`), which
+the DSL declares and honours.
 
 ## Resource-level Default Options
 
@@ -101,6 +92,7 @@ For complex operations that require multiple commands to be executed atomically,
 ```
 
 The `execute_commands/3` function:
+
 1. Executes all commands within a single database transaction
 2. Returns all results if successful, or rolls back the entire transaction on any error
 3. Takes the same transaction options as individual commands

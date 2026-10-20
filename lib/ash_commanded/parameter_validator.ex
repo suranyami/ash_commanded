@@ -18,55 +18,42 @@ defmodule AshCommanded.ParameterValidator do
 
   ## Example
 
+  There is no `validate_params` DSL block — the `command` entity declares no nested
+  entities. Pass the rule list directly to `validate_params/2`:
+
   ```elixir
-  defmodule MyApp.User do
-    use Ash.Resource,
-      extensions: [AshCommanded.Resource.Dsl]
-      
-    commanded do
-      commands do
-        command :register_user do
-          fields [:id, :name, :email, :age, :roles]
-          
-          validate_params do
-            # Type validation
-            validate :id, type: :string
-            validate :name, type: :string
-            validate :email, type: :string
-            validate :age, type: :integer
-            validate :roles, type: :list
-            
-            # Format validation
-            validate :email, format: ~r/^[^\s]+@[^\s]+\.[^\s]+$/
-            
-            # Range validation
-            validate :age, min: 18, max: 120
-            
-            # Domain validation
-            validate :roles, subset_of: [:user, :admin, :moderator]
-            
-            # Custom validation
-            validate :name, fn value ->
-              if String.trim(value) == "" do
-                {:error, "Name cannot be blank"}
-              else
-                :ok
-              end
-            end
-            
-            # Multiple validations on one field
-            validate :password do
-              min_length 8
-              format ~r/[A-Z]/
-              format ~r/[a-z]/
-              format ~r/[0-9]/
-              format ~r/[^A-Za-z0-9]/
-            end
-          end
-        end
-      end
-    end
-  end
+  params = %{
+    id: "123",
+    name: "John",
+    email: "john@example.com",
+    age: 21,
+    roles: [:user],
+    password: "Secret1!"
+  }
+
+  AshCommanded.ParameterValidator.validate_params(params, [
+    {:validate, :id, [type: :string]},
+    {:validate, :name, [type: :string]},
+    {:validate, :email, [type: :string, format: ~r/^[^\s]+@[^\s]+\.[^\s]+$/]},
+    {:validate, :age, [type: :integer, min: 18, max: 120]},
+    {:validate, :roles, [subset_of: [:user, :admin, :moderator]]},
+    {:validate, :name,
+     fn value ->
+       if String.trim(value) == "" do
+         {:error, "Name cannot be blank"}
+       else
+         :ok
+       end
+     end},
+    {:validate, :password,
+     [
+       min_length: 8,
+       format: ~r/[A-Z]/,
+       format: ~r/[a-z]/,
+       format: ~r/[0-9]/,
+       format: ~r/[^A-Za-z0-9]/
+     ]}
+  ])
   ```
   """
 

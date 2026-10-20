@@ -318,48 +318,33 @@ end
 
 ### Parameter Transformation and Validation
 
-You can transform and validate command parameters before action execution:
-
-```elixir
-command :create_order do
-  fields([:id, :items, :customer_id, :total])
-  
-  transform_params do
-    map item_ids: :items
-    compute :timestamp, &DateTime.utc_now/0
-    cast :total, :decimal
-  end
-  
-  validate_params do
-    validate :total, number: [greater_than: 0]
-    validate :items, present: true
-  end
-end
-```
+The `transform_params` and `validate_params` nested blocks are **not
+implemented**. The `command` entity declares no nested entities, so a
+`command` block containing either of those blocks does not compile. The
+transformation and validation machinery is reachable only through the public
+functions `AshCommanded.ParameterTransformer.transform_params/2` and
+`AshCommanded.ParameterValidator.validate_params/2`, called from your own
+command-handling code. See `documentation/parameter_handling.md` for the spec
+lists.
 
 ### Transaction Support
 
-Execute commands within database transactions:
+Execute commands within database transactions using the flat command options,
+which are declared in the DSL schema and are honoured:
 
 ```elixir
 command :place_order do
   fields [:id, :customer_id, :items]
-  
-  # Use inline transaction options
+
   in_transaction? true
   repo MyApp.Repo
   transaction_timeout 5000
   transaction_isolation_level :serializable
-  
-  # Or use block syntax
-  transaction do
-    enabled? true
-    repo MyApp.Repo
-    timeout 5000
-    isolation_level :read_committed
-  end
 end
 ```
+
+A nested `transaction` block is not implemented, for the same reason: the
+`command` entity declares no nested entities.
 
 ### Context Propagation
 
