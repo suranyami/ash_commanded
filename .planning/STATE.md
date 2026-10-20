@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-11-PLAN.md; 01-10 CI observation still outstanding
-last_updated: "2026-10-20T18:54:16.393Z"
+stopped_at: Completed 01-12-PLAN.md; 01-10 CI observation still outstanding
+last_updated: "2026-10-20T19:16:05.028Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed 01-11-PLAN.md
-state_head: 36584a3aaba959d630aa5822c1b8872a796474dc
+last_activity_desc: Completed 01-12-PLAN.md
+state_head: dcdec45e1a15330d6f23621d994db207bced844b
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 11
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
   percent: 0
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 11 of 11 (01-10 CI observation outstanding)
-Status: Executing — 01-10 awaits the observed three-leg CI run
-Last activity: 2026-10-20 — Completed 01-11-PLAN.md
+Plan: 12 of 12 authored, 11 complete (01-10 CI observation outstanding)
+Status: Executing — 01-10 awaits the observed three-leg CI run after 01-12's `:cover` fix
+Last activity: 2026-10-20 — Completed 01-12-PLAN.md
 
 Progress: [░░░░░░░░░░] 0% (0/7 phases)
 
@@ -92,6 +92,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P08 | 25min | 3 tasks | 4 files |
 | Phase 01 P09 | 10min | 3 tasks | 14 files |
 | Phase 01 P11 | 13h38m | 5 tasks | 12 files |
+| Phase 01 P12 | 2 min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-11: the fourth 1.20 warning is Ash-generated (input/1's literal key in []), so it was fixed with one optional argument on the parity fixture rather than in GenerateAggregateModule — human-approved at the Task 4 checkpoint and recorded as WINDOWS entry 10.
 - [Phase 01]: 01-11: generated-aggregate warnings fixed at macro-expansion time; the rendered module shrank from 267 to 208 lines (clause_max 131 to 72) with no @compile suppression.
 - [Phase 01]: 01-11: FOUND-16 deliberately left incomplete — only an observed three-leg CI run (01-10 Task 3) may complete it; local proof on 1.18.4 is recorded but not claimed as the matrix result.
+- [Phase 01]: 01-12: used a module attribute plus an explicit fn rather than Enum.member?/2 — keeps the documented fn workaround and names the four standard verbs once.
+- [Phase 01]: 01-12: described the compiler bug without reproducing the forbidden shorthand in the comment, so the plan's grep verification prints nothing.
+- [Phase 01]: 01-12: left 01-CI-EVIDENCE.md untouched — no three-leg run has been observed for this commit, and FOUND-16 stays open.
 
 ### Pending Todos
 
@@ -204,7 +208,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T18:54:05.418Z
-Stopped at: Completed 01-11-PLAN.md; 01-10 CI observation still outstanding
+Last session: 2026-10-20T19:16:05.007Z
+Stopped at: Completed 01-12-PLAN.md; 01-10 CI observation still outstanding
 Next: `/gsd-execute-phase 1`
 Resume file: None
