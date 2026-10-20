@@ -5,7 +5,10 @@ defmodule AshCommanded.Resource.Transformers.CollectTransactionOptions do
   This transformer processes both:
   1. Command-level transaction options within each command
   2. Resource-level default transaction options
-  3. Transaction entity blocks within commands
+
+  The `command` entity declares no nested entities, so there is no nested
+  transaction block to read — only the flat `in_transaction?`, `repo`,
+  `transaction_timeout` and `transaction_isolation_level` options exist.
 
   The collected options are stored in each command's data structure for later use
   during command execution.
@@ -37,33 +40,6 @@ defmodule AshCommanded.Resource.Transformers.CollectTransactionOptions do
     commands =
       Transformer.get_entities(dsl_state, [:commanded, :commands])
       |> Enum.map(fn command ->
-        # Process transaction entity options
-        transaction_entity = Transformer.get_entities(command, [:transaction])
-
-        # Apply transaction options from the entity if it exists
-        command =
-          if transaction_entity && !Enum.empty?(transaction_entity) do
-            transaction_opts = List.first(transaction_entity)
-
-            # Extract options
-            enabled? = Map.get(transaction_opts, :enabled?, true)
-            repo = Map.get(transaction_opts, :repo)
-            timeout = Map.get(transaction_opts, :timeout)
-            isolation_level = Map.get(transaction_opts, :isolation_level)
-
-            # Apply them to the command
-            %{
-              command
-              | in_transaction?: enabled?,
-                repo: repo || command.repo,
-                transaction_timeout: timeout || command.transaction_timeout,
-                transaction_isolation_level:
-                  isolation_level || command.transaction_isolation_level
-            }
-          else
-            command
-          end
-
         # Apply defaults for any nil values
         %{
           command

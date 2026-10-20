@@ -117,8 +117,6 @@ defmodule AshCommanded.Resource.Dsl do
     sections: [@commanded_section],
     transformers: [
       # Collect options from DSL
-      AshCommanded.Resource.Transformers.CollectParameterTransforms,
-      AshCommanded.Resource.Transformers.CollectParameterValidations,
       AshCommanded.Resource.Transformers.CollectTransactionOptions,
 
       # Generate modules
