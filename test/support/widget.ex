@@ -12,21 +12,21 @@ defmodule AshCommanded.TestSupport.Widget do
   commanded do
     commands do
       command :create_widget do
-        fields([:id, :name])
+        fields [:id, :name]
         identity_field(:id)
         action :create
         event :widget_created
       end
 
       command :update_widget do
-        fields([:id, :name])
+        fields [:id, :name]
         identity_field(:id)
         action :update
         event :widget_updated
       end
 
       command :destroy_widget do
-        fields([:id])
+        fields [:id]
         identity_field(:id)
         action :destroy
         event :widget_destroyed
@@ -35,15 +35,15 @@ defmodule AshCommanded.TestSupport.Widget do
 
     events do
       event :widget_created do
-        fields([:id, :name])
+        fields [:id, :name]
       end
 
       event :widget_updated do
-        fields([:id, :name])
+        fields [:id, :name]
       end
 
       event :widget_destroyed do
-        fields([:id])
+        fields [:id]
       end
     end
 

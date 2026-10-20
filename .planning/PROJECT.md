@@ -243,11 +243,13 @@ approve → persisters and verifiers → tests*
 
 - **Tech stack**: Current Elixir/OTP, with the previous two minor Elixir releases supported and CI-tested.
   Presently declared `~> 1.14`; `core` runs `~> 1.18` on OTP 27. The declared floor tightens as part of this work.
-- **Dependencies**: Ash `~> 3.0` (resolves 3.5.8), Spark `~> 2.6` (resolves **2.7.2**), Commanded `~> 1.4`
-  (resolves **1.4.11**) — verified against `mix.exs` and `mix.lock` on 2026-09-15. `CLAUDE.md` and earlier
-  planning docs claim Spark 2.3.5 / Commanded 1.4.8 / Ash 3.5.9; all three are stale and are corrected as
-  part of the documentation reconciliation. Plan against 2.7.2's API, not 2.3.5's. Upper bounds may move to
-  current releases, but whatever is chosen must remain installable alongside `core`'s own resolved versions
+- **Dependencies**: Ash `~> 3.0` (resolves **3.36.1**), Spark `~> 2.6` (resolves **2.7.8**), Commanded
+  `~> 1.4` (resolves **1.4.11**), with transitives ecto **3.14.2**, reactor **1.0.7** and splode **0.3.2** —
+  verified against `mix.exs` and `mix.lock` on 2026-10-20. `CLAUDE.md` and earlier planning docs claim
+  Spark 2.3.5 / Commanded 1.4.8 / Ash 3.5.9; all three are stale and are corrected as part of the
+  documentation reconciliation. The API surface this library uses is compatible with Spark 2.7.8, so plan
+  against the resolved versions rather than 2.3.5's. Upper bounds may move to current releases, but whatever
+  is chosen must remain installable alongside `core`'s own resolved versions
 - **Compatibility**: Must support every pattern `core` uses today, or `core` cannot migrate
 - **Licence**: MIT, upstream `accountex-org/ash_commanded` — contributions must suit a public library
 - **Genericity**: Examples and tests must be domain-neutral; no Accountex-specific concepts in the published library
@@ -322,4 +324,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-15 after starting milestone v0.3 Library Rewrite*
+*Last updated: 2026-10-20 after plan 01-14 refreshed the dependency facts*

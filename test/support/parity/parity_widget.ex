@@ -16,7 +16,7 @@ defmodule AshCommanded.TestSupport.Parity.Widget do
   commanded do
     commands do
       command :create_widget do
-        fields([:id, :label])
+        fields [:id, :label]
         identity_field(:id)
         action :create
         event :widget_created
@@ -25,7 +25,7 @@ defmodule AshCommanded.TestSupport.Parity.Widget do
 
     events do
       event :widget_created do
-        fields([:id, :label])
+        fields [:id, :label]
       end
     end
 
