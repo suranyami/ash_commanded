@@ -1,4 +1,4 @@
-# gsd-budget: clause_max=131 module_lines=267
+# gsd-budget: clause_max=72 module_lines=208
 # gsd-staged-until-phase: 4
 defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
   @moduledoc "Aggregate for Widget resource handling commands and events"
@@ -60,7 +60,7 @@ defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
         action_name: :create,
         action_type: nil,
         param_mapping: nil,
-        metadata: Map.get(command, :metadata, %{}),
+        metadata: %{},
         command: command,
         resource: resource_module
       }
@@ -107,67 +107,8 @@ defmodule AshCommanded.TestSupport.Parity.WidgetAggregate do
       command_id = Map.get(command, identity_field)
       aggregate_id = Map.get(aggregate, identity_field)
       middleware_context = opts |> Keyword.get(:context, %{})
-      include_aggregate? = true
-      include_command? = true
-      include_metadata? = true
-      context_prefix = nil
-      static_context = %{}
-
-      middleware_context =
-        if include_aggregate? do
-          key =
-            if context_prefix do
-              :"#{context_prefix}.aggregate"
-            else
-              :aggregate
-            end
-
-          Map.put(middleware_context, key, aggregate)
-        else
-          middleware_context
-        end
-
-      middleware_context =
-        if include_command? do
-          key =
-            if context_prefix do
-              :"#{context_prefix}.command"
-            else
-              :command
-            end
-
-          Map.put(middleware_context, key, command)
-        else
-          middleware_context
-        end
-
-      middleware_context =
-        if include_metadata? && Map.has_key?(command, :metadata) do
-          metadata = Map.get(command, :metadata, %{})
-
-          base_key =
-            if context_prefix do
-              :"#{context_prefix}.metadata"
-            else
-              :metadata
-            end
-
-          if is_map(metadata) do
-            Map.put(middleware_context, base_key, metadata)
-          else
-            middleware_context
-          end
-        else
-          middleware_context
-        end
-
-      middleware_context =
-        if static_context && map_size(static_context) > 0 do
-          Map.merge(middleware_context, static_context)
-        else
-          middleware_context
-        end
-
+      middleware_context = Map.put(middleware_context, :aggregate, aggregate)
+      middleware_context = Map.put(middleware_context, :command, command)
       action_opts = opts ++ [identity_field: identity_field, context: middleware_context]
 
       cond do

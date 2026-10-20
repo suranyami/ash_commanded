@@ -45,7 +45,18 @@ defmodule AshCommanded.TestSupport.Parity.Widget do
   end
 
   actions do
-    defaults [:read, create: [:id, :label]]
+    defaults [:read]
+
+    # Ash generates `input/1` from the union of every action's arguments
+    # (`Ash.Resource`'s `@all_arguments`). With no arguments on any action, that generated
+    # function contains the literal expression `key in []`, which Elixir 1.20 reports as a
+    # type warning ("the right-hand side of || will always execute"). Declaring one real,
+    # optional argument keeps the generated membership test dynamic. This fixture is
+    # compiled, never written to, so the argument has no runtime effect here.
+    create :create do
+      accept [:id, :label]
+      argument :source, :string, allow_nil?: true
+    end
   end
 
   attributes do

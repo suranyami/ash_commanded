@@ -339,6 +339,13 @@ defmodule AshCommanded.Resource.Transformers.GenerateAggregateModule do
             )
           end
 
+        # Every one of the remaining context decisions is known at macro-expansion time.
+        # Emitting the chosen expression directly, instead of unquoting a literal into a
+        # runtime `if`, keeps the rendered code free of branches the compiler can prove
+        # dead (Elixir 1.20 reports those as type warnings).
+        metadata_expression = build_metadata_expression(command)
+        context_assignments = build_context_assignments(command)
+
         quote do
           @doc """
           Handles the #{unquote(command.name)} command and produces events.
@@ -365,8 +372,8 @@ defmodule AshCommanded.Resource.Transformers.GenerateAggregateModule do
               action_name: unquote(action_name),
               action_type: unquote(command.action_type),
               param_mapping: unquote(command.param_mapping),
-              # Add metadata from the command if available
-              metadata: Map.get(command, :metadata, %{}),
+              # Add metadata from the command if the command struct declares it
+              metadata: unquote(metadata_expression),
               # Include command for context reference
               command: command,
               # Include resource for context reference
@@ -431,54 +438,10 @@ defmodule AshCommanded.Resource.Transformers.GenerateAggregateModule do
             # Extract the middleware context - where we store command execution context
             middleware_context = opts |> Keyword.get(:context, %{})
 
-            # Get context configuration from the command
-            include_aggregate? = unquote(command.include_aggregate?)
-            include_command? = unquote(command.include_command?)
-            include_metadata? = unquote(command.include_metadata?)
-            context_prefix = unquote(command.context_prefix)
-            static_context = unquote(Macro.escape(command.static_context || %{}))
-
-            # Add aggregate if configured
-            middleware_context =
-              if include_aggregate? do
-                key = if context_prefix, do: :"#{context_prefix}.aggregate", else: :aggregate
-                Map.put(middleware_context, key, aggregate)
-              else
-                middleware_context
-              end
-
-            # Add command if configured
-            middleware_context =
-              if include_command? do
-                key = if context_prefix, do: :"#{context_prefix}.command", else: :command
-                Map.put(middleware_context, key, command)
-              else
-                middleware_context
-              end
-
-            # Add metadata if present and configured
-            middleware_context =
-              if include_metadata? && Map.has_key?(command, :metadata) do
-                metadata = Map.get(command, :metadata, %{})
-                base_key = if context_prefix, do: :"#{context_prefix}.metadata", else: :metadata
-
-                # Either add as a map under metadata key or merge individual keys
-                if is_map(metadata) do
-                  Map.put(middleware_context, base_key, metadata)
-                else
-                  middleware_context
-                end
-              else
-                middleware_context
-              end
-
-            # Add static context if configured
-            middleware_context =
-              if static_context && map_size(static_context) > 0 do
-                Map.merge(middleware_context, static_context)
-              else
-                middleware_context
-              end
+            # Context contributions are chosen at macro-expansion time: each assignment
+            # below is emitted only when this command's own configuration includes it, so
+            # no runtime branch tests a value that is already known here.
+            unquote_splicing(context_assignments)
 
             # Prepare options with context
             action_opts =
@@ -627,6 +590,107 @@ defmodule AshCommanded.Resource.Transformers.GenerateAggregateModule do
       end
     end)
   end
+
+  # A generated command struct's fields are exactly `command.fields` (see
+  # GenerateCommandModules.build_command_module_ast/2). Anything else — including
+  # `:metadata` — cannot be present on the struct, so every decision that depends on its
+  # presence is resolved here, at macro-expansion time, rather than emitted as a runtime
+  # check that Elixir 1.20 proves dead.
+  defp command_declares_field?(command, field), do: field in command.fields
+
+  # Build the `context` map's metadata value at expansion time. The command struct either
+  # declares `:metadata`, in which case direct field access is correct, or it does not,
+  # in which case the literal `%{}` is the only possible value.
+  defp build_metadata_expression(command) do
+    if command_declares_field?(command, :metadata) do
+      quote do: command.metadata
+    else
+      quote do: %{}
+    end
+  end
+
+  # Build only the middleware-context assignments this command actually needs. Each
+  # option is fixed when the transformer runs, so an excluded contribution must not
+  # leave behind a branch on a literal.
+  defp build_context_assignments(command) do
+    []
+    |> put_aggregate_context(command)
+    |> put_command_context(command)
+    |> put_metadata_context(command)
+    |> merge_static_context(command)
+  end
+
+  defp put_aggregate_context(assignments, command) do
+    if command.include_aggregate? do
+      key = context_key(command.context_prefix, :aggregate)
+
+      assignments ++
+        [
+          quote do
+            middleware_context = Map.put(middleware_context, unquote(key), aggregate)
+          end
+        ]
+    else
+      assignments
+    end
+  end
+
+  defp put_command_context(assignments, command) do
+    if command.include_command? do
+      key = context_key(command.context_prefix, :command)
+
+      assignments ++
+        [
+          quote do
+            middleware_context = Map.put(middleware_context, unquote(key), command)
+          end
+        ]
+    else
+      assignments
+    end
+  end
+
+  defp put_metadata_context(assignments, command) do
+    if command.include_metadata? and command_declares_field?(command, :metadata) do
+      key = context_key(command.context_prefix, :metadata)
+
+      assignments ++
+        [
+          quote do
+            metadata = Map.get(command, :metadata, %{})
+
+            middleware_context =
+              if is_map(metadata) do
+                Map.put(middleware_context, unquote(key), metadata)
+              else
+                middleware_context
+              end
+          end
+        ]
+    else
+      assignments
+    end
+  end
+
+  defp merge_static_context(assignments, command) do
+    static_context = command.static_context || %{}
+
+    if is_map(static_context) and map_size(static_context) > 0 do
+      assignments ++
+        [
+          quote do
+            middleware_context =
+              Map.merge(middleware_context, unquote(Macro.escape(static_context)))
+          end
+        ]
+    else
+      assignments
+    end
+  end
+
+  # `context_prefix` is a compile-time atom or nil, so the key literal is chosen here.
+  defp context_key(nil, key), do: key
+  defp context_key(prefix, key) when is_atom(prefix), do: :"#{prefix}.#{key}"
 
   # Generate apply/2 function for each event
   defp generate_apply_functions(events, event_modules) do
