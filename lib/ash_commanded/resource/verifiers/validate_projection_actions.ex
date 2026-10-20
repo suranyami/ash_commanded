@@ -22,7 +22,7 @@ defmodule AshCommanded.Resource.Verifiers.ValidateProjectionActions do
     # Find projections with potentially invalid actions
     invalid_projections =
       Enum.filter(projections, fn projection ->
-        projection.action not in @valid_actions
+        not valid_action?(projection.action)
       end)
 
     case invalid_projections do
@@ -34,6 +34,18 @@ defmodule AshCommanded.Resource.Verifiers.ValidateProjectionActions do
         {:error, DslError.exception(message: message, path: [:commanded, :projections])}
     end
   end
+
+  # Function-head clauses rather than a membership test against the literal list:
+  # Elixir 1.20 + OTP 27 mis-expand `in` against a literal list longer than three
+  # elements into a `case` with unsafe variables, and `:cover` re-compilation then raises
+  # `MatchError :error` (erlang/otp#11524, surfaced as elixir#15546). The compiler fix is
+  # in OTP 28+, so these clauses may collapse back into one membership test once this
+  # project's OTP floor is 28 or newer.
+  defp valid_action?(:create), do: true
+  defp valid_action?(:update), do: true
+  defp valid_action?(:destroy), do: true
+  defp valid_action?(:read), do: true
+  defp valid_action?(_action), do: false
 
   defp build_error_message(resource_module, invalid_projections) do
     projections_list =
