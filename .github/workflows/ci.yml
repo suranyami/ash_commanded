@@ -40,7 +40,8 @@ jobs:
           # it.
           - elixir: "1.18.4"
             otp: "27.3"
-          # Previous minor.
+          # Previous minor. OTP is held at this repository's own installed runtime — see
+          # `erl -eval 'io:format(erlang:system_info(system_version))'`.
           - elixir: "1.19.6"
             otp: "27.3"
           # Current minor. PROJECT.md's Constraints require "current Elixir/OTP release plus
@@ -49,13 +50,24 @@ jobs:
           # and 1.18). Re-verify against the real release list, not this comment, before
           # assuming these three are still current + previous two when next touching this
           # file.
+          #
+          # DELIBERATE EXCEPTION: this is the only leg on OTP 28. The matrix's intent is a
+          # three-way Elixir axis with OTP held constant at the repository's own 27.3 — OTP
+          # is not a second axis being explored here, it is moved on this leg alone because
+          # the older runtime cannot run the coverage half of the gate on this Elixir.
+          # Elixir 1.20 + OTP 27 mis-expand `in` against a literal list of more than three
+          # elements into a `case` with unsafe variables; `:cover` re-compilation then raises
+          # `MatchError :error` at `do_compile_beam2/6` (erlang/otp#11524, surfaced as
+          # elixir#15546). The compiler fix is in OTP 28+, not in any Elixir patch, so the
+          # leg moves rather than the gate weakening. Both artefacts were pre-flighted
+          # against the live hex.pm manifests on 2026-10-21: `v1.20.4-otp-28` in the Elixir
+          # manifest and `OTP-28.5.0.8` in the ubuntu-24.04 OTP manifest, each matching
+          # exactly once.
+          #
+          # REVERT CONDITION: once the OTP floor for the whole matrix is 28 or newer, this
+          # leg returns to 27.3 with the other two and this exception disappears.
           - elixir: "1.20.4"
-            otp: "27.3"
-          # OTP is held constant (27.3, this repository's own installed runtime — see `erl
-          # -eval 'io:format(erlang:system_info(system_version))'`) across all three legs
-          # deliberately: the requirement is a three-way Elixir matrix, not a two-axis
-          # Elixir/OTP matrix, and holding OTP fixed isolates the one variable the
-          # requirement is actually about.
+            otp: "28.5.0.8"
     env:
       MIX_ENV: dev
     steps:
