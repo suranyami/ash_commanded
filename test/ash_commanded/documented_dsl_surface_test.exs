@@ -161,16 +161,16 @@ defmodule AshCommanded.DocumentedDslSurfaceTest do
   # declaration is `<name> do` on its own line; prose that merely names the block (even in
   # backticks) is not a declaration. Counting is per occurrence, never per file.
   defp documentation_violations(contents, declared_names) do
-    Enum.flat_map(@nested_block_names, fn name ->
-      if MapSet.member?(declared_names, name) do
-        []
-      else
-        contents
-        |> Enum.map(fn {label, content} -> {label, declaration_count(content, name)} end)
-        |> Enum.filter(fn {_label, count} -> count > 0 end)
-        |> Enum.map(fn {label, count} -> %{file: label, block: name, count: count} end)
-      end
-    end)
+    @nested_block_names
+    |> Enum.reject(&MapSet.member?(declared_names, &1))
+    |> Enum.flat_map(&violations_for_name(contents, &1))
+  end
+
+  defp violations_for_name(contents, name) do
+    contents
+    |> Enum.map(fn {label, content} -> {label, declaration_count(content, name)} end)
+    |> Enum.reject(fn {_label, count} -> count == 0 end)
+    |> Enum.map(fn {label, count} -> %{file: label, block: name, count: count} end)
   end
 
   defp declaration_count(content, name) do
