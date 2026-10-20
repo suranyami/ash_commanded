@@ -109,8 +109,9 @@ defmodule AshCommanded.Middleware.CommandMiddlewareProcessor do
   defp get_command_middleware(command) do
     command_module = command.__struct__
 
-    # Check if this is an AshCommanded command with middleware
-    if is_map(command) && Map.has_key?(command, :middleware) do
+    # Check if this is an AshCommanded command with middleware. Every caller passes a
+    # command struct (a map already), so the `is_map/1` conjunct is redundant.
+    if Map.has_key?(command, :middleware) do
       command.middleware
     else
       # Try to get middleware from the command module if available

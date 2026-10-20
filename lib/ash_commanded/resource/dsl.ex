@@ -46,8 +46,6 @@ defmodule AshCommanded.Resource.Dsl do
   ```
   """
 
-  require Logger
-
   alias AshCommanded.Resource.Sections.CommandsSection
 
   @commands_section %Spark.Dsl.Section{
