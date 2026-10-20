@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 9
+open_count: 10
 waived_count: 0
 fixed_count: 1
-total_count: 10
-last_updated: 2026-10-20T18:52:15.783Z
+total_count: 11
+last_updated: 2026-10-20T20:27:14.484Z
 ---
 
 # Broken Windows Ledger
@@ -25,6 +25,7 @@ last_updated: 2026-10-20T18:52:15.783Z
 | 8 | 01 | todo | README.md, documentation/, cheatsheets/ |  | Stale pre-move namespace documentation drift: 65 occurrences of AshCommanded.Commanded.* or AshCqrs.* across 13 files (README.md, 11 files under documentation/, cheatsheets/AshCqrs.Commanded.Dsl.cheatmd), measured after plan 01-09's corrections. lib/ and test/ are clean, so this is documentation left behind by the D-13 namespace move rather than a live code defect. Deferred to Phase 7 (Documentation, Packaging and the End-to-End Example), whose goal is documentation in which no claim outruns the code and whose success criterion 4 regenerates the committed cheatsheets. No DOCS-0x requirement names module-path drift specifically, so the owner is the phase's stated goal, not a fabricated requirement citation. Contrast the deleted CollectParameterTransforms/CollectParameterValidations: no phase owned those and transform_params/validate_params appear nowhere in REQUIREMENTS.md, so a citation naming a live phase would have described work that phase does not contain. That distinction is why this deferral is legitimate and that citation was refused. | open |  | 2026-10-20T03:51:46.992Z |  |
 | 9 | 01 | deviation | lib/ash_commanded/resource/transformers/ |  | Plan 01-09 removed the implementation-shaped code for parameter transformation and validation (CollectParameterTransforms and CollectParameterValidations) without providing the DSL surface the documentation previously implied. The command entity declares no nested entities, so if the capability is wanted it must return as a requirement with a real DSL entity, not as another hardcoded stub. The public functions ParameterTransformer.transform_params/2 and ParameterValidator.validate_params/2 remain documented, tested and directly callable. | open |  | 2026-10-20T03:51:46.992Z |  |
 | 10 | 01 | deviation | test/support/parity/parity_widget.ex |  | 01-11 Task 3: the parity fixture's create action gained one optional argument (:source, :string, allow_nil?: true) so Ash's generated input/1 does not emit the literal 'key in []' that Elixir 1.20 warns about. The plan attributed that warning to GenerateAggregateModule, but the expression is emitted by Ash, so the fixture is the only non-suppression place to fix it. No @compile suppression was added. Approved by a human at 01-11 Task 4's blocking-human checkpoint. | open |  | 2026-10-20T18:52:15.783Z |  |
+| 11 | 01 | unrun-verify | .github/workflows/ci.yml |  | Three-leg CI observation not yet made: the workflow now pairs Elixir 1.20.4 with OTP 28.5.0.8, but no GitHub Actions run exists for the branch (it is unpushed). FOUND-16 stays unclaimed until a human observes all three legs green and records the run in 01-CI-EVIDENCE.md. | open |  | 2026-10-20T20:27:14.484Z |  |
 
 ````json
 [
@@ -149,6 +150,19 @@ last_updated: 2026-10-20T18:52:15.783Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-20T18:52:15.783Z",
+    "resolved_at": null,
+    "milestone": "v0.3"
+  },
+  {
+    "id": 11,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": ".github/workflows/ci.yml",
+    "line": null,
+    "description": "Three-leg CI observation not yet made: the workflow now pairs Elixir 1.20.4 with OTP 28.5.0.8, but no GitHub Actions run exists for the branch (it is unpushed). FOUND-16 stays unclaimed until a human observes all three legs green and records the run in 01-CI-EVIDENCE.md.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-20T20:27:14.484Z",
     "resolved_at": null,
     "milestone": "v0.3"
   }

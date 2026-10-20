@@ -5,16 +5,16 @@ milestone_name: Library Rewrite
 current_phase: 01
 current_phase_name: Foundation — Rendering, Enforcement and Layout
 status: executing
-stopped_at: Completed 01-14-PLAN.md; 01-10 CI observation still outstanding
-last_updated: "2026-10-20T20:24:00.574Z"
+stopped_at: Completed 01-13-PLAN.md; 01-10 CI observation still outstanding
+last_updated: "2026-10-20T20:27:59.276Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed 01-14-PLAN.md
-state_head: 7f9143b8c2e4375474180c08f1d684fff1e066df
+last_activity_desc: Completed 01-13-PLAN.md
+state_head: 159937b467c7e6d0ce3d97618d44fe7d78f8bdc4
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 01 (Foundation — Rendering, Enforcement and Layout) — EXECUTING
-Plan: 14 of 14 authored, 12 complete (01-10 CI observation outstanding; 01-13 not yet executed)
-Status: Executing — 01-13 is the next runnable plan; 01-10 awaits the observed three-leg CI run
-Last activity: 2026-10-20 — Completed 01-14-PLAN.md (dependency upgrade)
+Plan: 14 of 14 authored, 13 complete (01-10 CI observation outstanding)
+Status: Executing — 01-13 complete; 01-10 awaits the observed three-leg CI run
+Last activity: 2026-10-20 — Completed 01-13-PLAN.md (OTP 28 leg plus verifier rewrite)
 
 Progress: [░░░░░░░░░░] 0% (0/7 phases)
 
@@ -94,6 +94,7 @@ that roadmap *did* complete and its results are recorded in PROJECT.md → Valid
 | Phase 01 P11 | 13h38m | 5 tasks | 12 files |
 | Phase 01 P12 | 2 min | 1 tasks | 1 files |
 | Phase 01 P14 | 4 min | 3 tasks | 5 files |
+| Phase 01 P13 | 2 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-12: left 01-CI-EVIDENCE.md untouched — no three-leg run has been observed for this commit, and FOUND-16 stays open.
 - [Phase 01]: 01-14: chose default_string_length_count: :codepoints, matching SQL data-layer string counting so max_length bounds stored size consistently across resources.
 - [Phase 01]: 01-14: accepted the resolver's full upgraded set (ash 3.36.1, spark 2.7.8, ecto 3.14.2, reactor 1.0.7, splode 0.3.2) without narrowing mix.exs constraints; hex.outdated is all Up-to-date and the gate plus unchanged goldens prove no output change.
+- [Phase 01]: 01-13: moved only the 1.20.4 CI leg to OTP 28.5.0.8 after pre-flighting v1.20.4-otp-28 and OTP-28.5.0.8 against the live hex.pm manifests (one match each); 1.18.4 and 1.19.6 stay on 27.3, and the workflow records erlang/otp#11524 / elixir#15546 plus the OTP-28-floor revert condition.
+- [Phase 01]: 01-13: rewrote the projection-action verifier as valid_action?/1 function-head clauses instead of a four-element literal membership test, preserving the accepted set and rejection of everything else; goldens unchanged.
+- [Phase 01]: 01-13: did not claim FOUND-16 complete — the must-have requires an observed three-leg green run and the branch is unpushed; the pending observation is WINDOWS.md entry 11 and belongs to the orchestrator.
 
 ### Pending Todos
 
@@ -211,7 +215,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T20:24:00.551Z
-Stopped at: Completed 01-14-PLAN.md; 01-10 CI observation still outstanding
+Last session: 2026-10-20T20:27:53.775Z
+Stopped at: Completed 01-13-PLAN.md; 01-10 CI observation still outstanding
 Next: `/gsd-execute-phase 1`
 Resume file: None
