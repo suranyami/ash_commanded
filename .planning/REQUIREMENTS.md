@@ -40,7 +40,7 @@ Must land before the first component, because step 4 of the method depends on it
 - [x] **FOUND-13**: `usage_rules` is a dev dependency and the library publishes generated LLM-facing usage rules
 - [x] **FOUND-14**: `AGENTS.md` documents idiomatic Elixir, DSL conventions, transformer ordering and testing expectations, using `core` as the worked reference
 - [x] **FOUND-15**: `AGENTS.md` includes the Spark API reference so implementers reach for built-in machinery before hand-rolling it
-- [x] **FOUND-16**: CI runs the suite against the current Elixir/OTP release plus the previous two minors
+- [ ] **FOUND-16**: CI runs the suite against the current Elixir/OTP release plus the previous two minors
 - [x] **FOUND-17**: `lib/` is reorganised into `resource/` and `domain/` trees, each with its own `transformers/`, `verifiers/` and `info.ex`
 - [x] **FOUND-18**: A shared module-creation helper sets explicit `file:`/`line:` metadata so generated-code errors point somewhere useful
 
@@ -153,7 +153,7 @@ Tracked, not in this roadmap.
 ## Out of Scope
 
 | Feature | Reason |
-|---------|--------|
+| --------- | -------- |
 | Backwards compatibility with the published 0.2.0 DSL | Adoption is negligible and the aggregate/projection redesign cannot be done additively. Break freely on 0.x |
 | Non-Commanded event-sourcing backends | The library targets Commanded 1.4.x specifically |
 | Maintaining a private fork | Work lands upstream in `accountex-org/ash_commanded` |
@@ -167,7 +167,7 @@ Mapped by the roadmap created 2026-09-15. Every milestone requirement maps to ex
 one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does not apply.
 
 | Requirement | Phase | Status |
-|-------------|-------|--------|
+| ------------- | ------- | -------- |
 | FOUND-01 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-02 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-03 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
@@ -183,7 +183,7 @@ one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does no
 | FOUND-13 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-14 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-15 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
-| FOUND-16 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
+| FOUND-16 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Gaps Found |
 | FOUND-17 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | FOUND-18 | Phase 1 — Foundation — Rendering, Enforcement and Layout | Complete |
 | CMD-01 | Phase 2 — Commands and Events | Pending |
@@ -267,7 +267,7 @@ one phase. Phase numbering restarted at 1; the archived 13-phase roadmap does no
 **Per-phase totals:**
 
 | Phase | Name | Requirements |
-|-------|------|--------------|
+| ------- | ------ | -------------- |
 | 1 | Foundation — Rendering, Enforcement and Layout | 18 |
 | 2 | Commands and Events | 15 |
 | 3 | Application and Routers | 12 |
