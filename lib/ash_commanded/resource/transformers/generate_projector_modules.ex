@@ -370,13 +370,23 @@ defmodule AshCommanded.Resource.Transformers.GenerateProjectorModules do
       end
   ]
 
+  # The four Ash standard verbs. Kept as an attribute so the rejection below reads as one
+  # concept rather than an inline literal; see the comment on `build_action_handlers/1` for
+  # why the rejection uses an explicit `fn` instead of the `&` shorthand.
+  @builtin_actions [:create, :update, :destroy, :read]
+
   defp build_action_handlers(actions_used) do
     standard_clauses =
       @standard_action_clauses
       |> Enum.filter(fn {action, _ast} -> action in actions_used end)
       |> Enum.map(fn {_action, ast} -> ast end)
 
-    custom_actions = Enum.reject(actions_used, &(&1 in [:create, :update, :destroy, :read]))
+    # Deliberately an explicit `fn` rather than the short-hand anonymous-function form: Elixir
+    # 1.20 + OTP 27 mis-expands `in` against a literal list longer than three entries inside a
+    # short-hand anonymous function, and `:cover` re-compilation then raises `MatchError :error`
+    # (elixir#15546 / erlang/otp#11524). The compiler fix landed in OTP 28+, so this workaround
+    # may be removed once the project's OTP floor is 28 or newer.
+    custom_actions = Enum.reject(actions_used, fn action -> action in @builtin_actions end)
 
     if custom_actions == [] do
       standard_clauses
