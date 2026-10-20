@@ -245,69 +245,86 @@ defmodule AshCommanded.ParameterTransformer do
     end
   end
 
-  # Cast a value to the specified type
-  defp cast_value(value, :string) when is_binary(value), do: {:ok, value}
-  defp cast_value(value, :string), do: {:ok, to_string(value)}
+  # Cast a value to the specified type.
+  #
+  # Public so the atom trust boundary can be observed directly in tests:
+  # asserting only the return value cannot distinguish "rejected the value"
+  # from "created the atom and then rejected it". Not part of the documented
+  # API surface.
+  @doc false
+  @spec cast_value(term(), atom()) :: {:ok, term()} | {:error, String.t()}
+  def cast_value(value, :string) when is_binary(value), do: {:ok, value}
+  def cast_value(value, :string), do: {:ok, to_string(value)}
 
-  defp cast_value(value, :integer) when is_integer(value), do: {:ok, value}
+  def cast_value(value, :integer) when is_integer(value), do: {:ok, value}
 
-  defp cast_value(value, :integer) when is_binary(value) do
+  def cast_value(value, :integer) when is_binary(value) do
     case Integer.parse(value) do
       {int, ""} -> {:ok, int}
       _ -> {:error, "Invalid integer format"}
     end
   end
 
-  defp cast_value(value, :float) when is_float(value), do: {:ok, value}
-  defp cast_value(value, :float) when is_integer(value), do: {:ok, value * 1.0}
+  def cast_value(value, :float) when is_float(value), do: {:ok, value}
+  def cast_value(value, :float) when is_integer(value), do: {:ok, value * 1.0}
 
-  defp cast_value(value, :float) when is_binary(value) do
+  def cast_value(value, :float) when is_binary(value) do
     case Float.parse(value) do
       {float, ""} -> {:ok, float}
       _ -> {:error, "Invalid float format"}
     end
   end
 
-  defp cast_value(value, :boolean) when is_boolean(value), do: {:ok, value}
-  defp cast_value("true", :boolean), do: {:ok, true}
-  defp cast_value("false", :boolean), do: {:ok, false}
-  defp cast_value(1, :boolean), do: {:ok, true}
-  defp cast_value(0, :boolean), do: {:ok, false}
+  def cast_value(value, :boolean) when is_boolean(value), do: {:ok, value}
+  def cast_value("true", :boolean), do: {:ok, true}
+  def cast_value("false", :boolean), do: {:ok, false}
+  def cast_value(1, :boolean), do: {:ok, true}
+  def cast_value(0, :boolean), do: {:ok, false}
 
-  defp cast_value(value, :date) when is_binary(value) do
+  def cast_value(value, :date) when is_binary(value) do
     case Date.from_iso8601(value) do
       {:ok, date} -> {:ok, date}
       _ -> {:error, "Invalid date format"}
     end
   end
 
-  defp cast_value(value, :datetime) when is_binary(value) do
+  def cast_value(value, :datetime) when is_binary(value) do
     case DateTime.from_iso8601(value) do
       {:ok, datetime, _offset} -> {:ok, datetime}
       _ -> {:error, "Invalid datetime format"}
     end
   end
 
-  defp cast_value(value, :atom) when is_atom(value), do: {:ok, value}
-  defp cast_value(value, :atom) when is_binary(value), do: {:ok, String.to_atom(value)}
+  def cast_value(value, :atom) when is_atom(value), do: {:ok, value}
 
-  defp cast_value(value, :list) when is_list(value), do: {:ok, value}
+  # Atoms are never reclaimed on the BEAM, so converting arbitrary
+  # caller-supplied binaries into atoms mints atoms until the node dies.
+  # Accept only atoms the runtime already knows. The error names the expected
+  # type and never interpolates the rejected value, which is attacker-
+  # controlled and unbounded and would otherwise reach the consumer's logs.
+  def cast_value(value, :atom) when is_binary(value) do
+    {:ok, String.to_existing_atom(value)}
+  rescue
+    ArgumentError -> {:error, "Invalid atom: expected an atom already known to the runtime"}
+  end
 
-  defp cast_value(value, :list) when is_binary(value) do
+  def cast_value(value, :list) when is_list(value), do: {:ok, value}
+
+  def cast_value(value, :list) when is_binary(value) do
     {:ok, String.split(value, ",")}
   rescue
     _ -> {:error, "Cannot convert to list"}
   end
 
-  defp cast_value(value, :map) when is_map(value), do: {:ok, value}
+  def cast_value(value, :map) when is_map(value), do: {:ok, value}
 
-  defp cast_value(value, :map) when is_binary(value) do
+  def cast_value(value, :map) when is_binary(value) do
     {:ok, Jason.decode!(value)}
   rescue
     _ -> {:error, "Cannot convert to map"}
   end
 
-  defp cast_value(_value, _type), do: {:error, "Unsupported type conversion"}
+  def cast_value(_value, _type), do: {:error, "Unsupported type conversion"}
 
   @doc """
   Builds a transformation specification from a DSL block.
