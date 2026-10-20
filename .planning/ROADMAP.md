@@ -60,7 +60,7 @@ output that breaks the rewrite rules — so every later phase has something real
   4. A developer runs the structural clone check across `lib/` and reads a report naming clone pairs that Credo's built-in duplicate check does not report; `AGENTS.md` carries Rule 9 ("no double-handling") as a reviewer checklist item with an explicit statement that no mechanical check for it exists.
   5. `AGENTS.md` exists documenting idiomatic Elixir, DSL conventions, transformer ordering, testing expectations and the Spark API surface, with `core` as the worked reference; `usage_rules` is a dev dependency and the library's generated usage rules are committed; `lib/` has sibling `resource/` and `domain/` trees each holding `transformers/`, `verifiers/` and `info.ex`; a deliberate error in generated code reports a `file:`/`line:` a developer can open; and CI runs the suite green on the current Elixir/OTP release plus the previous two minors.
 
-**Plans:** 11/12 plans executed — 6/6 original plans executed, 6 gap-closure plans planned
+**Plans:** 11/13 plans executed — 6/6 original plans executed, 7 gap-closure plans planned
 
 Plans:
 **Wave 1**
@@ -104,6 +104,10 @@ Plans:
 **Wave 10** *(gap closure — from the second observed CI run)*
 
 - [x] 01-12-PLAN.md — Elixir 1.20 + OTP 27 `:cover` crash: rewrite the one `&(&1 in [4 literals])` shorthand (wave 10)
+
+**Wave 11** *(gap closure — from the third observed CI run)*
+
+- [ ] 01-13-PLAN.md — Pair the 1.20.4 leg with OTP 28 (where the `:cover` bug is fixed) and remove the library's own long-literal `in` (wave 11)
 
 ### Phase 2: Commands and Events
 
