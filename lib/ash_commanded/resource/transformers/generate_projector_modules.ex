@@ -145,7 +145,15 @@ defmodule AshCommanded.Resource.Transformers.GenerateProjectorModules do
             actions_used
           )
 
-        BaseTransformer.create_module(projector_module, ast, __ENV__)
+        # Built from the resource's whole `commanded` block, not from one declaration, so
+        # there is no entity to attribute it to. Name the resource's own file at line 1
+        # rather than guessing at an arbitrary member declaration.
+        BaseTransformer.create_module(
+          projector_module,
+          ast,
+          __ENV__,
+          BaseTransformer.dsl_location(dsl_state)
+        )
 
         # Store the generated module in DSL state
         updated_dsl_state =

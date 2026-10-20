@@ -122,7 +122,15 @@ defmodule AshCommanded.Resource.Transformers.GenerateEventHandlerModules do
                 event_modules
               )
 
-            BaseTransformer.create_module(handler_module, ast, __ENV__)
+            # The module is generated from the whole handler group, so no single declaration
+            # owns it. Attribute it to the group's first declaration: that is the one a
+            # developer opens first, and it is the only site where the choice is not forced.
+            BaseTransformer.create_module(
+              handler_module,
+              ast,
+              __ENV__,
+              BaseTransformer.entity_location(List.first(handlers), dsl_state)
+            )
 
             {handler_name, handler_module}
           end)

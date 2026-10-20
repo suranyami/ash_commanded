@@ -79,7 +79,8 @@ defmodule AshCommanded.Resource.Transformers.GenerateEventModules do
             BaseTransformer.create_module(
               event_module,
               build_event_module_ast(event, resource_name),
-              __ENV__
+              __ENV__,
+              BaseTransformer.entity_location(event, acc_dsl_state)
             )
 
             # Store the generated module in DSL state for potential use by other transformers

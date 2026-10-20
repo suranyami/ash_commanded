@@ -145,11 +145,22 @@ defmodule AshCommanded.Resource.Transformers.GenerateMainRouterModule do
         domain_routers
         |> Enum.each(fn {domain_module, router_ast} ->
           router_module = GenerateDomainRouterModule.build_domain_router_module(domain_module)
-          BaseTransformer.create_module(router_module, router_ast, __ENV__)
+
+          BaseTransformer.create_module(
+            router_module,
+            router_ast,
+            __ENV__,
+            BaseTransformer.dsl_location(dsl_state)
+          )
         end)
 
         # Create the main router module
-        BaseTransformer.create_module(main_router_module, main_router_ast, __ENV__)
+        BaseTransformer.create_module(
+          main_router_module,
+          main_router_ast,
+          __ENV__,
+          BaseTransformer.dsl_location(dsl_state)
+        )
 
         # Store the generated module in DSL state
         updated_dsl_state =

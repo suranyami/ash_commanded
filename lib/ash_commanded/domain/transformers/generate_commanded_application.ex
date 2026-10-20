@@ -92,7 +92,12 @@ defmodule AshCommanded.Domain.Transformers.GenerateCommandedApplication do
           )
 
         # Create the module at compile time
-        BaseTransformer.create_module(app_module, code, __ENV__)
+        BaseTransformer.create_module(
+          app_module,
+          code,
+          __ENV__,
+          BaseTransformer.dsl_location(dsl)
+        )
 
         # Store a reference to the application module in the DSL state
         updated_dsl = Transformer.persist(dsl, :commanded_application_module, app_module)

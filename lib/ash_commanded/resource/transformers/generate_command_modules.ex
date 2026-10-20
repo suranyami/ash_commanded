@@ -81,7 +81,8 @@ defmodule AshCommanded.Resource.Transformers.GenerateCommandModules do
             BaseTransformer.create_module(
               command_module,
               build_command_module_ast(command, resource_name),
-              __ENV__
+              __ENV__,
+              BaseTransformer.entity_location(command, acc_dsl_state)
             )
 
             # Store the generated module in DSL state for potential use by other transformers
